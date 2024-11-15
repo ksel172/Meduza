@@ -29,7 +29,7 @@ func main() {
 	// NewServer initialize the Http Server
 	server := server.NewServer(dependencies)
 
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		panic(fmt.Sprintf("http server error: %s", err))
 	}

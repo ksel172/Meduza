@@ -1,9 +1,9 @@
-CREATE TABLE IF NOT EXISTS {DB_SCHEMA_NAME}.{TABLE_NAME} (
-                                                             id SERIAL PRIMARY KEY,
-                                                             role_name VARCHAR(50) UNIQUE NOT NULL,
+CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.{TABLE_NAME} (
+    id SERIAL PRIMARY KEY,
+    role_name VARCHAR(50) UNIQUE NOT NULL,
     created_ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_ts TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-    );
+);
 
 INSERT INTO {POSTGRES_SCHEMA}.{TABLE_NAME} (role_name)
 VALUES

@@ -2,7 +2,10 @@ module github.com/ksel172/Meduza/teamserver
 
 go 1.23.3
 
-require github.com/jackc/pgx/v5 v5.7.1
+require (
+	github.com/jackc/pgx/v5 v5.7.1
+	github.com/lib/pq v1.10.9
+)
 
 require (
 	github.com/bytedance/sonic v1.11.6 // indirect

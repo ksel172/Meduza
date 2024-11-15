@@ -17,7 +17,7 @@ const (
 	MeduzaDbPortDefault         = "5432"
 	MeduzaDbUsernameEnvVar      = "DB_USER"
 	MeduzaDbUsernameDefault     = "postgres"
-	MeduzaDbPasswordEnvVar      = "DB_PASS"
+	MeduzaDbPasswordEnvVar      = "DB_PASSWORD"
 	MeduzaDbPasswordDefault     = "postgres"
 	MeduzaDbNameEnvVar          = "DB_NAME"
 	MeduzaDbNameDefault         = "meduza_db"

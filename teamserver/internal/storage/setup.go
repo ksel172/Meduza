@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/ksel172/Meduza/teamserver/conf"
+	_ "github.com/lib/pq"
 )
 
 func Setup() (*sql.DB, error) {
