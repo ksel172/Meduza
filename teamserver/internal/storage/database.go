@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/ksel172/Meduza/teamserver/conf"
 	"log"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 type Service interface {
@@ -27,12 +27,12 @@ type service struct {
 }
 
 var (
-	database   = utils.GetEnvString("DB_DATABASE", "")
-	password   = utils.GetEnvString("DB_PASSWORD", "")
-	username   = utils.GetEnvString("DB_USERNAME", "")
-	port       = utils.GetEnvString("DB_PORT", "")
-	host       = utils.GetEnvString("DB_HOST", "")
-	schema     = utils.GetEnvString("DB_SCHEMA", "")
+	database   = conf.GetMeduzaDbName()
+	password   = conf.GetMeduzaDbPassword()
+	username   = conf.GetMeduzaDbUsername()
+	port       = conf.GetMeduzaDbPort()
+	host       = conf.GetMeduzaDbHostname()
+	schema     = conf.GetMeduzaDbSchema()
 	dbInstance *service
 )
 
