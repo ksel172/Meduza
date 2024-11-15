@@ -12,6 +12,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	router := gin.Default()
 
 	router.GET("/", api.HelloWorldHandler)
+	router.GET("/api/users", api.UserController{})
 
 	return router
 }

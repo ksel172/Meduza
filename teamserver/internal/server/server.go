@@ -2,31 +2,30 @@ package server
 
 import (
 	"fmt"
+	"github.com/ksel172/Meduza/teamserver/conf"
 	"net/http"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/ksel172/Meduza/teamserver/internal/database"
-	"github.com/ksel172/Meduza/teamserver/utils"
+	"github.com/ksel172/Meduza/teamserver/internal/storage"
 )
 
 type Server struct {
+	host string
 	port int
-
-	db database.Service
+	db   storage.Service
 }
 
 func NewServer() *http.Server {
-	port := utils.GetEnvInt("PORT", 8080)
 	NewServer := &Server{
-		port: port,
-
-		db: database.New(),
+		host: conf.GetMeduzaServerHostname(),
+		port: conf.GetMeduzaServerPort(),
+		db:   storage.New(),
 	}
 
 	// Declare Server config
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", NewServer.port),
+		Addr:         fmt.Sprintf("%s:%d", NewServer.host, NewServer.port),
 		Handler:      NewServer.RegisterRoutes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,

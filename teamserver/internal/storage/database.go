@@ -1,4 +1,4 @@
-package database
+package storage
 
 import (
 	"context"
@@ -13,11 +13,11 @@ import (
 )
 
 type Service interface {
-	// Ping the database
+	// Ping the storage
 	// It returns an error if the connection is not made
 	Ping() error
 
-	// Close terminates the database connection.
+	// Close terminates the storage connection.
 	// It returns an error if the connection cannot be closed.
 	Close() error
 }
@@ -59,11 +59,11 @@ func (s *service) Ping() error {
 	return s.db.PingContext(ctx)
 }
 
-// Close closes the database connection.
-// It logs a message indicating the disconnection from the specific database.
+// Close closes the storage connection.
+// It logs a message indicating the disconnection from the specific storage.
 // If the connection is successfully closed, it returns nil.
 // If an error occurs while closing the connection, it returns the error.
 func (s *service) Close() error {
-	log.Printf("Disconnected from database: %s", database)
+	log.Printf("Disconnected from storage: %s", database)
 	return s.db.Close()
 }
