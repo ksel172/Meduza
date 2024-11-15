@@ -3,12 +3,11 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/ksel172/Meduza/teamserver/internal/database"
+	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 type Server struct {
@@ -18,7 +17,7 @@ type Server struct {
 }
 
 func NewServer() *http.Server {
-	port, _ := strconv.Atoi(os.Getenv("PORT"))
+	port := utils.GetEnvInt("PORT", 8080)
 	NewServer := &Server{
 		port: port,
 

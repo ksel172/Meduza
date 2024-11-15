@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 type Service interface {
@@ -27,12 +27,12 @@ type service struct {
 }
 
 var (
-	database   = os.Getenv("DB_DATABASE")
-	password   = os.Getenv("DB_PASSWORD")
-	username   = os.Getenv("DB_USERNAME")
-	port       = os.Getenv("DB_PORT")
-	host       = os.Getenv("DB_HOST")
-	schema     = os.Getenv("DB_SCHEMA")
+	database   = utils.GetEnvString("DB_DATABASE", "")
+	password   = utils.GetEnvString("DB_PASSWORD", "")
+	username   = utils.GetEnvString("DB_USERNAME", "")
+	port       = utils.GetEnvString("DB_PORT", "")
+	host       = utils.GetEnvString("DB_HOST", "")
+	schema     = utils.GetEnvString("DB_SCHEMA", "")
 	dbInstance *service
 )
 
