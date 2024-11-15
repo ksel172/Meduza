@@ -1,0 +1,50 @@
+services:
+
+  meduza_server:
+    container_name: ${MEDUZA_SERVER_HOSTNAME}
+    build: be
+    ports:
+      - "${MEDUZA_SERVER_PORT}:${MEDUZA_SERVER_PORT}"
+      - "${DLV_PORT}:${DLV_PORT}"
+    environment:
+      DB_HOST: ${POSTGRES_HOST}
+      DB_PORT: ${POSTGRES_PORT}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      DB_SCHEMA: ${POSTGRES_SCHEMA}
+      MEDUZA_SERVER_PORT: ${MEDUZA_SERVER_PORT}
+      MEDUZA_SERVER_HOSTNAME: ${MEDUZA_SERVER_HOSTNAME}
+      DLV_PORT: ${DLV_PORT}
+      CGO_ENABLED: ${CGO_ENABLED}
+      GOOS: ${GOOS}
+      GOARCH: ${GOARCH}
+    depends_on:
+      - meduza_db
+
+  meduza_db:
+    container_name: ${POSTGRES_HOST}
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_SCHEMA: ${POSTGRES_SCHEMA}
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./be/storage/init-scripts:/docker-entrypoint-initdb.d
+      - ./be/storage/queries:/home/queries
+
+  meduza_db_admin:
+    container_name: meduza_db_admin
+    image: elestio/pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "${PGADMIN_PORT}:${PGADMIN_PORT}"
+
+volumes:
+  pgdata:
