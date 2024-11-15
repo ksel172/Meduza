@@ -1,0 +1,54 @@
+services:
+
+  teamserver:
+    container_name: ${TEAMSERVER_HOSTNAME}
+    build: teamserver
+    ports:
+      - "${TEAMSERVER_PORT}:${TEAMSERVER_PORT}"
+      - "${DLV_PORT}:${DLV_PORT}"
+    environment:
+      DB_HOST: ${POSTGRES_HOST}
+      DB_PORT: ${POSTGRES_PORT}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      DB_SCHEMA: ${POSTGRES_SCHEMA}
+      TEAMSERVER_PORT: ${TEAMSERVER_PORT}
+      TEAMSERVER_HOSTNAME: ${TEAMSERVER_HOSTNAME}
+      DLV_PORT: ${DLV_PORT}
+      CGO_ENABLED: ${CGO_ENABLED}
+      GOOS: ${GOOS}
+      GOARCH: ${GOARCH}
+    depends_on:
+      - meduza_db
+
+  meduza_db:
+    container_name: ${POSTGRES_HOST}
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_HOST}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_SCHEMA: ${POSTGRES_SCHEMA}
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    volumes:
+      - meduza_volume:/var/lib/postgresql/data
+      - ./teamserver/internal/storage/init-scripts:/docker-entrypoint-initdb.d
+      - ./teamserver/internal/storage/queries:/home/queries
+
+  meduza_db_admin:
+    container_name: meduza_db_admin
+    image: elestio/pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "80:80"
+    depends_on:
+      - meduza_db
+
+volumes:
+  meduza_volume:
+
