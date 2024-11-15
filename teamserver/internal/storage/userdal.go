@@ -19,7 +19,7 @@ func NewUsersDAL(db Database, schema string) *UserDAL {
 }
 
 func (dal *UserDAL) GetUsers(ctx context.Context) ([]models.User, error) {
-	rows, err := dal.db.QueryContext(ctx, fmt.Sprintf("SELECT * FROM %s", dal.schema))
+	rows, err := dal.db.QueryContext(ctx, fmt.Sprintf("SELECT id, username, pw_hash, role_id, created_ts, updated_ts FROM %s", dal.schema))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to fetch users: %w", err)
 	}

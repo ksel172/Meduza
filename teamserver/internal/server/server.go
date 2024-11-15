@@ -3,24 +3,28 @@ package server
 import (
 	"fmt"
 	"github.com/ksel172/Meduza/teamserver/conf"
+	"github.com/ksel172/Meduza/teamserver/services/api"
 	"net/http"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/ksel172/Meduza/teamserver/internal/storage"
 )
 
-type Server struct {
-	host string
-	port int
-	db   storage.Service
+type DependencyContainer struct {
+	UserController *api.UserController
 }
 
-func NewServer() *http.Server {
+type Server struct {
+	host        string
+	port        int
+	depenencies *DependencyContainer
+}
+
+func NewServer(dependencies *DependencyContainer) *http.Server {
 	NewServer := &Server{
-		host: conf.GetMeduzaServerHostname(),
-		port: conf.GetMeduzaServerPort(),
-		db:   storage.New(),
+		host:        conf.GetMeduzaServerHostname(),
+		port:        conf.GetMeduzaServerPort(),
+		depenencies: dependencies,
 	}
 
 	// Declare Server config
