@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -23,6 +24,12 @@ const (
 	MeduzaDbNameDefault         = "meduza_db"
 	MeduzaDbSchemaEnvVar        = "DB_SCHEMA"
 	MeduzaDbSchemaDefault       = "meduza_schema"
+	MeduzaRedisHostEnvVar       = "REDIS_HOST"
+	MeduzaRedisHostDefault      = "localhost"
+	MeduzaRedisPortEnvVar       = "REDIS_PORT"
+	MeduzaRedisPortDefault      = "6379"
+	MeduzaRedisPasswordEnvVar   = "REDIS_PASSWORD"
+	MeduzaRedisPasswordDefault  = "password"
 )
 
 func GetMeduzaServerHostname() string {
@@ -103,4 +110,35 @@ func GetMeduzaDbSchema() string {
 		schema = MeduzaDbSchemaDefault
 	}
 	return schema
+}
+
+func GetMeduzaRedisAddress() string {
+	host, exists := os.LookupEnv(MeduzaRedisHostEnvVar)
+	if !exists || host == "" {
+		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaRedisHostEnvVar, MeduzaRedisHostDefault)
+		host = MeduzaRedisHostDefault
+	}
+
+	port, exists := os.LookupEnv(MeduzaRedisPortEnvVar)
+	if !exists || port == "" {
+		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaRedisPortEnvVar, MeduzaRedisPortDefault)
+		port = MeduzaRedisPortDefault
+	}
+
+	_, err := strconv.Atoi(port)
+	if err != nil {
+		log.Printf("Environmental variable '%s' is not a number, defaulting to '%s'...", MeduzaRedisPortEnvVar, MeduzaRedisPortDefault)
+		port = MeduzaRedisPortDefault
+	}
+
+	return fmt.Sprintf("%s:%s", host, port)
+}
+
+func GetMeduzaRedisPassword() string {
+	password, exists := os.LookupEnv(MeduzaRedisPasswordEnvVar)
+	if !exists {
+		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaRedisPasswordEnvVar, MeduzaRedisPasswordDefault)
+		password = MeduzaRedisPasswordDefault
+	}
+	return password
 }

@@ -1,16 +1,17 @@
-package storage
+package redis
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ksel172/Meduza/teamserver/conf"
 	"log"
 	"strings"
 
 	"github.com/go-redis/redis/v8"
 )
 
-type RedisService interface {
+type Service interface {
 	StringGet(ctx context.Context, key string) (string, error)
 	StringSet(ctx context.Context, key, value string) (bool, error)
 	JsonSet(ctx context.Context, key string, value interface{}) (bool, error)
@@ -24,13 +25,23 @@ type redisService struct {
 	client *redis.Client
 }
 
-func NewRedisService(addr string) RedisService {
+func NewRedisService() Service {
 	client := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: "", // No password set
-		DB:       0,  // Default DB
+		Addr:     conf.GetMeduzaRedisAddress(),
+		Password: conf.GetMeduzaRedisPassword(),
+		DB:       0, // TODO Default DB
 	})
+
+	err := client.Ping(context.Background()).Err()
+	if err != nil {
+		log.Fatalf("redis connect err: %v", err)
+	}
+
 	return &redisService{client: client}
+}
+
+func (r *redisService) GetClient() *redis.Client {
+	return r.client
 }
 
 func (r *redisService) StringGet(ctx context.Context, key string) (string, error) {
