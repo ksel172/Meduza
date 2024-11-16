@@ -6,19 +6,19 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ksel172/Meduza/teamserver/internal/storage"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 type AgentController struct {
-	dal *storage.AgentDAL
+	dal *redis.AgentDAL
 }
 
-func NewAgentController(dal *storage.AgentDAL) *AgentController {
+func NewAgentController(dal *redis.AgentDAL) *AgentController {
 	return &AgentController{dal: dal}
 }
 
-func (ac *AgentController) RegisterAgent(w http.ResponseWriter, r *http.Request) {
+func (ac *AgentController) Register(w http.ResponseWriter, r *http.Request) {
 	var agent models.Agent
 
 	if err := json.NewDecoder(r.Body).Decode(&agent); err != nil {
@@ -30,7 +30,7 @@ func (ac *AgentController) RegisterAgent(w http.ResponseWriter, r *http.Request)
 	agent.FirstCallback = time.Now()
 	agent.ModifiedAt = time.Now()
 
-	if err := ac.dal.RegisterAgent(agent); err != nil {
+	if err := ac.dal.Register(agent); err != nil {
 		http.Error(w, fmt.Sprintf("Error registering agent: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
@@ -40,6 +40,17 @@ func (ac *AgentController) RegisterAgent(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(agent)
 }
 
-func (ac *AgentController) GetAgent(w http.ResponseWriter, r *http.Request)    {}
+func (ac *AgentController) Get(w http.ResponseWriter, r *http.Request) {
+	agentID := r.URL.Query().Get("id")
+
+	agent, err := ac.dal.Get(agentID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(agent)
+}
 func (ac *AgentController) UpdateAgent(w http.ResponseWriter, r *http.Request) {}
 func (ac *AgentController) DeleteAgent(w http.ResponseWriter, r *http.Request) {}
