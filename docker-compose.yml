@@ -15,12 +15,16 @@ services:
       DB_SCHEMA: ${POSTGRES_SCHEMA}
       TEAMSERVER_PORT: ${TEAMSERVER_PORT}
       TEAMSERVER_HOSTNAME: ${TEAMSERVER_HOSTNAME}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
       DLV_PORT: ${DLV_PORT}
       CGO_ENABLED: ${CGO_ENABLED}
       GOOS: ${GOOS}
       GOARCH: ${GOARCH}
     depends_on:
       - meduza_db
+      - meduza_redis
 
   meduza_db:
     container_name: ${POSTGRES_HOST}
@@ -48,6 +52,16 @@ services:
       - "80:80"
     depends_on:
       - meduza_db
+
+  meduza_redis:
+    container_name: ${REDIS_HOST}
+    image: redis:latest
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
 
 volumes:
   meduza_volume:
