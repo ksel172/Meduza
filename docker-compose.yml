@@ -55,9 +55,9 @@ services:
 
   meduza_redis:
     container_name: ${REDIS_HOST}
-    image: redis:latest
+    image: redis/redis-stack:latest
     restart: unless-stopped
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--loadmodule", "./opt/redis-stack/lib/rejson.so"]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
