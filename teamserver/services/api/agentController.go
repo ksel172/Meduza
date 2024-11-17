@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -14,36 +13,20 @@ type AgentController struct {
 	dal *redis.AgentDAL
 }
 
+/* Agents API */
+
 func NewAgentController(dal *redis.AgentDAL) *AgentController {
 	return &AgentController{dal: dal}
 }
 
-func (ac *AgentController) Register(w http.ResponseWriter, r *http.Request) {
-	var agent models.Agent
-
-	if err := json.NewDecoder(r.Body).Decode(&agent); err != nil {
-		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	// Set first contact variables
-	agent.FirstCallback = time.Now()
-	agent.ModifiedAt = time.Now()
-
-	if err := ac.dal.Register(agent); err != nil {
-		http.Error(w, fmt.Sprintf("Error registering agent: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	// Return a response containing the agent for updating the client side
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(agent)
-}
-
-func (ac *AgentController) Get(w http.ResponseWriter, r *http.Request) {
+func (ac *AgentController) GetAgent(w http.ResponseWriter, r *http.Request) {
 	agentID := r.URL.Query().Get("id")
+	if agentID == "" {
+		http.Error(w, "Missing agent ID", http.StatusBadRequest)
+		return
+	}
 
-	agent, err := ac.dal.Get(agentID)
+	agent, err := ac.dal.GetAgent(r.Context(), agentID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
 		return
@@ -52,5 +35,88 @@ func (ac *AgentController) Get(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(agent)
 }
-func (ac *AgentController) UpdateAgent(w http.ResponseWriter, r *http.Request) {}
-func (ac *AgentController) DeleteAgent(w http.ResponseWriter, r *http.Request) {}
+
+// This is technically vulnerable because it allows the client to update any agent
+// Also, allows any field to be edited if the request is hand-crafted
+func (ac *AgentController) UpdateAgent(w http.ResponseWriter, r *http.Request) {
+	var agent models.Agent
+	if err := json.NewDecoder(r.Body).Decode(&agent); err != nil {
+		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
+	}
+
+	if err := ac.dal.UpdateAgent(r.Context(), agent); err != nil {
+		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (ac *AgentController) DeleteAgent(w http.ResponseWriter, r *http.Request) {
+	agentID := r.URL.Query().Get("id")
+	if agentID == "" {
+		http.Error(w, "Missing agent ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := ac.dal.DeleteAgent(r.Context(), agentID); err != nil {
+		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+/* Agent Task API */
+
+func (ac *AgentController) CreateAgentTask(w http.ResponseWriter, r *http.Request) {
+	var agentTask models.AgentTask
+	if err := json.NewDecoder(r.Body).Decode(&agentTask); err != nil {
+		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
+	}
+
+	if err := ac.dal.CreateAgentTask(r.Context(), agentTask); err != nil {
+		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(agentTask)
+}
+func (ac *AgentController) GetAgentTasks(w http.ResponseWriter, r *http.Request) {
+	agentID := r.URL.Query().Get("id")
+
+	tasks, err := ac.dal.GetAgentTasks(r.Context(), agentID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		return
+	}
+
+	// Return tasks as JSON
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(tasks)
+}
+
+// Deletes all tasks for a single agent
+func (ac *AgentController) DeleteAgentTasks(w http.ResponseWriter, r *http.Request) {
+	agentID := r.URL.Query().Get("agent_id")
+
+	if err := ac.dal.DeleteAgentTasks(r.Context(), agentID); err != nil {
+		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// Delete a single task
+func (ac *AgentController) DeleteAgentTask(w http.ResponseWriter, r *http.Request) {
+	taskID := r.URL.Query().Get("task_id")
+
+	if err := ac.dal.DeleteAgentTask(r.Context(), taskID); err != nil {
+		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

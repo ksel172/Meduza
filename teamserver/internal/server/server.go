@@ -13,9 +13,10 @@ import (
 )
 
 type DependencyContainer struct {
-	UserController  *api.UserController
-	AgentController *api.AgentController
-	RedisService    *redis.Service
+	UserController    *api.UserController
+	AgentController   *api.AgentController
+	CheckInController *api.CheckInController
+	RedisService      *redis.Service
 }
 
 type Server struct {

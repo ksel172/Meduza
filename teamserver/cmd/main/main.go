@@ -48,9 +48,13 @@ func InitializeDependencies(postgres *sql.DB, redisService *redis.Service) *serv
 	agentDal := redis.NewAgentDAL(redisService)
 	agentController := api.NewAgentController(agentDal)
 
+	checkInDal := redis.NewCheckInDAL(redisService)
+	checkInController := api.NewCheckInController(checkInDal)
+
 	return &server.DependencyContainer{
-		UserController:  userController,
-		AgentController: agentController,
-		RedisService:    redisService,
+		UserController:    userController,
+		AgentController:   agentController,
+		CheckInController: checkInController,
+		RedisService:      redisService,
 	}
 }
