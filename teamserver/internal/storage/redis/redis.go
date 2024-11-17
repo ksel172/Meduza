@@ -53,7 +53,7 @@ func (r *redisService) StringGet(ctx context.Context, key string) (string, error
 	result, err := r.client.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return "", fmt.Errorf("key not found: %s", key)
+			return "", nil
 		}
 		return "", fmt.Errorf("failed StringGet: %w", err)
 	}
@@ -100,7 +100,7 @@ func (r *redisService) JsonGet(ctx context.Context, key string) (string, error) 
 	result, err := r.client.Do(ctx, "JSON.GET", key).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return "", fmt.Errorf("key not found: %s", key)
+			return "", nil
 		}
 		return "", fmt.Errorf("failed JSONGet: %w", err)
 	}
