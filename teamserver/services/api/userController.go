@@ -3,8 +3,9 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"net/http"
+
+	"github.com/ksel172/Meduza/teamserver/internal/storage"
 )
 
 type UserController struct {
