@@ -4,19 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ksel172/Meduza/teamserver/conf"
 	"log"
 	"strings"
+
+	"github.com/ksel172/Meduza/teamserver/conf"
 
 	"github.com/go-redis/redis/v8"
 )
 
 type Service interface {
 	StringGet(ctx context.Context, key string) (string, error)
-	StringSet(ctx context.Context, key, value string) (bool, error)
-	JsonSet(ctx context.Context, key string, value interface{}) (bool, error)
+	StringSet(ctx context.Context, key, value string) error
+	JsonSet(ctx context.Context, key string, value interface{}) error
 	JsonGet(ctx context.Context, key string) (string, error)
-	JsonDelete(ctx context.Context, key string) (bool, error)
+	JsonDelete(ctx context.Context, key string) error
 	GetAllByPartial(ctx context.Context, partialKey string) ([]interface{}, error)
 	DeleteAllByPartial(ctx context.Context, partialKey string) error
 }
@@ -50,44 +51,45 @@ func (r *redisService) StringGet(ctx context.Context, key string) (string, error
 	}
 
 	result, err := r.client.Get(ctx, key).Result()
-	if err == redis.Nil {
-		return "", nil
-	} else if err != nil {
-		return "", err
+	if err != nil {
+		if err == redis.Nil {
+			return "", fmt.Errorf("key not found: %s", key)
+		}
+		return "", fmt.Errorf("failed StringGet: %w", err)
 	}
 
 	return result, nil
 }
 
-func (r *redisService) StringSet(ctx context.Context, key, value string) (bool, error) {
+func (r *redisService) StringSet(ctx context.Context, key, value string) error {
 	if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
-		return false, fmt.Errorf("key and value cannot be empty")
+		return fmt.Errorf("key and value cannot be empty")
 	}
 
 	err := r.client.Set(ctx, key, value, 0).Err()
 	if err != nil {
-		return false, err
+		return fmt.Errorf("failed to set key and value: %w", err)
 	}
 
-	return true, nil
+	return nil
 }
 
-func (r *redisService) JsonSet(ctx context.Context, key string, value interface{}) (bool, error) {
+func (r *redisService) JsonSet(ctx context.Context, key string, value interface{}) error {
 	if strings.TrimSpace(key) == "" || value == nil {
-		return false, fmt.Errorf("key and value cannot be empty")
+		return fmt.Errorf("key and value cannot be empty")
 	}
 
 	serialized, err := json.Marshal(value)
 	if err != nil {
-		return false, err
+		return fmt.Errorf("failed to marshal value: %w", err)
 	}
 
 	err = r.client.Do(ctx, "JSON.SET", key, ".", serialized).Err()
 	if err != nil {
-		return false, err
+		return fmt.Errorf("failed to set key and value: %w", err)
 	}
 
-	return true, nil
+	return nil
 }
 
 func (r *redisService) JsonGet(ctx context.Context, key string) (string, error) {
@@ -96,26 +98,30 @@ func (r *redisService) JsonGet(ctx context.Context, key string) (string, error) 
 	}
 
 	result, err := r.client.Do(ctx, "JSON.GET", key).Result()
-	if err == redis.Nil {
-		return "", nil
-	} else if err != nil {
-		return "", err
+	if err != nil {
+		if err == redis.Nil {
+			return "", fmt.Errorf("key not found: %s", key)
+		}
+		return "", fmt.Errorf("failed JSONGet: %w", err)
 	}
 
 	return result.(string), nil
 }
 
-func (r *redisService) JsonDelete(ctx context.Context, key string) (bool, error) {
+func (r *redisService) JsonDelete(ctx context.Context, key string) error {
 	if strings.TrimSpace(key) == "" {
-		return false, fmt.Errorf("key cannot be empty")
+		return fmt.Errorf("key cannot be empty")
 	}
 
 	deleted, err := r.client.Do(ctx, "JSON.DEL", key).Int()
 	if err != nil {
-		return false, err
+		return fmt.Errorf("failed to delete key: %w", err)
+	}
+	if deleted == 0 {
+		return fmt.Errorf("key not found")
 	}
 
-	return deleted > 0, nil
+	return nil
 }
 
 func (r *redisService) GetAllByPartial(ctx context.Context, partialKey string) ([]interface{}, error) {
@@ -130,7 +136,7 @@ func (r *redisService) GetAllByPartial(ctx context.Context, partialKey string) (
 		key := iter.Val()
 		value, err := r.JsonGet(ctx, key)
 		if err != nil {
-			log.Printf("Failed to get value for key: %s, error: %v", key, err)
+			log.Printf("Failed to get value by partial at key: %s, error: %v", key, err)
 			continue
 		}
 		results = append(results, value)
@@ -151,9 +157,8 @@ func (r *redisService) DeleteAllByPartial(ctx context.Context, partialKey string
 	iter := r.client.Scan(ctx, 0, partialKey+"*", 0).Iterator()
 	for iter.Next(ctx) {
 		key := iter.Val()
-		_, err := r.JsonDelete(ctx, key)
-		if err != nil {
-			log.Printf("Failed to delete key: %s, error: %v", key, err)
+		if err := r.JsonDelete(ctx, key); err != nil {
+			log.Printf("Failed to delete by partial at key: %s, error: %v", key, err)
 		}
 	}
 
