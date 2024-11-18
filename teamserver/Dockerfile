@@ -12,7 +12,13 @@ COPY go.mod go.sum ./
 # Download dependencies
 RUN go mod download
 
-# Copy the entire project into the container
+## Copy the entire project into the container
 COPY . .
+
+## Copy entrypoint script outside volume mount
+#COPY docker/ts/init_ts.sh /usr/local/bin/init_ts.sh
+
+## Make the script executable
+#RUN chmod +x /usr/local/bin/init_ts.sh
 
 ENTRYPOINT ["docker/ts/init_ts.sh"]

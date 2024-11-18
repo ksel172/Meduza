@@ -22,6 +22,8 @@ services:
       REDIS_PORT: ${REDIS_PORT}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       DLV_PORT: ${DLV_PORT}
+    volumes:
+      - ./teamserver:/app
     depends_on:
       - meduza_db
       - meduza_redis
