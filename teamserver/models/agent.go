@@ -64,3 +64,13 @@ type AgentCommand struct {
 	Parameters []string  `json:"parameters"`
 	Output     string    `json:"output"`
 }
+
+// How agent is stored in redis
+func (a Agent) RedisID() string {
+	return "agents:" + a.ID
+}
+
+// How agent task is stored in redis
+func (at *AgentTask) RedisID() string {
+	return "tasks:" + at.AgentID + ":" + at.ID
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 	"github.com/ksel172/Meduza/teamserver/models"
 )
@@ -74,6 +75,9 @@ func (ac *AgentController) CreateAgentTask(w http.ResponseWriter, r *http.Reques
 	if err := json.NewDecoder(r.Body).Decode(&agentTask); err != nil {
 		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
 	}
+
+	// Generate	uuid
+	agentTask.ID = uuid.New().String()
 
 	if err := ac.dal.CreateAgentTask(r.Context(), agentTask); err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)

@@ -44,7 +44,7 @@ func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.Agent) error 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	if _, err := dal.redis.JsonSet(ctx, agent.ID, agent); err != nil {
+	if _, err := dal.redis.JsonSet(ctx, agent.RedisID(), agent); err != nil {
 		return fmt.Errorf("failed to update agent: %w", err)
 	}
 
@@ -66,7 +66,7 @@ func (dal *AgentDAL) CreateAgentTask(ctx context.Context, agentTask models.Agent
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	if _, err := dal.redis.JsonSet(ctx, agentTask.ID, agentTask); err != nil {
+	if _, err := dal.redis.JsonSet(ctx, agentTask.RedisID(), agentTask); err != nil {
 		return fmt.Errorf("failed to create agent task: %w", err)
 	}
 
