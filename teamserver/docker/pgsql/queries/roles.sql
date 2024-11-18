@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.{TABLE_NAME} (
 
 INSERT INTO {POSTGRES_SCHEMA}.{TABLE_NAME} (role_name)
 VALUES
-    ('commander'), -- full access to manage and control the system
+    ('amdin'), -- full access to manage and control the system
     ('operator'),  -- execute commands within defined limits
     ('auditor'),   -- read-only access for monitoring and compliance
     ('technician'),-- maintenance and support tasks
