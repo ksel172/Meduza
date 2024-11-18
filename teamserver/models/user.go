@@ -2,12 +2,10 @@ package models
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type User struct {
-	ID           uuid.UUID `json:"id"`
+	ID           string    `json:"id"`
 	Username     string    `json:"username"`
 	PasswordHash string    `json:"-"`
 	Role         UserRole  `json:"role"`
@@ -16,10 +14,10 @@ type User struct {
 }
 
 type ResUser struct {
-	ID           uuid.UUID `json:"id"`
-	Username     string    `json:"username" validate:"required,min=6,max=20"`
-	PasswordHash string    `json:"password" validate:"required,min=6,max=20"`
-	Role         UserRole  `json:"role" validate:"required,oneof=admin moderator client visitor"`
+	ID           string    `json:"id"`
+	Username     string    `json:"username" validate:"alphanum,required,min=6,max=20"`
+	PasswordHash string    `json:"password" validate:"required,min=6"`
+	Role         string    `json:"role" validate:"required,oneof=admin moderator client visitor"`
 	CreateBy     time.Time `json:"created_by omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`

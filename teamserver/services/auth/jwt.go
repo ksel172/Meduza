@@ -5,76 +5,104 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
-var secret string
-
-func init() {
-	secret = utils.GetEnvString("JWT_SECRET", "jwt_secret")
+// JWTService handles token operations
+type JWTService struct {
+	secret          string
+	accessTokenTTL  time.Duration
+	refreshTokenTTL time.Duration
 }
 
-// GenerateToken genrates JSON WEB TOKEN for the loged in user.
-// Return an AuthResponse with the token or an error if signing fails.
-func GenerateToken(user *models.User) (AuthResponse, error) {
-	claims := &UserClaim{
-		Id:   user.ID,
-		Role: user.Role,
-		RegisteredClaims: &jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+func NewJWTService(secret string, accessTokenTTL, refreshTokenTTL time.Duration) *JWTService {
+	return &JWTService{
+		secret:          secret,
+		accessTokenTTL:  accessTokenTTL,
+		refreshTokenTTL: refreshTokenTTL,
+	}
+}
+
+// UserClaim represents custom claims for JWT
+type UserClaim struct {
+	UserID string `json:"user_id"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
+}
+
+// GenerateTokens generates an access and refresh token pair
+func (j *JWTService) GenerateTokens(userID, role string) (*AuthResponse, error) {
+	accessClaims := &UserClaim{
+		UserID: userID,
+		Role:   role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.accessTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
-
-	t, err := token.SignedString(secret)
+	accessToken, err := j.generateToken(accessClaims)
 	if err != nil {
-		return AuthResponse{}, fmt.Errorf("error while encoding token: %w", err)
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
-	return AuthResponse{Token: t}, nil
+	refreshClaims := &UserClaim{
+		UserID: userID,
+		Role:   role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.refreshTokenTTL)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	refreshToken, err := j.generateToken(refreshClaims)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	return &AuthResponse{
+		Token:        accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }
 
-// ValidateToken parses and verifies the given JWT access token.
-// Returns the parsed claims on success or an error on failure.
-func ValidateToken(accessToken string) (*UserClaim, error) {
-	token, err := jwt.ParseWithClaims(accessToken, &UserClaim{}, func(t *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil
+// ValidateToken validates and parses a token
+func (j *JWTService) ValidateToken(tokenStr string) (*UserClaim, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &UserClaim{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(j.secret), nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error while validating token: %w", err)
+		return nil, fmt.Errorf("invalid token: %w", err)
 	}
-	if claims, ok := token.Claims.(*UserClaim); ok && token.Valid {
-		return claims, nil
+
+	claims, ok := token.Claims.(*UserClaim)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid claims or token")
 	}
-	return nil, fmt.Errorf("invalid token or claims")
+
+	return claims, nil
 }
 
-// TokenRefresh generates a new token for an existing valid token.
-// Returns the new token as an AuthResponse or an error if validation fails.
-func TokenRefresh(accessToken string) (AuthResponse, error) {
-	vToken, err := ValidateToken(accessToken)
+// RefreshTokens generates a new access token if the refresh token is valid
+func (j *JWTService) RefreshTokens(refreshToken string) (*AuthRefreshToken, error) {
+	claims, err := j.ValidateToken(refreshToken)
 	if err != nil {
-		return AuthResponse{}, fmt.Errorf("error validating access token: %w", err)
+		return nil, fmt.Errorf("failed to validate refresh token: %w", err)
 	}
-	if vToken.RegisteredClaims.ExpiresAt.Before(time.Now()) {
-		return AuthResponse{}, fmt.Errorf("cannot refresh an expired token")
+
+	if claims.ExpiresAt.Before(time.Now()) {
+		return nil, fmt.Errorf("refresh token is expired")
 	}
-	claims := &UserClaim{
-		Id:   vToken.Id,
-		Role: vToken.Role,
-		RegisteredClaims: &jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+
+	newTokens, err := j.GenerateTokens(claims.UserID, claims.Role)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate new token: %w", err)
 	}
+
+	return &AuthRefreshToken{
+		RefreshToken: newTokens.RefreshToken,
+	}, nil
+
+}
+
+func (j *JWTService) generateToken(claims *UserClaim) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
-
-	t, err := token.SignedString(secret)
-	if err != nil {
-		return AuthResponse{}, fmt.Errorf("error while encoding token: %w", err)
-	}
-
-	return AuthResponse{Token: t}, nil
+	return token.SignedString([]byte(j.secret))
 }
