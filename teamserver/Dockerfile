@@ -12,7 +12,7 @@ COPY go.mod go.sum ./
 # Download dependencies
 RUN go mod download
 
-# Copy the entire project into the container
+## Copy the entire project into the container
 COPY . .
 
 ENTRYPOINT ["docker/ts/init_ts.sh"]

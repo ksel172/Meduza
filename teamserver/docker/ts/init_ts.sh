@@ -5,7 +5,7 @@ MODE=${TEAMSERVER_MODE:-dev}
 
 if [ "$MODE" = "debug" ]; then
 
-  # Install
+  # Install https://github.com/go-delve/delve
   echo "Installing delve..."
   go install github.com/go-delve/delve/cmd/dlv@latest
   echo "Finished installing delve"
@@ -22,9 +22,12 @@ if [ "$MODE" = "debug" ]; then
   DLV_PORT=${DLV_PORT:-2345}
   exec dlv --listen=:"$DLV_PORT" --headless=true --api-version=2 --accept-multiclient exec ./server
 else
-  echo "Building server binary..."
-  go build -o server ./cmd/main
-  echo "Finished building server binary"
+
+  # Install https://github.com/air-verse/air for hot reloading
+  echo "Installing air..."
+  go install github.com/air-verse/air@latest
+  echo "Finished installing air"
+
   echo "Starting server..."
-  exec ./server
+  exec air ./server --port "$TEAMSERVER_PORT" -c .air.toml
 fi

@@ -11,7 +11,7 @@ type Api interface {
 
 func HelloWorldHandler(c *gin.Context) {
 	resp := make(map[string]string)
-	resp["message"] = "Hello World"
+	resp["message"] = "Hello World!!!"
 
 	c.JSON(http.StatusOK, resp)
 }
