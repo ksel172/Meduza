@@ -6,3 +6,5 @@ type UserPResponse struct {
 	Message string `json:"message"`
 	Data    any    `json:"data"`
 }
+
+// PrettyFi
