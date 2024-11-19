@@ -15,7 +15,7 @@ func NewCheckInDAL(redisService *Service) *CheckInDAL {
 	return &CheckInDAL{redis: *redisService}
 }
 func (dal *CheckInDAL) CreateAgent(agent models.Agent) error {
-	if _, err := dal.redis.JsonSet(context.Background(), agent.RedisID(), agent); err != nil {
+	if err := dal.redis.JsonSet(context.Background(), agent.RedisID(), agent); err != nil {
 		return fmt.Errorf("Failed to register agent: %w", err)
 	}
 	return nil
