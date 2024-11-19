@@ -2,18 +2,21 @@ package server
 
 import (
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/ksel172/Meduza/teamserver/conf"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 	"github.com/ksel172/Meduza/teamserver/services/api"
-	"net/http"
-	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 )
 
 type DependencyContainer struct {
-	UserController *api.UserController
-	RedisService   *redis.Service
+	UserController    *api.UserController
+	AgentController   *api.AgentController
+	CheckInController *api.CheckInController
+	RedisService      *redis.Service
 }
 
 type Server struct {

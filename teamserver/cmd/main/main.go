@@ -3,12 +3,13 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"net/http"
+
 	"github.com/ksel172/Meduza/teamserver/conf"
 	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 	"github.com/ksel172/Meduza/teamserver/services/api"
-	"log"
-	"net/http"
 
 	"github.com/ksel172/Meduza/teamserver/internal/server"
 )
@@ -40,12 +41,20 @@ func main() {
 	}
 }
 
-func InitializeDependencies(postgres *sql.DB, redis *redis.Service) *server.DependencyContainer {
+func InitializeDependencies(postgres *sql.DB, redisService *redis.Service) *server.DependencyContainer {
 	userDal := storage.NewUsersDAL(postgres, conf.GetMeduzaDbSchema())
 	userController := api.NewUserController(userDal)
 
+	agentDal := redis.NewAgentDAL(redisService)
+	agentController := api.NewAgentController(agentDal)
+
+	checkInDal := redis.NewCheckInDAL(redisService)
+	checkInController := api.NewCheckInController(checkInDal)
+
 	return &server.DependencyContainer{
-		UserController: userController,
-		RedisService:   redis,
+		UserController:    userController,
+		AgentController:   agentController,
+		CheckInController: checkInController,
+		RedisService:      redisService,
 	}
 }
