@@ -40,10 +40,22 @@ func (ac *AgentController) GetAgent(w http.ResponseWriter, r *http.Request) {
 // This is technically vulnerable because it allows the client to update any agent
 // Also, allows any field to be edited if the request is hand-crafted
 func (ac *AgentController) UpdateAgent(w http.ResponseWriter, r *http.Request) {
+
+	// agentID in the query params - could be just pure JSON
+	agentID := r.URL.Query().Get("id")
+	if agentID == "" {
+		http.Error(w, "Missing agent ID", http.StatusBadRequest)
+		return
+	}
+
+	// JSON modified agent
 	var agent models.Agent
 	if err := json.NewDecoder(r.Body).Decode(&agent); err != nil {
 		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
 	}
+
+	// Set agentID
+	agent.ID = agentID
 
 	if err := ac.dal.UpdateAgent(r.Context(), agent); err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
@@ -115,9 +127,10 @@ func (ac *AgentController) DeleteAgentTasks(w http.ResponseWriter, r *http.Reque
 
 // Delete a single task
 func (ac *AgentController) DeleteAgentTask(w http.ResponseWriter, r *http.Request) {
+	agent_id := r.URL.Query().Get("agent_id")
 	taskID := r.URL.Query().Get("task_id")
 
-	if err := ac.dal.DeleteAgentTask(r.Context(), taskID); err != nil {
+	if err := ac.dal.DeleteAgentTask(r.Context(), agent_id, taskID); err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
 		return
 	}
