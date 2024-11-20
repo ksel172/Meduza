@@ -1,20 +1,18 @@
-package storage
+package dal
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
-	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/internal/models"
+	"github.com/ksel172/Meduza/teamserver/internal/storage"
 )
 
-var db *sql.DB
-
 type UserDAL struct {
-	db     Database
+	db     storage.Database
 	schema string
 }
 
-func NewUsersDAL(db Database, schema string) *UserDAL {
+func NewUsersDAL(db storage.Database, schema string) *UserDAL {
 	return &UserDAL{db: db, schema: schema}
 }
 
@@ -35,4 +33,9 @@ func (dal *UserDAL) GetUsers(ctx context.Context) ([]models.User, error) {
 	}
 
 	return users, nil
+}
+
+// TODO add create user
+func (dal *UserDAL) CreateUser(ctx context.Context, user models.User) error {
+	return nil
 }

@@ -2,50 +2,48 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/ksel172/Meduza/teamserver/conf"
-	"github.com/ksel172/Meduza/teamserver/internal/storage"
-	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
-	"github.com/ksel172/Meduza/teamserver/services/api"
-	"log"
-	"net/http"
-
+	"github.com/ksel172/Meduza/teamserver/internal/api/handlers"
+	"github.com/ksel172/Meduza/teamserver/internal/app/users"
 	"github.com/ksel172/Meduza/teamserver/internal/server"
+	"github.com/ksel172/Meduza/teamserver/internal/storage"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
+	"log"
 )
 
 func main() {
 
 	// Initialize services
 	log.Println("Connecting to postgres db...")
-	database, err := storage.Setup()
+	pgsql, err := storage.Setup()
 	if err != nil {
-		log.Fatal("Failed to connect to database. Terminating...", err)
+		log.Fatal("Failed to connect to pgsql. Terminating...", err)
 	}
-	defer database.Close()
+	defer pgsql.Close()
 	log.Println("Connected to postgres db")
 
 	log.Println("Connecting to redisService db...")
 	redisService := redis.NewRedisService()
 	log.Println("Connected to redisService db")
 
+	log.Println("Loading users service...")
+	userDal := dal.NewUsersDAL(pgsql, conf.GetMeduzaDbSchema())
+	userService := users.NewService(userDal)
+	userController := handlers.NewUserController(userService)
+
 	// Create dependency container
-	dependencies := InitializeDependencies(database, &redisService)
+	dependencies := &server.DependencyContainer{
+		UserController: userController,
+		UserService:    userService,
+		RedisService:   redisService,
+	}
 
 	// NewServer initialize the Http Server
-	newServer := server.NewServer(dependencies)
+	teamserver := server.NewServer(dependencies)
 
-	err = newServer.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		panic(fmt.Sprintf("http newServer error: %s", err))
-	}
-}
-
-func InitializeDependencies(postgres *sql.DB, redis *redis.Service) *server.DependencyContainer {
-	userDal := storage.NewUsersDAL(postgres, conf.GetMeduzaDbSchema())
-	userController := api.NewUserController(userDal)
-
-	return &server.DependencyContainer{
-		UserController: userController,
-		RedisService:   redis,
+	log.Println("Starting teamserver...")
+	if err := teamserver.Run(); err != nil {
+		log.Panicf("Failed to start teamserver. Terminating...", err)
 	}
 }

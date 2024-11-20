@@ -7,12 +7,12 @@ WORKDIR /app
 USER root
 
 # Copy dependency files first for caching
-COPY go.mod go.sum ./
+COPY ../../go.mod go.sum ./
 
 # Download dependencies
 RUN go mod download
 
 ## Copy the entire project into the container
-COPY . .
+COPY ../.. .
 
 ENTRYPOINT ["docker/ts/init_ts.sh"]
