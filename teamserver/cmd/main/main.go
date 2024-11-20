@@ -45,11 +45,13 @@ func InitializeDependencies(postgres *sql.DB, redisService *redis.Service) *serv
 	userDal := storage.NewUsersDAL(postgres, conf.GetMeduzaDbSchema())
 	userController := api.NewUserController(userDal)
 
+	// Data access layers
 	agentDal := redis.NewAgentDAL(redisService)
-	agentController := api.NewAgentController(agentDal)
-
 	checkInDal := redis.NewCheckInDAL(redisService)
-	checkInController := api.NewCheckInController(checkInDal)
+
+	// Controllers
+	agentController := api.NewAgentController(agentDal)
+	checkInController := api.NewCheckInController(checkInDal, agentDal)
 
 	return &server.DependencyContainer{
 		UserController:    userController,

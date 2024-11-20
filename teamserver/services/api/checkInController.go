@@ -10,11 +10,12 @@ import (
 )
 
 type CheckInController struct {
-	dal *redis.CheckInDAL
+	checkInDAL *redis.CheckInDAL
+	agentDAL   *redis.AgentDAL
 }
 
-func NewCheckInController(dal *redis.CheckInDAL) *CheckInController {
-	return &CheckInController{dal: dal}
+func NewCheckInController(checkInDAL *redis.CheckInDAL, agentDAL *redis.AgentDAL) *CheckInController {
+	return &CheckInController{checkInDAL: checkInDAL, agentDAL: agentDAL}
 }
 
 func (cc *CheckInController) CreateAgent(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +37,7 @@ func (cc *CheckInController) CreateAgent(w http.ResponseWriter, r *http.Request)
 	agent := c2request.IntoNewAgent()
 
 	// Create agent in the redis db
-	if err := cc.dal.CreateAgent(agent); err != nil {
+	if err := cc.checkInDAL.CreateAgent(agent); err != nil {
 		http.Error(w, fmt.Sprintf("Error registering agent: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
@@ -44,4 +45,29 @@ func (cc *CheckInController) CreateAgent(w http.ResponseWriter, r *http.Request)
 	// Return a response containing the agent for updating the client side
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(agent)
+}
+
+// Will be called by the agents to get their tasks/commands
+// The agent will send its ID in the query params,
+// need to protect by authentication at some points, because currently anyone requesting
+// the tasks will get them, however, only the agent should be able to.
+func (cc *CheckInController) GetTasks(w http.ResponseWriter, r *http.Request) {
+
+	// Get the agent ID from the query params
+	agentID := r.URL.Query().Get("id")
+	if agentID == "" {
+		http.Error(w, "Missing agent ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get the tasks for the agent
+	tasks, err := cc.agentDAL.GetAgentTasks(r.Context(), agentID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		return
+	}
+
+	// Return tasks as JSON
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(tasks)
 }

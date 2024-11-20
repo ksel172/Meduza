@@ -58,6 +58,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	checkinGroup.POST("/", func(context *gin.Context) {
 		s.dependencies.CheckInController.CreateAgent(context.Writer, context.Request)
 	})
+	checkinGroup.GET("/", func(context *gin.Context) {
+		s.dependencies.CheckInController.GetTasks(context.Writer, context.Request)
+	})
 
 	return router
 }
