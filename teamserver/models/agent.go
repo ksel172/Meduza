@@ -19,7 +19,6 @@ type Agent struct {
 
 // AgentInfo contains information about the agent computer
 type AgentInfo struct {
-	UUMOID     string `json:"uumo_id"`
 	HostName   string `json:"host_name"`
 	IPAddr     string `json:"ip_addr"`
 	Username   string `json:"username"`
