@@ -41,23 +41,33 @@ func (ac *AgentController) GetAgent(w http.ResponseWriter, r *http.Request) {
 // Also, allows any field to be edited if the request is hand-crafted
 func (ac *AgentController) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 
-	// agentID in the query params - could be just pure JSON
+	// get the ID of the agent to be updated in the query params
 	agentID := r.URL.Query().Get("id")
 	if agentID == "" {
 		http.Error(w, "Missing agent ID", http.StatusBadRequest)
 		return
 	}
 
-	// JSON modified agent
-	var agent models.Agent
-	if err := json.NewDecoder(r.Body).Decode(&agent); err != nil {
-		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
+	// Get the agent that is going to be updated in the db
+	agent, err := ac.dal.GetAgent(r.Context(), agentID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		return
 	}
 
-	// Set agentID
-	agent.ID = agentID
+	// Get the JSON for the fields that can be updated in the agent
+	// This prevents unintented modifications by the client manipulating the request JSON
+	var agentUpdateRequest models.UpdateAgentRequest
+	if err = json.NewDecoder(r.Body).Decode(&agentUpdateRequest); err != nil {
+		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
 
-	if err := ac.dal.UpdateAgent(r.Context(), agent); err != nil {
+	// Update the agent fields
+	updatedAgent := agentUpdateRequest.IntoAgent(agent)
+
+	// Provide the updated agent to the data layer
+	if err := ac.dal.UpdateAgent(r.Context(), updatedAgent); err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
 		return
 	}
