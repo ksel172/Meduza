@@ -47,8 +47,8 @@ type Listener struct {
 	StoppedAt *time.Time `json:"stoppedAt,omitempty"`
 
 	// SSL/TLS
-	certPath string `json:"certPath,omitempty"` // Certificate (HTTPS)
-	keyPath  string `json:"keyPath,omitempty"`  // Private Key (HTTPS)
+	CertPath string `json:"certPath,omitempty"` // Certificate (HTTPS)
+	KeyPath  string `json:"keyPath,omitempty"`  // Private Key (HTTPS)
 
 	// Whitelisting and Blacklisting
 	WhitelistEnabled bool     `json:"whitelistEnabled"`
