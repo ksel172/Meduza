@@ -7,11 +7,9 @@ import (
 )
 
 // C2Request represents any request sent to a C2 server by an Agent.
-// Valid reasons: ["register", "task"]
 // Valid agent statuses: ["uninitialized", "inactive", "active"]
 type C2Request struct {
 	AgentID     string `json:"agent_id"`
-	Reason      string `json:"reason"`
 	AgentStatus string `json:"agent_status"`
 	Message     string `json:"message"`
 	Hmac        string `json:"hmac"`
@@ -31,8 +29,7 @@ func (r C2Request) Valid() bool {
 	}
 
 	// Validate other fields are one of the valid values
-	return (r.Reason == "register" || r.Reason == "task") &&
-		(r.AgentStatus == "uninitialized" || r.AgentStatus == "inactive" || r.AgentStatus == "active")
+	return (r.AgentStatus == "uninitialized" || r.AgentStatus == "inactive" || r.AgentStatus == "active")
 }
 
 // Converts a C2Request into a new Agent for registration

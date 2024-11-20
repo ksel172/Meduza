@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
@@ -93,14 +94,25 @@ func (ac *AgentController) DeleteAgent(w http.ResponseWriter, r *http.Request) {
 /* Agent Task API */
 
 func (ac *AgentController) CreateAgentTask(w http.ResponseWriter, r *http.Request) {
+
+	// Get the agentID from the query params
+	agentID := r.URL.Query().Get("id")
+	if agentID == "" {
+		http.Error(w, "Missing agent ID", http.StatusBadRequest)
+		return
+	}
+
+	// Create agentTask model
 	var agentTask models.AgentTask
 	if err := json.NewDecoder(r.Body).Decode(&agentTask); err != nil {
 		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
 	}
 
-	// Generate	uuid
+	// Generate	fields
 	agentTask.ID = uuid.New().String()
+	agentTask.Created = time.Now()
 
+	// Create the task for the agent
 	if err := ac.dal.CreateAgentTask(r.Context(), agentTask); err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
 		return
