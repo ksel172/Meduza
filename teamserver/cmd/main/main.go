@@ -5,19 +5,24 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/ksel172/Meduza/teamserver/conf"
 	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 	"github.com/ksel172/Meduza/teamserver/services/api"
 	"github.com/ksel172/Meduza/teamserver/services/auth"
-	"github.com/ksel172/Meduza/teamserver/utils"
 
 	"github.com/ksel172/Meduza/teamserver/internal/server"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("could'nt load .env file")
+	}
 
 	// Initialize services
 	log.Println("Connecting to postgres db...")
@@ -45,16 +50,21 @@ func main() {
 }
 
 func InitializeDependencies(postgres *sql.DB, redis *redis.Service) *server.DependencyContainer {
-	secret := utils.GetEnvString("JWT_SECRET", "jwt")
+
+	secret := os.Getenv("JWT_SECRET")
+
 	userDal := storage.NewUsersDAL(postgres, conf.GetMeduzaDbSchema())
+	adminDal := storage.NewAdminsDAL(postgres, conf.GetMeduzaDbSchema())
 	userController := api.NewUserController(userDal)
-	jwtService := auth.NewJWTService(secret, 15*time.Minute, 120*time.Hour)
+	jwtService := auth.NewJWTService(secret, 15*time.Minute, 30*24*time.Hour)
 	authController := api.NewAuthController(userDal, jwtService)
+	adminController := api.NewAdminController(adminDal)
 
 	return &server.DependencyContainer{
-		UserController: userController,
-		RedisService:   redis,
-		AuthController: authController,
-		JwtService:     jwtService,
+		UserController:  userController,
+		RedisService:    redis,
+		AuthController:  authController,
+		JwtService:      jwtService,
+		AdminController: adminController,
 	}
 }

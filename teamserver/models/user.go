@@ -17,10 +17,15 @@ type ResUser struct {
 	ID           string    `json:"id"`
 	Username     string    `json:"username" validate:"alphanum,required,min=6,max=20"`
 	PasswordHash string    `json:"password" validate:"required,min=6"`
-	Role         string    `json:"role" validate:"required,oneof=admin moderator client visitor"`
+	Role         string    `json:"role" validate:"oneof=admin moderator client visitor"`
 	CreateBy     time.Time `json:"created_by omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type ResAdmin struct {
+	Adminname    string `json:"admin_name" validate:"alphanum,required,min=6,max=20"`
+	PasswordHash string `json:"password" validate:"required,min=6"`
 }
 
 type UserRole string

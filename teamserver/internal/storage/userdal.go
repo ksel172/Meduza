@@ -25,7 +25,7 @@ func (dal *UserDAL) AddUsers(ctx context.Context, user *models.ResUser) error {
 }
 
 func (dal *UserDAL) GetUsers(ctx context.Context) ([]models.User, error) {
-	rows, err := dal.db.QueryContext(ctx, fmt.Sprintf("SELECT id, username, pw_hash, role, created_at, updated_at FROM %s.users ORDER BY created_at DESC", dal.schema))
+	rows, err := dal.db.QueryContext(ctx, fmt.Sprintf("SELECT id, username, pw_hash, role, created_at, updated_at FROM %s.users WHERE deleted_at IS NULL ORDER BY created_at DESC", dal.schema))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to fetch users: %w", err)
 	}
@@ -44,7 +44,7 @@ func (dal *UserDAL) GetUsers(ctx context.Context) ([]models.User, error) {
 }
 
 func (dal *UserDAL) GetUserByUsername(ctx context.Context, username string) (*models.ResUser, error) {
-	query := fmt.Sprintf(`SELECT id , username , pw_hash, role FROM %s.users WHERE username = $1`, dal.schema)
+	query := fmt.Sprintf(`SELECT id , username , pw_hash, role FROM %s.users WHERE username = $1 AND deleted_at IS NULL`, dal.schema)
 	var user models.ResUser
 	err := dal.db.QueryRowContext(ctx, query, username).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role)
 	if err != nil {
@@ -57,7 +57,7 @@ func (dal *UserDAL) GetUserByUsername(ctx context.Context, username string) (*mo
 }
 
 func (dal *UserDAL) GetUserById(ctx context.Context, id string) (*models.ResUser, error) {
-	query := fmt.Sprintf(`SELECT id , username , pw_hash, role FROM %s.users WHERE id = $1`, dal.schema)
+	query := fmt.Sprintf(`SELECT id , username , pw_hash, role FROM %s.users WHERE id = $1 AND deleted_at IS NULL`, dal.schema)
 	var user models.ResUser
 	err := dal.db.QueryRowContext(ctx, query, id).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role)
 	if err != nil {

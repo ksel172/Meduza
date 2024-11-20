@@ -4,25 +4,34 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/services/api"
 )
 
 func (s *Server) RegisterRoutes() http.Handler {
 
 	router := gin.Default()
 
-	router.GET("/", api.HelloWorldHandler)
+	pubRoutes := router.Group("/api/v1/teamserver/public") // public routes
 
-	router.POST("/add-users", s.dependencies.UserController.AddUsersController)
+	{
+		pubRoutes.Use(s.HandleCors())
+		pubRoutes.POST("/register", s.dependencies.UserController.AddUsersController)
+		pubRoutes.POST("/add-admin", s.dependencies.AdminController.CreateAdmin)
+	}
 
-	router.POST("/login", s.dependencies.AuthController.LoginController)
+	authroutes := router.Group("/api/v1/auth") // auth routes
 
-	protected := router.Group("/api/v1/teamserver")
+	{
+		pubRoutes.Use(s.HandleCors())
+		authroutes.POST("/sign-in", s.dependencies.AuthController.LoginController)
+		authroutes.GET("/refresh-token", s.dependencies.AuthController.RefreshTokenController)
+	}
 
-	protected.Use(s.HandleCors())
-	protected.Use(s.JWTAuthMiddleware())
-
-	protected.GET("/users", s.dependencies.UserController.GetUsersController)
+	adminProtected := router.Group("/api/v1/teamserver") // admin protected routes
+	{
+		adminProtected.Use(s.HandleCors())
+		adminProtected.Use(s.AdminMiddleware())
+		adminProtected.GET("/users", s.dependencies.UserController.GetUsersController)
+	}
 
 	return router
 }

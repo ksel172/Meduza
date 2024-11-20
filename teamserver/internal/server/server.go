@@ -14,10 +14,11 @@ import (
 )
 
 type DependencyContainer struct {
-	UserController *api.UserController
-	RedisService   *redis.Service
-	AuthController *api.AuthController
-	JwtService     *auth.JWTService
+	UserController  *api.UserController
+	RedisService    *redis.Service
+	AuthController  *api.AuthController
+	JwtService      *auth.JWTService
+	AdminController *api.AdminController
 }
 
 type Server struct {

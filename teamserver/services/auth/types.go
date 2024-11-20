@@ -11,7 +11,3 @@ type AuthResponse struct {
 	Token        string `json:"token"`
 	RefreshToken string `json:"refresh_token"`
 }
-
-type AuthRefreshToken struct {
-	RefreshToken string `json:"refresh_token"`
-}

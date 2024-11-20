@@ -55,7 +55,106 @@ func (s *Server) JWTAuthMiddleware() gin.HandlerFunc {
 		}
 
 		c.Set("claims", claims)
+		c.Next()
+	}
+}
 
+func (s *Server) AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"Message": "Authorization header Error",
+				"error":   "Authorization is empty",
+				"Status":  "Empty",
+			})
+			c.Abort()
+			return
+		}
+
+		bearerToken := strings.Split(authHeader, " ")
+		if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"Message": "Invalid authorization format",
+				"error":   "It should be a bearer token",
+				"Status":  "Failed",
+			})
+			c.Abort()
+			return
+		}
+
+		tokenString := bearerToken[1]
+		claims, err := s.dependencies.JwtService.ValidateToken(tokenString)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"Message": "Invalid claims",
+				"Error":   err.Error(),
+				"Status":  "Failed",
+			})
+			c.Abort()
+			return
+		}
+
+		c.Set("claims", claims)
+
+		if claims.Role != "admin" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"Message": "Restricted Route. Only Admins are allowed.",
+				"Status":  "Failed",
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+func (s *Server) ModeratorMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"Message": "Authorization header Error",
+				"error":   "Authorization is empty",
+				"Status":  "Empty",
+			})
+			c.Abort()
+			return
+		}
+
+		bearerToken := strings.Split(authHeader, " ")
+		if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"Message": "Invalid authorization format",
+				"error":   "It should be a bearer token",
+				"Status":  "Failed",
+			})
+			c.Abort()
+			return
+		}
+
+		tokenString := bearerToken[1]
+		claims, err := s.dependencies.JwtService.ValidateToken(tokenString)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"Message": "Invalid claims",
+				"Error":   err.Error(),
+				"Status":  "Failed",
+			})
+			c.Abort()
+			return
+		}
+
+		c.Set("claims", claims)
+
+		if claims.Role != "moderator" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"Message": "Restricted Route. Only Admins are allowed.",
+				"Status":  "Failed",
+			})
+			c.Abort()
+			return
+		}
 		c.Next()
 	}
 }

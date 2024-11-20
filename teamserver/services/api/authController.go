@@ -1,15 +1,21 @@
 package api
 
 import (
-	/* "encoding/json"
-	"fmt"
-	"log" */
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/services/auth"
 	"github.com/ksel172/Meduza/teamserver/utils"
+)
+
+var (
+	refresh_token_Age = 30 * 24 * 60 * 60
+	cookie_path       = utils.GetEnvString("COOKIE_PATH", "")
+	cookie_domain     = utils.GetEnvString("COOKIE_DOMAIN", "")
+	refresh_secure    = utils.GetEnvBool("REFRESH_SECURE", false)
+	refresh_http      = utils.GetEnvBool("REFRESH_HTTP", false)
 )
 
 type AuthController struct {
@@ -68,9 +74,79 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 		return
 	}
 
+	ctx.SetCookie("refresh_token",
+		tokens.RefreshToken,
+		refresh_token_Age,
+		cookie_path,
+		cookie_domain,
+		refresh_secure,
+		refresh_http)
+
 	ctx.JSONP(http.StatusOK, gin.H{
 		"Key":     tokens,
 		"Message": "User Authenticated Successfully",
 		"Status":  "Success",
+	})
+}
+
+func (ac *AuthController) RefreshTokenController(ctx *gin.Context) {
+	prevRefreshToken, err := ctx.Cookie("refresh_token")
+	if err != nil {
+		ctx.JSONP(http.StatusUnauthorized, gin.H{
+			"Error":   err.Error(),
+			"Message": "Refresh Token Error",
+			"Status":  "Failed",
+		})
+		ctx.Abort()
+		return
+	}
+	if prevRefreshToken == "" {
+		ctx.JSONP(http.StatusUnauthorized, gin.H{
+			"Message": "Empty Refresh token Cookie",
+			"Status":  "Failed",
+		})
+		ctx.Abort()
+		return
+	}
+
+	claims, err := ac.jwtS.ValidateToken(prevRefreshToken)
+	if err != nil {
+		ctx.JSONP(http.StatusUnauthorized, gin.H{
+			"Error":   err.Error(),
+			"Message": "Token Validation Error",
+			"Status":  "Failed",
+		})
+		ctx.Abort()
+		return
+	}
+
+	if claims.ExpiresAt.Before(time.Now()) {
+		ctx.JSONP(http.StatusUnauthorized, gin.H{
+			"Message": "Refresh token has expired",
+			"Status":  "Failed",
+		})
+		ctx.Abort()
+		return
+	}
+
+	tokens, err := ac.jwtS.GenerateTokens(claims.ID, claims.Role)
+	if err != nil {
+		ctx.JSONP(http.StatusInternalServerError, gin.H{
+			"Message": "Failed to generate tokens",
+			"Status":  "Failed",
+		})
+		ctx.Abort()
+		return
+	}
+	ctx.SetCookie("refresh_token",
+		tokens.RefreshToken,
+		refresh_token_Age,
+		cookie_path,
+		cookie_domain,
+		refresh_secure,
+		refresh_http)
+
+	ctx.JSONP(http.StatusOK, gin.H{
+		"access_token": tokens.Token,
 	})
 }
