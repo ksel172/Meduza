@@ -55,7 +55,7 @@ func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.Agent) error 
 		}
 	}
 
-	if err := dal.redis.JsonSet(ctx, agent.RedisID(), agent); err != nil {
+	if _, err := dal.redis.JsonSet(ctx, agent.RedisID(), agent); err != nil {
 		return fmt.Errorf("failed to update agent: %w", err)
 	}
 
@@ -66,7 +66,7 @@ func (dal *AgentDAL) DeleteAgent(ctx context.Context, agentID string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	if err := dal.redis.JsonDelete(ctx, "agents:"+agentID); err != nil {
+	if _, err := dal.redis.JsonDelete(ctx, "agents:"+agentID); err != nil {
 		return fmt.Errorf("failed to delete agent: %w", err)
 	}
 
@@ -77,7 +77,7 @@ func (dal *AgentDAL) CreateAgentTask(ctx context.Context, agentTask models.Agent
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	if err := dal.redis.JsonSet(ctx, agentTask.RedisID(), agentTask); err != nil {
+	if _, err := dal.redis.JsonSet(ctx, agentTask.RedisID(), agentTask); err != nil {
 		return fmt.Errorf("failed to create agent task: %w", err)
 	}
 
@@ -110,7 +110,7 @@ func (dal *AgentDAL) DeleteAgentTask(ctx context.Context, agentID, taskID string
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	if err := dal.redis.JsonDelete(ctx, "tasks:"+agentID+":"+taskID); err != nil {
+	if _, err := dal.redis.JsonDelete(ctx, "tasks:"+agentID+":"+taskID); err != nil {
 		return fmt.Errorf("failed to delete agent task: %w", err)
 	}
 
