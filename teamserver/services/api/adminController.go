@@ -37,7 +37,7 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 	// it checks if route is restricted
 	if isRouteRestricted() {
 		ctx.JSONP(http.StatusForbidden, gin.H{
-			"Message": "Route Permanently restricted.Admin creation is not allowed.",
+			"Message": "Route Permanently restricted: Admin creation is not allowed",
 			"Status":  "Failed",
 		})
 		ctx.Abort()
@@ -47,7 +47,7 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 	authToken := ctx.GetHeader("Authorization")
 	if authToken == "" {
 		ctx.JSONP(http.StatusForbidden, gin.H{
-			"Message": "Authorization token is missing.",
+			"Message": "Authorization token is missing",
 			"Status":  "Failed",
 		})
 		ctx.Abort()
@@ -71,9 +71,9 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 
 	// parsing request body
 	if err := ctx.ShouldBindJSON(&adminReq); err != nil {
-		ctx.JSONP(http.StatusConflict, gin.H{
+		ctx.JSONP(http.StatusUnprocessableEntity, gin.H{
 			"Error":   err.Error(),
-			"Message": "Invalid Request Error.",
+			"Message": "Unable to parse request body",
 			"Status":  "Failed",
 		})
 		ctx.Abort()
@@ -84,7 +84,7 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSONP(http.StatusBadRequest, gin.H{
 			"Error":   err.Error(),
-			"Message": "Invalid Request Error.",
+			"Message": "Invalid Request Error",
 			"Status":  "Failed",
 		})
 		ctx.Abort()
@@ -96,7 +96,7 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 	if err := validate.ValidateStruct(adminReq); err != nil {
 		ctx.JSONP(http.StatusBadRequest, gin.H{
 			"Error":   err.Error(),
-			"Message": "Format Validation Error.",
+			"Message": "Validation failed",
 			"Status":  "Failed",
 		})
 		ctx.Abort()
@@ -107,7 +107,7 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSONP(http.StatusInternalServerError, gin.H{
 			"Error":   err.Error(),
-			"Message": "Error Adding Users.",
+			"Message": "Error Adding Users",
 			"Status":  "Failed",
 		})
 		ctx.Abort()
@@ -119,7 +119,7 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 	remaining := maxAdmin - curAdminCount
 
 	ctx.JSONP(http.StatusCreated, gin.H{
-		"Message":          "User Created Successfully.",
+		"Message":          "User Created Successfully",
 		"Status":           "Success",
 		"admins_left":      remaining,
 		"max_admin_tokens": maxAdmin,
@@ -139,18 +139,18 @@ func adminCount() {
 
 func validateToken(reqToken string) error {
 	if err := godotenv.Load(); err != nil {
-		return fmt.Errorf("Error load .env file.%s", err.Error())
+		return fmt.Errorf("error load .env file.%s", err.Error())
 	}
 	envToken := os.Getenv("ADMIN_SECRET")
 	if envToken == "" {
-		return fmt.Errorf("Server not configured Correctly: no token available %s", envToken)
+		return fmt.Errorf("server not configured correctly: no token available %s", envToken)
 	}
 	if envToken == "" {
-		return fmt.Errorf("Server not configured correctly")
+		return fmt.Errorf("server not configured correctly")
 	}
 
 	if reqToken != envToken {
-		return fmt.Errorf("Invalid or expired token")
+		return fmt.Errorf("invalid or expired token")
 	}
 
 	return nil
