@@ -8,15 +8,19 @@ import (
 	"github.com/ksel172/Meduza/teamserver/conf"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 	"github.com/ksel172/Meduza/teamserver/services/api"
+	"github.com/ksel172/Meduza/teamserver/services/auth"
 
 	_ "github.com/joho/godotenv/autoload"
 )
 
 type DependencyContainer struct {
-	UserController    *api.UserController
+	UserController  *api.UserController
+	RedisService    *redis.Service
+	AuthController  *api.AuthController
+	JwtService      *auth.JWTService
+	AdminController *api.AdminController
 	AgentController   *api.AgentController
 	CheckInController *api.CheckInController
-	RedisService      *redis.Service
 }
 
 type Server struct {
