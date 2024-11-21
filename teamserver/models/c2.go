@@ -17,7 +17,7 @@ type C2Request struct {
 
 // Initialize a new C2Request with status uninitialized, for use when creating a new agent
 func NewC2Request() C2Request {
-	return C2Request{AgentStatus: "uninitialized"}
+	return C2Request{AgentStatus: "uninitialized"} // Default to uninitialized, if not provided
 }
 
 // Validates if the C2Request contains valid data

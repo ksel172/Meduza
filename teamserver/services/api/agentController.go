@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 	"github.com/ksel172/Meduza/teamserver/models"
 )
@@ -96,23 +94,22 @@ func (ac *AgentController) DeleteAgent(w http.ResponseWriter, r *http.Request) {
 func (ac *AgentController) CreateAgentTask(w http.ResponseWriter, r *http.Request) {
 
 	// Get the agentID from the query params
-	agentID := r.URL.Query().Get("id")
+	agentID := r.URL.Query().Get("agent_id")
 	if agentID == "" {
 		http.Error(w, "Missing agent ID", http.StatusBadRequest)
 		return
 	}
 
-	// Create agentTask model
-	var agentTask models.AgentTask
-	if err := json.NewDecoder(r.Body).Decode(&agentTask); err != nil {
+	// Create agentTaskRequest model
+	var agentTaskRequest models.AgentTaskRequest
+	if err := json.NewDecoder(r.Body).Decode(&agentTaskRequest); err != nil {
 		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
 	}
 
-	// Generate	fields
-	agentTask.ID = uuid.New().String()
-	agentTask.Created = time.Now()
+	// Convert into AgentTask model with default fields, uuid generation,...
+	agentTask := agentTaskRequest.IntoAgentTask()
 
-	// Create the task for the agent
+	// Create the task for the agent in the db
 	if err := ac.dal.CreateAgentTask(r.Context(), agentTask); err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
 		return
@@ -122,7 +119,7 @@ func (ac *AgentController) CreateAgentTask(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(agentTask)
 }
 func (ac *AgentController) GetAgentTasks(w http.ResponseWriter, r *http.Request) {
-	agentID := r.URL.Query().Get("id")
+	agentID := r.URL.Query().Get("agent_id")
 
 	tasks, err := ac.dal.GetAgentTasks(r.Context(), agentID)
 	if err != nil {

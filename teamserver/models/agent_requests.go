@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // Contains only the fields that can be updated for any given agent
 type UpdateAgentRequest struct {
@@ -54,4 +58,29 @@ func (uacr UpdateAgentConfigRequest) IntoAgentConfig(agentConfig AgentConfig) Ag
 	agentConfig.Headers = uacr.Headers
 
 	return agentConfig
+}
+
+// AgentTask request
+type AgentTaskRequest struct {
+	Type     string `json:"type"`
+	Status   string `json:"status"`
+	Module   string `json:"module"`
+	Commmand string `json:"commmand"`
+}
+
+// Initializes an AgentTask
+func NewAgentTaskRequest() AgentTaskRequest {
+	return AgentTaskRequest{}
+}
+
+// Returns an AgentTask model from an AgentTaskRequest
+func (agr AgentTaskRequest) IntoAgentTask() AgentTask {
+	return AgentTask{
+		ID:       uuid.New().String(),
+		Type:     agr.Type,
+		Status:   agr.Status,
+		Module:   agr.Module,
+		Commmand: agr.Commmand,
+		Created:  time.Now(),
+	}
 }
