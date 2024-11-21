@@ -47,7 +47,7 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSONP(http.StatusBadRequest, gin.H{
 			"Error":   err.Error(),
-			"Message": "Invalid Credentials or Request Error.",
+			"Message": "Invalid Credentials or Request Error",
 			"Status":  "Failed",
 		})
 		ctx.Abort()
@@ -56,8 +56,7 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 
 	if !utils.CheckPasswordHash(loginR.Password, user.PasswordHash) {
 		ctx.JSONP(http.StatusUnauthorized, gin.H{
-			"Error":   "Invalid Credentials Error",
-			"Message": "Invalid Credentials or Request Error.",
+			"Message": "Invalid Credentials or Request Error",
 			"Status":  "Failed",
 		})
 		ctx.Abort()
@@ -65,9 +64,9 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 	}
 	tokens, err := ac.jwtS.GenerateTokens(user.ID, user.Role)
 	if err != nil {
-		ctx.JSONP(http.StatusUnauthorized, gin.H{
+		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"Error":   err.Error(),
-			"Message": "Cannot Generate Token",
+			"Details": "Token generation failed",
 			"Status":  "Failed",
 		})
 		ctx.Abort()
@@ -111,12 +110,11 @@ func (ac *AuthController) RefreshTokenController(ctx *gin.Context) {
 
 	claims, err := ac.jwtS.ValidateToken(prevRefreshToken)
 	if err != nil {
-		ctx.JSONP(http.StatusUnauthorized, gin.H{
+		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"Error":   err.Error(),
-			"Message": "Token Validation Error",
+			"Message": "Token validation failed",
 			"Status":  "Failed",
 		})
-		ctx.Abort()
 		return
 	}
 
