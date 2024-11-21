@@ -74,6 +74,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	router.GET("/", func(context *gin.Context) {
 		context.String(http.StatusOK, "Hello, World!")
 	})
+	checkinGroup.GET("/", func(context *gin.Context) {
+		s.dependencies.CheckInController.GetTasks(context.Writer, context.Request)
+	})
 
 	return router
 }

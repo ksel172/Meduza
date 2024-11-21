@@ -19,7 +19,6 @@ type Agent struct {
 
 // AgentInfo contains information about the agent computer
 type AgentInfo struct {
-	UUMOID     string `json:"uumo_id"`
 	HostName   string `json:"host_name"`
 	IPAddr     string `json:"ip_addr"`
 	Username   string `json:"username"`
@@ -30,7 +29,6 @@ type AgentInfo struct {
 // AgentConfig controls how the agent operates
 type AgentConfig struct {
 	ID              string            `json:"id"`
-	Name            string            `json:"name"`
 	CallbackURLs    []string          `json:"callback_urls"`
 	RotationType    string            `json:"rotation_type"`
 	RotationRetries int               `json:"rotation_retries"`
