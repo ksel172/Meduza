@@ -10,11 +10,11 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/ksel172/Meduza/teamserver/conf"
+	"github.com/ksel172/Meduza/teamserver/internal/server"
 	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 	"github.com/ksel172/Meduza/teamserver/services/api"
 	"github.com/ksel172/Meduza/teamserver/services/auth"
-	"github.com/ksel172/Meduza/teamserver/internal/server"
 )
 
 func main() {
@@ -48,8 +48,7 @@ func main() {
 	}
 }
 
-func InitializeDependencies(postgres *sql.DB, redis *redis.Service) *server.DependencyContainer {
-
+func InitializeDependencies(postgres *sql.DB, redisService *redis.Service) *server.DependencyContainer {
 	secret := os.Getenv("JWT_SECRET")
 
 	userDal := storage.NewUsersDAL(postgres, conf.GetMeduzaDbSchema())
@@ -66,11 +65,11 @@ func InitializeDependencies(postgres *sql.DB, redis *redis.Service) *server.Depe
 	checkInController := api.NewCheckInController(checkInDal)
 
 	return &server.DependencyContainer{
-		UserController:  userController,
-		RedisService:    redis,
-		AuthController:  authController,
-		JwtService:      jwtService,
-		AdminController: adminController,
+		UserController:    userController,
+		RedisService:      redisService,
+		AuthController:    authController,
+		JwtService:        jwtService,
+		AdminController:   adminController,
 		AgentController:   agentController,
 		CheckInController: checkInController,
 	}
