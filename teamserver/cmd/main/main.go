@@ -14,7 +14,6 @@ import (
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 	"github.com/ksel172/Meduza/teamserver/services/api"
 	"github.com/ksel172/Meduza/teamserver/services/auth"
-
 	"github.com/ksel172/Meduza/teamserver/internal/server"
 )
 
@@ -60,11 +59,19 @@ func InitializeDependencies(postgres *sql.DB, redis *redis.Service) *server.Depe
 	authController := api.NewAuthController(userDal, jwtService)
 	adminController := api.NewAdminController(adminDal)
 
+	agentDal := redis.NewAgentDAL(redisService)
+	agentController := api.NewAgentController(agentDal)
+
+	checkInDal := redis.NewCheckInDAL(redisService)
+	checkInController := api.NewCheckInController(checkInDal)
+
 	return &server.DependencyContainer{
 		UserController:  userController,
 		RedisService:    redis,
 		AuthController:  authController,
 		JwtService:      jwtService,
 		AdminController: adminController,
+		AgentController:   agentController,
+		CheckInController: checkInController,
 	}
 }

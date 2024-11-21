@@ -19,6 +19,8 @@ type DependencyContainer struct {
 	AuthController  *api.AuthController
 	JwtService      *auth.JWTService
 	AdminController *api.AdminController
+	AgentController   *api.AgentController
+	CheckInController *api.CheckInController
 }
 
 type Server struct {
