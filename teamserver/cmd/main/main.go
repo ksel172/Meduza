@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/ksel172/Meduza/teamserver/conf"
 	"github.com/ksel172/Meduza/teamserver/internal/api/handlers"
 	"github.com/ksel172/Meduza/teamserver/internal/server"
@@ -16,11 +15,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("could'nt load .env file")
-	}
-
+	
 	// Initialize services
 	log.Println("Connecting to postgres db...")
 	pgsql, err := storage.Setup()

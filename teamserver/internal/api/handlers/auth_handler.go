@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/services/auth"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
@@ -19,11 +19,11 @@ var (
 )
 
 type AuthController struct {
-	dal  *storage.UserDAL
+	dal  *dal.UserDAL
 	jwtS *auth.JWTService
 }
 
-func NewAuthController(dal *storage.UserDAL, jwtS *auth.JWTService) *AuthController {
+func NewAuthController(dal *dal.UserDAL, jwtS *auth.JWTService) *AuthController {
 	return &AuthController{
 		dal:  dal,
 		jwtS: jwtS,

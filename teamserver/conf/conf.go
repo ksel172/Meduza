@@ -12,6 +12,8 @@ const (
 	MeduzaServerHostnameDefault = "localhost"
 	MeduzaServerPortEnvVar      = "TEAMSERVER_PORT"
 	MeduzaServerPortDefault     = "8080"
+	MeduzaServerModeEnvVar      = "TEAMSERVER_MODE"
+	MeduzaServerModeDefault     = "dev"
 	MeduzaDbHostnameEnvVar      = "DB_HOST"
 	MeduzaDbHostnameDefault     = "localhost"
 	MeduzaDbPortEnvVar          = "DB_PORT"
@@ -141,4 +143,13 @@ func GetMeduzaRedisPassword() string {
 		password = MeduzaRedisPasswordDefault
 	}
 	return password
+}
+
+func GetMeduzaServerMode() string {
+	mode, exists := os.LookupEnv(MeduzaServerModeEnvVar)
+	if !exists {
+		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaServerModeEnvVar, MeduzaServerModeDefault)
+		mode = MeduzaServerModeDefault
+	}
+	return mode
 }
