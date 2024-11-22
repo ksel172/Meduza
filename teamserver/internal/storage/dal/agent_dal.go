@@ -1,10 +1,11 @@
-package redis
+package dal
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/ksel172/Meduza/teamserver/internal/models"
+	redis2 "github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"time"
 )
 
@@ -13,10 +14,10 @@ import (
 // )
 
 type AgentDAL struct {
-	redis Service
+	redis redis2.Service
 }
 
-func NewAgentDAL(redisService *Service) *AgentDAL {
+func NewAgentDAL(redisService *redis2.Service) *AgentDAL {
 	return &AgentDAL{redis: *redisService}
 }
 

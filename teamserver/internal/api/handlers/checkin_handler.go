@@ -4,17 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ksel172/Meduza/teamserver/internal/models"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"net/http"
-
-	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 )
 
 type CheckInController struct {
-	checkInDAL *redis.CheckInDAL
-	agentDAL   *redis.AgentDAL
+	checkInDAL *dal.CheckInDAL
+	agentDAL   *dal.AgentDAL
 }
 
-func NewCheckInController(checkInDAL *redis.CheckInDAL, agentDAL *redis.AgentDAL) *CheckInController {
+func NewCheckInController(checkInDAL *dal.CheckInDAL, agentDAL *dal.AgentDAL) *CheckInController {
 	return &CheckInController{checkInDAL: checkInDAL, agentDAL: agentDAL}
 }
 

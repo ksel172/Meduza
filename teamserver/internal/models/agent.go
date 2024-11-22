@@ -47,7 +47,7 @@ type AgentTask struct {
 	Type     string    `json:"type"`
 	Status   string    `json:"status"`
 	Module   string    `json:"module"`
-	Commmand string    `json:"commmand"`
+	Command  string    `json:"command"`
 	Created  time.Time `json:"created"`
 	Started  time.Time `json:"started"`
 	Finished time.Time `json:"finished"`
@@ -63,12 +63,12 @@ type AgentCommand struct {
 	Output     string    `json:"output"`
 }
 
-// How agent is stored in redis
+// RedisID How agent is stored in redis
 func (a Agent) RedisID() string {
 	return "agents:" + a.ID
 }
 
-// How agent task is stored in redis
+// RedisID How agent task is stored in redis
 func (at *AgentTask) RedisID() string {
 	return "tasks:" + at.AgentID + ":" + at.ID
 }

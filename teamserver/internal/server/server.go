@@ -6,16 +6,16 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/ksel172/Meduza/teamserver/conf"
 	"github.com/ksel172/Meduza/teamserver/internal/api/handlers"
-	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
-	"github.com/ksel172/Meduza/teamserver/services/auth"
+	"github.com/ksel172/Meduza/teamserver/internal/models"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"net/http"
 )
 
 type DependencyContainer struct {
 	UserController    *handlers.UserController
-	RedisService      *redis.Service
+	RedisService      *repos.Service
 	AuthController    *handlers.AuthController
-	JwtService        *auth.JWTService
+	JwtService        *models.JWTService
 	AdminController   *handlers.AdminController
 	AgentController   *handlers.AgentController
 	CheckInController *handlers.CheckInController
@@ -54,7 +54,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 			authRoutes := v1Group.Group("/auth")
 			{
 				authRoutes.Use(s.HandleCors())
-				authRoutes.POST("/register", s.dependencies.UserController.AddUsersController)
+				authRoutes.POST("/register", s.dependencies.UserController.AddUsers)
 				authRoutes.POST("/add-admin", s.dependencies.AdminController.CreateAdmin)
 				authRoutes.POST("/login", s.dependencies.AuthController.LoginController)
 				authRoutes.GET("/refresh-token", s.dependencies.AuthController.RefreshTokenController)

@@ -1,4 +1,4 @@
-package auth
+package models
 
 // AuthRequest is the auth request
 type AuthRequest struct {

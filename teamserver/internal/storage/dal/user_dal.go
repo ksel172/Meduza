@@ -25,7 +25,7 @@ func (dal *UserDAL) AddUsers(ctx context.Context, user *models.ResUser) error {
 func (dal *UserDAL) GetUsers(ctx context.Context) ([]models.User, error) {
 	rows, err := dal.db.QueryContext(ctx, fmt.Sprintf("SELECT id, username, pw_hash, role, created_at, updated_at FROM %s.users WHERE deleted_at IS NULL ORDER BY created_at DESC", dal.schema))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to fetch users: %w", err)
+		return nil, fmt.Errorf("failed to fetch users: %w", err)
 	}
 	defer rows.Close()
 
@@ -33,7 +33,7 @@ func (dal *UserDAL) GetUsers(ctx context.Context) ([]models.User, error) {
 	for rows.Next() {
 		var user models.User
 		if err := rows.Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("Failed to fetch users: %w", err)
+			return nil, fmt.Errorf("failed to fetch users: %w", err)
 		}
 		users = append(users, user)
 	}

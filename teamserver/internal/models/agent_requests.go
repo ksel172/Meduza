@@ -76,11 +76,11 @@ func NewAgentTaskRequest() AgentTaskRequest {
 // Returns an AgentTask model from an AgentTaskRequest
 func (agr AgentTaskRequest) IntoAgentTask() AgentTask {
 	return AgentTask{
-		ID:       uuid.New().String(),
-		Type:     agr.Type,
-		Status:   agr.Status,
-		Module:   agr.Module,
-		Commmand: agr.Commmand,
-		Created:  time.Now(),
+		ID:      uuid.New().String(),
+		Type:    agr.Type,
+		Status:  agr.Status,
+		Module:  agr.Module,
+		Command: agr.Commmand,
+		Created: time.Now(),
 	}
 }
