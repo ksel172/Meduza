@@ -1,10 +1,7 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
@@ -16,9 +13,7 @@ import (
 	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
-	"github.com/ksel172/Meduza/teamserver/services/api"
 	"github.com/ksel172/Meduza/teamserver/services/auth"
-	"log"
 )
 
 func main() {
@@ -49,17 +44,22 @@ func main() {
 	secret := os.Getenv("JWT_SECRET")
 	adminDal := storage.NewAdminsDAL(pgsql, conf.GetMeduzaDbSchema())
 	jwtService := auth.NewJWTService(secret, 15*time.Minute, 30*24*time.Hour)
-	authController := api.NewAuthController(userDal, jwtService)
-	adminController := api.NewAdminController(adminDal)
-	agentDal := redis.NewAgentDAL(redisService)
-	checkInDal := redis.NewCheckInDAL(redisService)
-	agentController := api.NewAgentController(agentDal)
-	checkInController := api.NewCheckInController(checkInDal, agentDal)
+	authController := handlers.NewAuthController(userDal, jwtService)
+	adminController := handlers.NewAdminController(adminDal)
+	agentDal := redis.NewAgentDAL(&redisService)
+	checkInDal := redis.NewCheckInDAL(&redisService)
+	agentController := handlers.NewAgentController(agentDal)
+	checkInController := handlers.NewCheckInController(checkInDal, agentDal)
 
 	dependencies := &server.DependencyContainer{
-		UserController: userController,
-		UserService:    userService,
-		RedisService:   redisService,
+		UserController:    userController,
+		UserService:       userService,
+		RedisService:      &redisService,
+		AuthController:    authController,
+		JwtService:        jwtService,
+		AdminController:   adminController,
+		AgentController:   agentController,
+		CheckInController: checkInController,
 	}
 
 	// NewServer initialize the Http Server
@@ -67,6 +67,6 @@ func main() {
 
 	log.Println("Starting teamserver...")
 	if err := teamserver.Run(); err != nil {
-		log.Panicf("Failed to start teamserver. Terminating...", err)
+		log.Panic("Failed to start teamserver. Terminating...", err)
 	}
 }

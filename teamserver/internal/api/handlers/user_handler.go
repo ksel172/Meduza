@@ -25,3 +25,8 @@ func (uc *UserController) GetUsers(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, getUsers)
 }
+
+// TODO implement
+func (uc *UserController) AddUsersController(context *gin.Context) {
+
+}

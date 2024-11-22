@@ -1,18 +1,19 @@
-package storage
+package dal
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/ksel172/Meduza/teamserver/internal/models"
 	"github.com/ksel172/Meduza/teamserver/internal/storage"
 )
 
 type UserDAL struct {
-	db     storage.Database
+	db     storage.Service
 	schema string
 }
 
-func NewUsersDAL(db storage.Database, schema string) *UserDAL {
+func NewUsersDAL(db storage.Service, schema string) *UserDAL {
 	return &UserDAL{db: db, schema: schema}
 }
 
