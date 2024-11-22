@@ -1,12 +1,12 @@
 package handlers
 
 import (
+	"github.com/ksel172/Meduza/teamserver/internal/models"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/services/auth"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -20,10 +20,10 @@ var (
 
 type AuthController struct {
 	dal  *dal.UserDAL
-	jwtS *auth.JWTService
+	jwtS *models.JWTService
 }
 
-func NewAuthController(dal *dal.UserDAL, jwtS *auth.JWTService) *AuthController {
+func NewAuthController(dal *dal.UserDAL, jwtS *models.JWTService) *AuthController {
 	return &AuthController{
 		dal:  dal,
 		jwtS: jwtS,
@@ -31,7 +31,7 @@ func NewAuthController(dal *dal.UserDAL, jwtS *auth.JWTService) *AuthController 
 }
 
 func (ac *AuthController) LoginController(ctx *gin.Context) {
-	var loginR auth.AuthRequest
+	var loginR models.AuthRequest
 
 	if err := ctx.ShouldBindJSON(&loginR); err != nil {
 		ctx.JSONP(http.StatusConflict, gin.H{

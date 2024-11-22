@@ -4,18 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ksel172/Meduza/teamserver/internal/models"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"net/http"
-
-	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
 )
 
 type AgentController struct {
-	dal *redis.AgentDAL
+	dal *dal.AgentDAL
 }
 
 /* Agents API */
 
-func NewAgentController(dal *redis.AgentDAL) *AgentController {
+func NewAgentController(dal *dal.AgentDAL) *AgentController {
 	return &AgentController{dal: dal}
 }
 

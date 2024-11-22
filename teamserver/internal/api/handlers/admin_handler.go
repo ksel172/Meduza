@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"github.com/ksel172/Meduza/teamserver/internal/models"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"net/http"
 	"os"
 	"sync"
@@ -10,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -21,10 +21,10 @@ var (
 )
 
 type AdminController struct {
-	dal *storage.AdminDAL
+	dal *dal.AdminDAL
 }
 
-func NewAdminController(dal *storage.AdminDAL) *AdminController {
+func NewAdminController(dal *dal.AdminDAL) *AdminController {
 	return &AdminController{
 		dal: dal,
 	}
