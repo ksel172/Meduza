@@ -33,6 +33,7 @@ func main() {
 	adminDal := dal.NewAdminsDAL(pgsql, conf.GetMeduzaDbSchema())
 	agentDal := dal.NewAgentDAL(&redisService)
 	checkInDal := dal.NewCheckInDAL(&redisService)
+	listenersDal := dal.NewListenerDAL(&redisService)
 	log.Println("Finished setting up data access layers")
 
 	secret := os.Getenv("JWT_SECRET")
@@ -43,15 +44,17 @@ func main() {
 	adminController := handlers.NewAdminController(adminDal)
 	agentController := handlers.NewAgentController(agentDal)
 	checkInController := handlers.NewCheckInController(checkInDal, agentDal)
+	listenersController := handlers.NewListenerHandler(listenersDal)
 
 	dependencies := &server.DependencyContainer{
-		UserController:    userController,
-		RedisService:      &redisService,
-		AuthController:    authController,
-		JwtService:        jwtService,
-		AdminController:   adminController,
-		AgentController:   agentController,
-		CheckInController: checkInController,
+		UserController:      userController,
+		RedisService:        &redisService,
+		AuthController:      authController,
+		JwtService:          jwtService,
+		AdminController:     adminController,
+		AgentController:     agentController,
+		CheckInController:   checkInController,
+		ListenersController: listenersController,
 	}
 
 	// NewServer initialize the Http Server

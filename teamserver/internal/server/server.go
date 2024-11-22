@@ -12,13 +12,14 @@ import (
 )
 
 type DependencyContainer struct {
-	UserController    *handlers.UserController
-	RedisService      *repos.Service
-	AuthController    *handlers.AuthController
-	JwtService        *models.JWTService
-	AdminController   *handlers.AdminController
-	AgentController   *handlers.AgentController
-	CheckInController *handlers.CheckInController
+	UserController      *handlers.UserController
+	RedisService        *repos.Service
+	AuthController      *handlers.AuthController
+	JwtService          *models.JWTService
+	AdminController     *handlers.AdminController
+	AgentController     *handlers.AgentController
+	CheckInController   *handlers.CheckInController
+	ListenersController *handlers.ListenerHandler
 }
 
 type Server struct {
@@ -106,6 +107,13 @@ func (s *Server) RegisterRoutes() http.Handler {
 				})
 			}
 
+			listenersGroup := v1Group.Group("/listeners")
+			{
+				listenersGroup.POST("", s.dependencies.ListenersController.CreateListener)
+				listenersGroup.GET("/:id", s.dependencies.ListenersController.GetListener)
+				listenersGroup.PUT("", s.dependencies.ListenersController.UpdateListener)
+				listenersGroup.DELETE(":id", s.dependencies.ListenersController.DeleteListener)
+			}
 		}
 	}
 
