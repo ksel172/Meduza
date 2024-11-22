@@ -6,4 +6,5 @@
 main.exe*
 .idea
 
-build
+teamserver/build
+teamserver/tmp
