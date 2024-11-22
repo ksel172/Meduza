@@ -3,10 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ksel172/Meduza/teamserver/internal/models"
 	"net/http"
 
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
-	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 type AgentController struct {
@@ -26,7 +26,7 @@ func (ac *AgentController) GetAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agent, err := ac.dal.GetAgent(r.Context(), agentID)
+	agent, err := ac.dal.GetAgent(agentID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
 		return
@@ -48,7 +48,7 @@ func (ac *AgentController) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the agent that is going to be updated in the db
-	agent, err := ac.dal.GetAgent(r.Context(), agentID)
+	agent, err := ac.dal.GetAgent(agentID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
 		return

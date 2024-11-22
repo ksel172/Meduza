@@ -3,10 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ksel172/Meduza/teamserver/internal/models"
 	"net/http"
 
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
-	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 type CheckInController struct {

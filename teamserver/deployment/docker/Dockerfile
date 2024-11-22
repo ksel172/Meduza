@@ -15,4 +15,4 @@ RUN go mod download
 ## Copy the entire project into the container
 COPY ../.. .
 
-ENTRYPOINT ["docker/ts/init_ts.sh"]
+ENTRYPOINT ["./deployment/docker/init_ts.sh"]

@@ -3,8 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
-
-	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/internal/models"
 )
 
 type CheckInDAL struct {

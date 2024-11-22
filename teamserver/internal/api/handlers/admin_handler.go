@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/ksel172/Meduza/teamserver/internal/models"
 	"net/http"
 	"os"
 	"sync"
@@ -10,7 +11,6 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/ksel172/Meduza/teamserver/internal/storage"
-	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 

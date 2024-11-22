@@ -5,15 +5,14 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/ksel172/Meduza/teamserver/internal/models"
-	"github.com/ksel172/Meduza/teamserver/internal/storage"
 )
 
 type UserDAL struct {
-	db     storage.Service
+	db     *sql.DB
 	schema string
 }
 
-func NewUsersDAL(db storage.Service, schema string) *UserDAL {
+func NewUsersDAL(db *sql.DB, schema string) *UserDAL {
 	return &UserDAL{db: db, schema: schema}
 }
 
