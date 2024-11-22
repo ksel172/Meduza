@@ -3,6 +3,8 @@
 .env.development
 .env.production
 
-
 main.exe*
 .idea
+
+teamserver/build
+teamserver/tmp

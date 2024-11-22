@@ -38,4 +38,13 @@ In some cases, you will also need to delete the database from the filesystem usi
 docker volumes rm $VOLUME_NAME
 ```
 
-
+### 4. JWT Secret
+In case you want generate a JWT secret, run the following command:
+```bash
+openssl rand -base64 64
+```
+If openssl is not install on your device, install it first based on operating system first.
+After generating JWT secret, add it your .env file as follows:
+```bash
+JWT_SECRET=your_generated_secret
+```

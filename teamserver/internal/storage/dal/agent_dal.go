@@ -1,12 +1,12 @@
-package redis
+package dal
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ksel172/Meduza/teamserver/internal/models"
+	redis2 "github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"time"
-
-	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 // var (
@@ -14,15 +14,15 @@ import (
 // )
 
 type AgentDAL struct {
-	redis Service
+	redis redis2.Service
 }
 
-func NewAgentDAL(redisService *Service) *AgentDAL {
+func NewAgentDAL(redisService *redis2.Service) *AgentDAL {
 	return &AgentDAL{redis: *redisService}
 }
 
 // Get returns a single agent
-func (dal *AgentDAL) GetAgent(ctx context.Context, agentID string) (models.Agent, error) {
+func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
 	agentJSON, err := dal.redis.JsonGet(context.Background(), "agents:"+agentID)
 	if err != nil {
 		return models.Agent{}, fmt.Errorf("failed to get agent: %w", err)
@@ -47,7 +47,7 @@ func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.Agent) error 
 	// Try to get agent, if not succesful, return error
 	// later: update err.Error() into some custom error handling to ensure the
 	// returned error is of type ErrNotFound
-	if _, err := dal.GetAgent(ctx, agent.ID); err != nil {
+	if _, err := dal.GetAgent(agent.ID); err != nil {
 		if err.Error() == "agent not found" {
 			return fmt.Errorf("cannot update non-existing agent: %w", err)
 		} else {

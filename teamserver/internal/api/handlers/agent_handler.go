@@ -1,22 +1,20 @@
-package api
+package handlers
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ksel172/Meduza/teamserver/internal/models"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"net/http"
-
-	"github.com/google/uuid"
-	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
-	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 type AgentController struct {
-	dal *redis.AgentDAL
+	dal *dal.AgentDAL
 }
 
 /* Agents API */
 
-func NewAgentController(dal *redis.AgentDAL) *AgentController {
+func NewAgentController(dal *dal.AgentDAL) *AgentController {
 	return &AgentController{dal: dal}
 }
 
@@ -27,7 +25,7 @@ func (ac *AgentController) GetAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agent, err := ac.dal.GetAgent(r.Context(), agentID)
+	agent, err := ac.dal.GetAgent(agentID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
 		return
@@ -41,23 +39,33 @@ func (ac *AgentController) GetAgent(w http.ResponseWriter, r *http.Request) {
 // Also, allows any field to be edited if the request is hand-crafted
 func (ac *AgentController) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 
-	// agentID in the query params - could be just pure JSON
+	// get the ID of the agent to be updated in the query params
 	agentID := r.URL.Query().Get("id")
 	if agentID == "" {
 		http.Error(w, "Missing agent ID", http.StatusBadRequest)
 		return
 	}
 
-	// JSON modified agent
-	var agent models.Agent
-	if err := json.NewDecoder(r.Body).Decode(&agent); err != nil {
-		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
+	// Get the agent that is going to be updated in the db
+	agent, err := ac.dal.GetAgent(agentID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		return
 	}
 
-	// Set agentID
-	agent.ID = agentID
+	// Get the JSON for the fields that can be updated in the agent
+	// This prevents unintented modifications by the client manipulating the request JSON
+	var agentUpdateRequest models.UpdateAgentRequest
+	if err = json.NewDecoder(r.Body).Decode(&agentUpdateRequest); err != nil {
+		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
 
-	if err := ac.dal.UpdateAgent(r.Context(), agent); err != nil {
+	// Update the agent fields
+	updatedAgent := agentUpdateRequest.IntoAgent(agent)
+
+	// Provide the updated agent to the data layer
+	if err := ac.dal.UpdateAgent(r.Context(), updatedAgent); err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
 		return
 	}
@@ -83,14 +91,24 @@ func (ac *AgentController) DeleteAgent(w http.ResponseWriter, r *http.Request) {
 /* Agent Task API */
 
 func (ac *AgentController) CreateAgentTask(w http.ResponseWriter, r *http.Request) {
-	var agentTask models.AgentTask
-	if err := json.NewDecoder(r.Body).Decode(&agentTask); err != nil {
+
+	// Get the agentID from the query params
+	agentID := r.URL.Query().Get("agent_id")
+	if agentID == "" {
+		http.Error(w, "Missing agent ID", http.StatusBadRequest)
+		return
+	}
+
+	// Create agentTaskRequest model
+	var agentTaskRequest models.AgentTaskRequest
+	if err := json.NewDecoder(r.Body).Decode(&agentTaskRequest); err != nil {
 		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
 	}
 
-	// Generate	uuid
-	agentTask.ID = uuid.New().String()
+	// Convert into AgentTask model with default fields, uuid generation,...
+	agentTask := agentTaskRequest.IntoAgentTask()
 
+	// Create the task for the agent in the db
 	if err := ac.dal.CreateAgentTask(r.Context(), agentTask); err != nil {
 		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
 		return
@@ -100,7 +118,7 @@ func (ac *AgentController) CreateAgentTask(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(agentTask)
 }
 func (ac *AgentController) GetAgentTasks(w http.ResponseWriter, r *http.Request) {
-	agentID := r.URL.Query().Get("id")
+	agentID := r.URL.Query().Get("agent_id")
 
 	tasks, err := ac.dal.GetAgentTasks(r.Context(), agentID)
 	if err != nil {
