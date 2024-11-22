@@ -8,7 +8,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/ksel172/Meduza/teamserver/conf"
 	"github.com/ksel172/Meduza/teamserver/internal/api/handlers"
-	"github.com/ksel172/Meduza/teamserver/internal/app/users"
 	"github.com/ksel172/Meduza/teamserver/internal/server"
 	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
@@ -35,25 +34,24 @@ func main() {
 	redisService := redis.NewRedisService()
 	log.Println("Connected to redisService db")
 
-	log.Println("Loading users service...")
+	log.Println("Setting up data access layers...")
 	userDal := dal.NewUsersDAL(pgsql, conf.GetMeduzaDbSchema())
-	userService := users.NewService(userDal)
-	userController := handlers.NewUserController(userService)
-
-	// Create dependency container
-	secret := os.Getenv("JWT_SECRET")
 	adminDal := storage.NewAdminsDAL(pgsql, conf.GetMeduzaDbSchema())
-	jwtService := auth.NewJWTService(secret, 15*time.Minute, 30*24*time.Hour)
-	authController := handlers.NewAuthController(userDal, jwtService)
-	adminController := handlers.NewAdminController(adminDal)
 	agentDal := redis.NewAgentDAL(&redisService)
 	checkInDal := redis.NewCheckInDAL(&redisService)
+	log.Println("Finished setting up data access layers")
+
+	secret := os.Getenv("JWT_SECRET")
+	jwtService := auth.NewJWTService(secret, 15*time.Minute, 30*24*time.Hour)
+
+	userController := handlers.NewUserController(userDal)
+	authController := handlers.NewAuthController(userDal, jwtService)
+	adminController := handlers.NewAdminController(adminDal)
 	agentController := handlers.NewAgentController(agentDal)
 	checkInController := handlers.NewCheckInController(checkInDal, agentDal)
 
 	dependencies := &server.DependencyContainer{
 		UserController:    userController,
-		UserService:       userService,
 		RedisService:      &redisService,
 		AuthController:    authController,
 		JwtService:        jwtService,

@@ -3,15 +3,15 @@ package handlers
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/app/users"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"net/http"
 )
 
 type UserController struct {
-	service *users.Service
+	service *dal.UserDAL
 }
 
-func NewUserController(service *users.Service) *UserController {
+func NewUserController(service *dal.UserDAL) *UserController {
 	return &UserController{service: service}
 }
 
