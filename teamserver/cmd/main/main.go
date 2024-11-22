@@ -2,6 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/joho/godotenv"
 	"github.com/ksel172/Meduza/teamserver/conf"
 	"github.com/ksel172/Meduza/teamserver/internal/api/handlers"
 	"github.com/ksel172/Meduza/teamserver/internal/app/users"
@@ -9,10 +16,16 @@ import (
 	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/redis"
+	"github.com/ksel172/Meduza/teamserver/services/api"
+	"github.com/ksel172/Meduza/teamserver/services/auth"
 	"log"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("could'nt load .env file")
+	}
 
 	// Initialize services
 	log.Println("Connecting to postgres db...")
@@ -33,6 +46,16 @@ func main() {
 	userController := handlers.NewUserController(userService)
 
 	// Create dependency container
+	secret := os.Getenv("JWT_SECRET")
+	adminDal := storage.NewAdminsDAL(pgsql, conf.GetMeduzaDbSchema())
+	jwtService := auth.NewJWTService(secret, 15*time.Minute, 30*24*time.Hour)
+	authController := api.NewAuthController(userDal, jwtService)
+	adminController := api.NewAdminController(adminDal)
+	agentDal := redis.NewAgentDAL(redisService)
+	checkInDal := redis.NewCheckInDAL(redisService)
+	agentController := api.NewAgentController(agentDal)
+	checkInController := api.NewCheckInController(checkInDal, agentDal)
+
 	dependencies := &server.DependencyContainer{
 		UserController: userController,
 		UserService:    userService,
