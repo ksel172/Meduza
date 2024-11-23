@@ -2,13 +2,14 @@ package server
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/ksel172/Meduza/teamserver/conf"
 	"github.com/ksel172/Meduza/teamserver/internal/api/handlers"
 	"github.com/ksel172/Meduza/teamserver/internal/models"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
-	"net/http"
 )
 
 type DependencyContainer struct {
@@ -43,10 +44,9 @@ func NewServer(dependencies *DependencyContainer) *Server {
 	return server
 }
 
-func (s *Server) RegisterRoutes() http.Handler {
-	router := gin.Default()
+func (s *Server) RegisterRoutes() {
 
-	apiGroup := router.Group("/api")
+	apiGroup := s.engine.Group("/api")
 	{
 		v1Group := apiGroup.Group("/v1")
 		{
@@ -110,11 +110,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	}
 
 	// Default HelloWorld Handler
-	router.GET("/", func(context *gin.Context) {
+	s.engine.GET("/", func(context *gin.Context) {
 		context.String(http.StatusOK, "Hello, World!")
 	})
-
-	return router
 }
 
 func (s *Server) Run() error {
