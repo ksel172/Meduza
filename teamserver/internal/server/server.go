@@ -71,15 +71,15 @@ func (s *Server) RegisterRoutes() {
 
 			agentsGroup := v1Group.Group("/agents")
 			{
-				agentsGroup.GET("/", s.dependencies.AgentController.GetAgent)
-				agentsGroup.PUT("/", s.dependencies.AgentController.UpdateAgent)
-				agentsGroup.DELETE("/", s.dependencies.AgentController.DeleteAgent)
+				agentsGroup.GET(fmt.Sprintf("/:%s", models.ParamAgentID), s.dependencies.AgentController.GetAgent)
+				agentsGroup.PUT(fmt.Sprintf("/:%s", models.ParamAgentID), s.dependencies.AgentController.UpdateAgent)
+				agentsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamAgentID), s.dependencies.AgentController.DeleteAgent)
 
 				// Agent Tasks API
 				agentsGroup.GET("/tasks", s.dependencies.AgentController.GetAgentTasks)
 				agentsGroup.POST("/tasks", s.dependencies.AgentController.CreateAgentTask)
-				agentsGroup.DELETE("/tasks", s.dependencies.AgentController.DeleteAgentTasks)
-				agentsGroup.DELETE("/tasks/task", s.dependencies.AgentController.DeleteAgentTask)
+				agentsGroup.DELETE(fmt.Sprintf(":%s/tasks", models.ParamAgentID), s.dependencies.AgentController.DeleteAgentTasks)
+				agentsGroup.DELETE(fmt.Sprintf(":%s/tasks/:%s", models.ParamAgentID, models.ParamTaskID), s.dependencies.AgentController.DeleteAgentTask)
 			}
 
 			checkinGroup := v1Group.Group("/checkin")
