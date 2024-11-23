@@ -4,6 +4,11 @@ import (
 	"time"
 )
 
+const (
+	ParamAgentID = "agent_id"
+	ParamTaskID  = "task_id"
+)
+
 // Contains all information required for controlling an agent.
 type Agent struct {
 	ID            string      `json:"id"`

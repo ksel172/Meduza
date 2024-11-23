@@ -19,15 +19,15 @@ func NewAgentController(dal *dal.AgentDAL) *AgentController {
 }
 
 func (ac *AgentController) GetAgent(ctx *gin.Context) {
-	agentID := ctx.Param("id")
+	agentID := ctx.Param(models.ParamAgentID)
 	if agentID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
 	}
 
 	agent, err := ac.dal.GetAgent(agentID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, fmt.Sprintf("Agent not found: %s", err.Error()))
+		ctx.JSON(http.StatusNotFound, fmt.Sprintf("Agent %s not found: %s", agentID, err.Error()))
 		return
 	}
 
@@ -39,16 +39,16 @@ func (ac *AgentController) GetAgent(ctx *gin.Context) {
 func (ac *AgentController) UpdateAgent(ctx *gin.Context) {
 
 	// get the ID of the agent to be updated in the query params
-	agentID := ctx.Param("id")
+	agentID := ctx.Param(models.ParamAgentID)
 	if agentID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
 	}
 
 	// Get the agent that is going to be updated in the db
 	agent, err := ac.dal.GetAgent(agentID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, fmt.Sprintf("Agent not found: %s", err.Error()))
+		ctx.JSON(http.StatusNotFound, fmt.Sprintf("Agent %s not found: %s", agentID, err.Error()))
 		return
 	}
 
@@ -73,9 +73,9 @@ func (ac *AgentController) UpdateAgent(ctx *gin.Context) {
 }
 
 func (ac *AgentController) DeleteAgent(ctx *gin.Context) {
-	agentID := ctx.Param("id")
+	agentID := ctx.Param(models.ParamAgentID)
 	if agentID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
 	}
 
@@ -92,9 +92,9 @@ func (ac *AgentController) DeleteAgent(ctx *gin.Context) {
 func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 
 	// Get the agentID from the query params
-	agentID := ctx.Param("agent_id")
+	agentID := ctx.Param(models.ParamAgentID)
 	if agentID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
 	}
 
@@ -118,7 +118,7 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 }
 
 func (ac *AgentController) GetAgentTasks(ctx *gin.Context) {
-	agentID := ctx.Param("agent_id")
+	agentID := ctx.Param(models.ParamAgentID)
 
 	tasks, err := ac.dal.GetAgentTasks(ctx, agentID)
 	if err != nil {
@@ -131,10 +131,10 @@ func (ac *AgentController) GetAgentTasks(ctx *gin.Context) {
 
 // DeleteAgentTasks Deletes all tasks for a single agent
 func (ac *AgentController) DeleteAgentTasks(ctx *gin.Context) {
-	agentID := ctx.Param("agent_id")
+	agentID := ctx.Param(models.ParamAgentID)
 
 	if agentID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
 	}
 
@@ -148,17 +148,17 @@ func (ac *AgentController) DeleteAgentTasks(ctx *gin.Context) {
 
 // DeleteAgentTask Delete a single task
 func (ac *AgentController) DeleteAgentTask(ctx *gin.Context) {
-	agentId := ctx.Param("agent_id")
+	agentId := ctx.Param(models.ParamAgentID)
 
 	if agentId == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
 	}
 
-	taskID := ctx.Param("task_id")
+	taskID := ctx.Param(models.ParamTaskID)
 
 	if taskID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "task_id is required"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamTaskID)})
 		return
 	}
 
@@ -167,5 +167,5 @@ func (ac *AgentController) DeleteAgentTask(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Agent '%s' task '%s' deleted", agentId, taskID)})
 }
