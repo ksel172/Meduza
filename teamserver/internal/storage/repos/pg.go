@@ -10,7 +10,7 @@ import (
 
 func Setup() (*sql.DB, error) {
 
-	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable search_path=%s", conf.GetMeduzaDbHostname(), conf.GetMeduzaDbPort(), conf.GetMeduzaDbUsername(), conf.GetMeduzaDbPassword(), conf.GetMeduzaDbName(), conf.GetMeduzaDbSchema())
+	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable search_path=%s", conf.GetMeduzaDbHostname(), conf.GetMeduzaDbPort(), conf.GetMeduzaDbUsername(), conf.GetMeduzaDbPassword(), conf.GetMeduzaDbName(), conf.GetMeduzaDbSchema())
 
 	return sql.Open("postgres", connectionString)
 }

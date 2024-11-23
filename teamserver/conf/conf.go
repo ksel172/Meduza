@@ -2,22 +2,22 @@ package conf
 
 import (
 	"fmt"
+	"github.com/ksel172/Meduza/teamserver/utils"
 	"log"
 	"os"
-	"strconv"
 )
 
 const (
 	MeduzaServerHostnameEnvVar  = "TEAMSERVER_HOSTNAME"
 	MeduzaServerHostnameDefault = "localhost"
 	MeduzaServerPortEnvVar      = "TEAMSERVER_PORT"
-	MeduzaServerPortDefault     = "8080"
+	MeduzaServerPortDefault     = 8080
 	MeduzaServerModeEnvVar      = "TEAMSERVER_MODE"
 	MeduzaServerModeDefault     = "dev"
 	MeduzaDbHostnameEnvVar      = "DB_HOST"
 	MeduzaDbHostnameDefault     = "localhost"
 	MeduzaDbPortEnvVar          = "DB_PORT"
-	MeduzaDbPortDefault         = "5432"
+	MeduzaDbPortDefault         = 5432
 	MeduzaDbUsernameEnvVar      = "DB_USER"
 	MeduzaDbUsernameDefault     = "postgres"
 	MeduzaDbPasswordEnvVar      = "DB_PASSWORD"
@@ -29,127 +29,72 @@ const (
 	MeduzaRedisHostEnvVar       = "REDIS_HOST"
 	MeduzaRedisHostDefault      = "localhost"
 	MeduzaRedisPortEnvVar       = "REDIS_PORT"
-	MeduzaRedisPortDefault      = "6379"
+	MeduzaRedisPortDefault      = 6379
 	MeduzaRedisPasswordEnvVar   = "REDIS_PASSWORD"
 	MeduzaRedisPasswordDefault  = "password"
+	MeduzaAdminSecretKeyEnvVar  = "ADMIN_SECRET"
+	MeduzaJWTTokenEnvVar        = "JWT_TOKEN"
 )
 
 func GetMeduzaServerHostname() string {
-	hostname, exists := os.LookupEnv(MeduzaServerHostnameEnvVar)
-	if !exists {
-		log.Printf("Environment variable '%s' not set, defaulting to '%s'...\n", MeduzaServerHostnameEnvVar, MeduzaServerHostnameDefault)
-		hostname = MeduzaServerHostnameDefault
-	}
-	return hostname
+
+	return utils.GetEnvString(MeduzaServerHostnameEnvVar, MeduzaServerHostnameDefault)
 }
 
 func GetMeduzaServerPort() int {
-	port, exists := os.LookupEnv(MeduzaServerPortEnvVar)
-
-	if !exists {
-		log.Printf("Environment variable '%s' not set, defaulting to '%s'...\n", MeduzaServerPortEnvVar, MeduzaServerPortDefault)
-		port = MeduzaServerPortDefault
-	}
-
-	portNumber, err := strconv.Atoi(port)
-	if err != nil {
-		log.Printf("Environmental variable '%s' is not set to a number (%s). Defaulting to '%s'...", MeduzaServerPortEnvVar, port, MeduzaServerPortDefault)
-		port = MeduzaServerPortDefault
-	}
-
-	return portNumber
+	return utils.GetEnvInt(MeduzaServerPortEnvVar, MeduzaServerPortDefault)
 }
 
 func GetMeduzaDbHostname() string {
-	hostname, exists := os.LookupEnv(MeduzaDbHostnameEnvVar)
-	if !exists {
-		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaDbHostnameEnvVar, MeduzaDbHostnameDefault)
-		hostname = MeduzaDbHostnameDefault
-	}
-	return hostname
+	return utils.GetEnvString(MeduzaDbHostnameEnvVar, MeduzaDbHostnameDefault)
 }
 
-func GetMeduzaDbPort() string {
-	port, exists := os.LookupEnv(MeduzaDbPortEnvVar)
-	if !exists {
-		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaDbPortEnvVar, MeduzaDbPortDefault)
-		port = MeduzaDbPortDefault
-	}
-	return port
+func GetMeduzaDbPort() int {
+	return utils.GetEnvInt(MeduzaDbPortEnvVar, MeduzaDbPortDefault)
 }
 
 func GetMeduzaDbUsername() string {
-	username, exists := os.LookupEnv(MeduzaDbUsernameEnvVar)
-	if !exists {
-		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaDbUsernameEnvVar, MeduzaDbUsernameDefault)
-		username = MeduzaDbUsernameDefault
-	}
-	return username
+	return utils.GetEnvString(MeduzaDbUsernameEnvVar, MeduzaDbUsernameDefault)
 }
 
 func GetMeduzaDbPassword() string {
-	password, exists := os.LookupEnv(MeduzaDbPasswordEnvVar)
-	if !exists {
-		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaDbPasswordEnvVar, MeduzaDbPasswordDefault)
-		password = MeduzaDbPasswordDefault
-	}
-	return password
+	return utils.GetEnvString(MeduzaDbPasswordEnvVar, MeduzaDbPasswordDefault)
 }
 
 func GetMeduzaDbName() string {
-	name, exists := os.LookupEnv(MeduzaDbNameEnvVar)
-	if !exists {
-		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaDbNameEnvVar, MeduzaDbNameDefault)
-		name = MeduzaDbNameDefault
-	}
-	return name
+	return utils.GetEnvString(MeduzaDbNameEnvVar, MeduzaDbNameDefault)
 }
 
 func GetMeduzaDbSchema() string {
-	schema, exists := os.LookupEnv(MeduzaDbSchemaEnvVar)
-	if !exists {
-		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaDbSchemaEnvVar, MeduzaDbSchemaDefault)
-		schema = MeduzaDbSchemaDefault
-	}
-	return schema
+	return utils.GetEnvString(MeduzaDbSchemaEnvVar, MeduzaDbSchemaDefault)
 }
 
 func GetMeduzaRedisAddress() string {
-	host, exists := os.LookupEnv(MeduzaRedisHostEnvVar)
-	if !exists || host == "" {
-		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaRedisHostEnvVar, MeduzaRedisHostDefault)
-		host = MeduzaRedisHostDefault
-	}
-
-	port, exists := os.LookupEnv(MeduzaRedisPortEnvVar)
-	if !exists || port == "" {
-		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaRedisPortEnvVar, MeduzaRedisPortDefault)
-		port = MeduzaRedisPortDefault
-	}
-
-	_, err := strconv.Atoi(port)
-	if err != nil {
-		log.Printf("Environmental variable '%s' is not a number, defaulting to '%s'...", MeduzaRedisPortEnvVar, MeduzaRedisPortDefault)
-		port = MeduzaRedisPortDefault
-	}
-
-	return fmt.Sprintf("%s:%s", host, port)
+	return fmt.Sprintf("%s:%d", utils.GetEnvString(MeduzaRedisHostEnvVar, MeduzaRedisHostDefault), utils.GetEnvInt(MeduzaRedisPortEnvVar, MeduzaRedisPortDefault))
 }
 
 func GetMeduzaRedisPassword() string {
-	password, exists := os.LookupEnv(MeduzaRedisPasswordEnvVar)
-	if !exists {
-		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaRedisPasswordEnvVar, MeduzaRedisPasswordDefault)
-		password = MeduzaRedisPasswordDefault
-	}
-	return password
+	return utils.GetEnvString(MeduzaRedisPasswordEnvVar, MeduzaRedisPasswordDefault)
 }
 
 func GetMeduzaServerMode() string {
-	mode, exists := os.LookupEnv(MeduzaServerModeEnvVar)
-	if !exists {
-		log.Printf("Environmental variable '%s' is not set, defaulting to '%s'...", MeduzaServerModeEnvVar, MeduzaServerModeDefault)
-		mode = MeduzaServerModeDefault
+	return utils.GetEnvString(MeduzaServerModeEnvVar, MeduzaServerModeDefault)
+}
+
+func GetMeduzaAdminSecret() string {
+	envToken, ok := os.LookupEnv(MeduzaAdminSecretKeyEnvVar)
+	if !ok {
+		log.Fatalf("server not configured correctly, missing '%s' environment variable", MeduzaAdminSecretKeyEnvVar)
 	}
-	return mode
+
+	return envToken
+}
+
+func GetMeduzaJWTToken() string {
+	jwt, ok := os.LookupEnv(MeduzaJWTTokenEnvVar)
+	if !ok {
+		log.Fatalf("server not configured correctly, missing %s environment variable", MeduzaJWTTokenEnvVar)
+	}
+
+	return jwt
 }

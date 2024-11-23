@@ -2,14 +2,13 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/ksel172/Meduza/teamserver/conf"
 	"github.com/ksel172/Meduza/teamserver/internal/models"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"net/http"
-	"os"
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
@@ -132,21 +131,14 @@ func isRouteRestricted() bool {
 
 func adminCount() {
 	mu.Lock()
-	defer mu.Unlock()
-
 	curAdminCount++
+	mu.Unlock()
 }
 
 func validateToken(reqToken string) error {
-	if err := godotenv.Load(); err != nil {
-		return fmt.Errorf("error load .env file.%s", err.Error())
-	}
-	envToken := os.Getenv("ADMIN_SECRET")
-	if envToken == "" {
-		return fmt.Errorf("server not configured correctly: no token available %s", envToken)
-	}
-	if envToken == "" {
-		return fmt.Errorf("server not configured correctly")
+	envToken := conf.GetMeduzaAdminSecret()
+	if envToken != "" {
+		return fmt.Errorf("error loading admin secret, empty")
 	}
 
 	if reqToken != envToken {

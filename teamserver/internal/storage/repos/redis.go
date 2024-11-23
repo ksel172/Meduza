@@ -4,12 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-redis/redis/v8"
+	"github.com/ksel172/Meduza/teamserver/conf"
 	"log"
 	"strings"
-
-	"github.com/ksel172/Meduza/teamserver/conf"
-
-	"github.com/go-redis/redis/v8"
 )
 
 type Service interface {

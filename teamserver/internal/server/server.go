@@ -13,13 +13,14 @@ import (
 )
 
 type DependencyContainer struct {
-	UserController    *handlers.UserController
-	RedisService      *repos.Service
-	AuthController    *handlers.AuthController
-	JwtService        *models.JWTService
-	AdminController   *handlers.AdminController
-	AgentController   *handlers.AgentController
-	CheckInController *handlers.CheckInController
+	UserController      *handlers.UserController
+	RedisService        *repos.Service
+	AuthController      *handlers.AuthController
+	JwtService          *models.JWTService
+	AdminController     *handlers.AdminController
+	AgentController     *handlers.AgentController
+	CheckInController   *handlers.CheckInController
+	ListenersController *handlers.ListenerHandler
 }
 
 type Server struct {
@@ -64,48 +65,36 @@ func (s *Server) RegisterRoutes() {
 			{
 				adminProtectedRoutes.Use(s.HandleCors())
 				adminProtectedRoutes.Use(s.AdminMiddleware())
-				adminProtectedRoutes.GET("/users", func(context *gin.Context) {
-					s.dependencies.UserController.GetUsers(context)
-				})
+				adminProtectedRoutes.GET("/users", s.dependencies.UserController.GetUsers)
+				adminProtectedRoutes.POST("/users", s.dependencies.UserController.AddUsers)
 			}
 
 			agentsGroup := v1Group.Group("/agents")
 			{
-				agentsGroup.GET("/", func(context *gin.Context) {
-					s.dependencies.AgentController.GetAgent(context.Writer, context.Request)
-				})
-				agentsGroup.PUT("/", func(context *gin.Context) {
-					s.dependencies.AgentController.UpdateAgent(context.Writer, context.Request)
-				})
-				agentsGroup.DELETE("/", func(context *gin.Context) {
-					s.dependencies.AgentController.DeleteAgent(context.Writer, context.Request)
-				})
+				agentsGroup.GET("/", s.dependencies.AgentController.GetAgent)
+				agentsGroup.PUT("/", s.dependencies.AgentController.UpdateAgent)
+				agentsGroup.DELETE("/", s.dependencies.AgentController.DeleteAgent)
 
 				// Agent Tasks API
-				agentsGroup.GET("/tasks", func(context *gin.Context) {
-					s.dependencies.AgentController.GetAgentTasks(context.Writer, context.Request)
-				})
-				agentsGroup.POST("/tasks", func(context *gin.Context) {
-					s.dependencies.AgentController.CreateAgentTask(context.Writer, context.Request)
-				})
-				agentsGroup.DELETE("/tasks", func(context *gin.Context) {
-					s.dependencies.AgentController.DeleteAgentTasks(context.Writer, context.Request)
-				})
-				agentsGroup.DELETE("/tasks/task", func(context *gin.Context) {
-					s.dependencies.AgentController.DeleteAgentTask(context.Writer, context.Request)
-				})
+				agentsGroup.GET("/tasks", s.dependencies.AgentController.GetAgentTasks)
+				agentsGroup.POST("/tasks", s.dependencies.AgentController.CreateAgentTask)
+				agentsGroup.DELETE("/tasks", s.dependencies.AgentController.DeleteAgentTasks)
+				agentsGroup.DELETE("/tasks/task", s.dependencies.AgentController.DeleteAgentTask)
 			}
 
 			checkinGroup := v1Group.Group("/checkin")
 			{
-				checkinGroup.POST("/", func(context *gin.Context) {
-					s.dependencies.CheckInController.CreateAgent(context.Writer, context.Request)
-				})
-				checkinGroup.GET("/", func(context *gin.Context) {
-					s.dependencies.CheckInController.GetTasks(context.Writer, context.Request)
-				})
+				checkinGroup.POST("/", s.dependencies.CheckInController.CreateAgent)
+				checkinGroup.GET("/", s.dependencies.CheckInController.GetTasks)
 			}
 
+			listenersGroup := v1Group.Group("/listeners")
+			{
+				listenersGroup.POST("", s.dependencies.ListenersController.CreateListener)
+				listenersGroup.GET("/:id", s.dependencies.ListenersController.GetListener)
+				listenersGroup.PUT("", s.dependencies.ListenersController.UpdateListener)
+				listenersGroup.DELETE(":id", s.dependencies.ListenersController.DeleteListener)
+			}
 		}
 	}
 
