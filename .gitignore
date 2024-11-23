@@ -6,5 +6,7 @@
 main.exe*
 .idea
 
+Makefile
+
 teamserver/build
 teamserver/tmp
