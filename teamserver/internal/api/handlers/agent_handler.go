@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/models"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"net/http"
@@ -18,46 +18,45 @@ func NewAgentController(dal *dal.AgentDAL) *AgentController {
 	return &AgentController{dal: dal}
 }
 
-func (ac *AgentController) GetAgent(w http.ResponseWriter, r *http.Request) {
-	agentID := r.URL.Query().Get("id")
+func (ac *AgentController) GetAgent(ctx *gin.Context) {
+	agentID := ctx.Param("id")
 	if agentID == "" {
-		http.Error(w, "Missing agent ID", http.StatusBadRequest)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
 		return
 	}
 
 	agent, err := ac.dal.GetAgent(agentID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		ctx.JSON(http.StatusNotFound, fmt.Sprintf("Agent not found: %s", err.Error()))
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(agent)
+	ctx.JSON(http.StatusOK, agent)
 }
 
-// This is technically vulnerable because it allows the client to update any agent
+// UpdateAgent This is technically vulnerable because it allows the client to update any agent
 // Also, allows any field to be edited if the request is hand-crafted
-func (ac *AgentController) UpdateAgent(w http.ResponseWriter, r *http.Request) {
+func (ac *AgentController) UpdateAgent(ctx *gin.Context) {
 
 	// get the ID of the agent to be updated in the query params
-	agentID := r.URL.Query().Get("id")
+	agentID := ctx.Param("id")
 	if agentID == "" {
-		http.Error(w, "Missing agent ID", http.StatusBadRequest)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
 		return
 	}
 
 	// Get the agent that is going to be updated in the db
 	agent, err := ac.dal.GetAgent(agentID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		ctx.JSON(http.StatusNotFound, fmt.Sprintf("Agent not found: %s", err.Error()))
 		return
 	}
 
 	// Get the JSON for the fields that can be updated in the agent
-	// This prevents unintented modifications by the client manipulating the request JSON
+	// This prevents unintended modifications by the client manipulating the request JSON
 	var agentUpdateRequest models.UpdateAgentRequest
-	if err = json.NewDecoder(r.Body).Decode(&agentUpdateRequest); err != nil {
-		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
+	if err := ctx.ShouldBindJSON(&agentUpdateRequest); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -65,93 +64,108 @@ func (ac *AgentController) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 	updatedAgent := agentUpdateRequest.IntoAgent(agent)
 
 	// Provide the updated agent to the data layer
-	if err := ac.dal.UpdateAgent(r.Context(), updatedAgent); err != nil {
-		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+	if err := ac.dal.UpdateAgent(ctx, updatedAgent); err != nil {
+		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent update failed: %s", err.Error()))
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	ctx.JSON(http.StatusOK, updatedAgent)
 }
 
-func (ac *AgentController) DeleteAgent(w http.ResponseWriter, r *http.Request) {
-	agentID := r.URL.Query().Get("id")
+func (ac *AgentController) DeleteAgent(ctx *gin.Context) {
+	agentID := ctx.Param("id")
 	if agentID == "" {
-		http.Error(w, "Missing agent ID", http.StatusBadRequest)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
 		return
 	}
 
-	if err := ac.dal.DeleteAgent(r.Context(), agentID); err != nil {
-		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+	if err := ac.dal.DeleteAgent(ctx, agentID); err != nil {
+		ctx.JSON(http.StatusNotFound, fmt.Sprintf("Agent not found: %s", err.Error()))
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	ctx.JSON(http.StatusOK, gin.H{})
 }
 
 /* Agent Task API */
 
-func (ac *AgentController) CreateAgentTask(w http.ResponseWriter, r *http.Request) {
+func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 
 	// Get the agentID from the query params
-	agentID := r.URL.Query().Get("agent_id")
+	agentID := ctx.Param("agent_id")
 	if agentID == "" {
-		http.Error(w, "Missing agent ID", http.StatusBadRequest)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
 		return
 	}
 
 	// Create agentTaskRequest model
 	var agentTaskRequest models.AgentTaskRequest
-	if err := json.NewDecoder(r.Body).Decode(&agentTaskRequest); err != nil {
-		http.Error(w, fmt.Sprintf("Error decoding request body: %s", err.Error()), http.StatusBadRequest)
+	if err := ctx.ShouldBindJSON(&agentTaskRequest); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	// Convert into AgentTask model with default fields, uuid generation,...
 	agentTask := agentTaskRequest.IntoAgentTask()
 
 	// Create the task for the agent in the db
-	if err := ac.dal.CreateAgentTask(r.Context(), agentTask); err != nil {
-		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+	if err := ac.dal.CreateAgentTask(ctx, agentTask); err != nil {
+		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent task creation failed: %s", err.Error()))
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(agentTask)
+	ctx.JSON(http.StatusOK, agentTask)
 }
-func (ac *AgentController) GetAgentTasks(w http.ResponseWriter, r *http.Request) {
-	agentID := r.URL.Query().Get("agent_id")
 
-	tasks, err := ac.dal.GetAgentTasks(r.Context(), agentID)
+func (ac *AgentController) GetAgentTasks(ctx *gin.Context) {
+	agentID := ctx.Param("agent_id")
+
+	tasks, err := ac.dal.GetAgentTasks(ctx, agentID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent task list failed: %s", err.Error()))
 		return
 	}
 
-	// Return tasks as JSON
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(tasks)
+	ctx.JSON(http.StatusOK, tasks)
 }
 
-// Deletes all tasks for a single agent
-func (ac *AgentController) DeleteAgentTasks(w http.ResponseWriter, r *http.Request) {
-	agentID := r.URL.Query().Get("agent_id")
+// DeleteAgentTasks Deletes all tasks for a single agent
+func (ac *AgentController) DeleteAgentTasks(ctx *gin.Context) {
+	agentID := ctx.Param("agent_id")
 
-	if err := ac.dal.DeleteAgentTasks(r.Context(), agentID); err != nil {
-		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+	if agentID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	if err := ac.dal.DeleteAgentTasks(ctx, agentID); err != nil {
+		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent task list failed: %s", err.Error()))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{})
 }
 
-// Delete a single task
-func (ac *AgentController) DeleteAgentTask(w http.ResponseWriter, r *http.Request) {
-	agent_id := r.URL.Query().Get("agent_id")
-	taskID := r.URL.Query().Get("task_id")
+// DeleteAgentTask Delete a single task
+func (ac *AgentController) DeleteAgentTask(ctx *gin.Context) {
+	agentId := ctx.Param("agent_id")
 
-	if err := ac.dal.DeleteAgentTask(r.Context(), agent_id, taskID); err != nil {
-		http.Error(w, fmt.Sprintf("Agent not found: %s", err.Error()), http.StatusNotFound)
+	if agentId == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	taskID := ctx.Param("task_id")
+
+	if taskID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "task_id is required"})
+		return
+	}
+
+	if err := ac.dal.DeleteAgentTask(ctx, agentId, taskID); err != nil {
+		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent task delete failed: %s", err.Error()))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{})
 }

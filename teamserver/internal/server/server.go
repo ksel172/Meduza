@@ -70,39 +70,21 @@ func (s *Server) RegisterRoutes() {
 
 			agentsGroup := v1Group.Group("/agents")
 			{
-				agentsGroup.GET("/", func(context *gin.Context) {
-					s.dependencies.AgentController.GetAgent(context.Writer, context.Request)
-				})
-				agentsGroup.PUT("/", func(context *gin.Context) {
-					s.dependencies.AgentController.UpdateAgent(context.Writer, context.Request)
-				})
-				agentsGroup.DELETE("/", func(context *gin.Context) {
-					s.dependencies.AgentController.DeleteAgent(context.Writer, context.Request)
-				})
+				agentsGroup.GET("/", s.dependencies.AgentController.GetAgent)
+				agentsGroup.PUT("/", s.dependencies.AgentController.UpdateAgent)
+				agentsGroup.DELETE("/", s.dependencies.AgentController.DeleteAgent)
 
 				// Agent Tasks API
-				agentsGroup.GET("/tasks", func(context *gin.Context) {
-					s.dependencies.AgentController.GetAgentTasks(context.Writer, context.Request)
-				})
-				agentsGroup.POST("/tasks", func(context *gin.Context) {
-					s.dependencies.AgentController.CreateAgentTask(context.Writer, context.Request)
-				})
-				agentsGroup.DELETE("/tasks", func(context *gin.Context) {
-					s.dependencies.AgentController.DeleteAgentTasks(context.Writer, context.Request)
-				})
-				agentsGroup.DELETE("/tasks/task", func(context *gin.Context) {
-					s.dependencies.AgentController.DeleteAgentTask(context.Writer, context.Request)
-				})
+				agentsGroup.GET("/tasks", s.dependencies.AgentController.GetAgentTasks)
+				agentsGroup.POST("/tasks", s.dependencies.AgentController.CreateAgentTask)
+				agentsGroup.DELETE("/tasks", s.dependencies.AgentController.DeleteAgentTasks)
+				agentsGroup.DELETE("/tasks/task", s.dependencies.AgentController.DeleteAgentTask)
 			}
 
 			checkinGroup := v1Group.Group("/checkin")
 			{
-				checkinGroup.POST("/", func(context *gin.Context) {
-					s.dependencies.CheckInController.CreateAgent(context.Writer, context.Request)
-				})
-				checkinGroup.GET("/", func(context *gin.Context) {
-					s.dependencies.CheckInController.GetTasks(context.Writer, context.Request)
-				})
+				checkinGroup.POST("/", s.dependencies.CheckInController.CreateAgent)
+				checkinGroup.GET("/", s.dependencies.CheckInController.GetTasks)
 			}
 
 			listenersGroup := v1Group.Group("/listeners")

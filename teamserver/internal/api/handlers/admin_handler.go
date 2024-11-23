@@ -136,9 +136,9 @@ func adminCount() {
 }
 
 func validateToken(reqToken string) error {
-	envToken, err := conf.GetMeduzaAdminSecret()
-	if err != nil && envToken != "" {
-		return fmt.Errorf("error loading admin secret %w", err.Error())
+	envToken := conf.GetMeduzaAdminSecret()
+	if envToken != "" {
+		return fmt.Errorf("error loading admin secret, empty")
 	}
 
 	if reqToken != envToken {
