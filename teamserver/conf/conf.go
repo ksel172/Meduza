@@ -3,6 +3,8 @@ package conf
 import (
 	"fmt"
 	"github.com/ksel172/Meduza/teamserver/utils"
+	"log"
+	"os"
 )
 
 const (
@@ -30,6 +32,8 @@ const (
 	MeduzaRedisPortDefault      = 6379
 	MeduzaRedisPasswordEnvVar   = "REDIS_PASSWORD"
 	MeduzaRedisPasswordDefault  = "password"
+	MeduzaAdminSecretKeyEnvVar  = "ADMIN_SECRET"
+	MeduzaJWTTokenEnvVar        = "JWT_TOKEN"
 )
 
 func GetMeduzaServerHostname() string {
@@ -75,4 +79,22 @@ func GetMeduzaRedisPassword() string {
 
 func GetMeduzaServerMode() string {
 	return utils.GetEnvString(MeduzaServerModeEnvVar, MeduzaServerModeDefault)
+}
+
+func GetMeduzaAdminSecret() string {
+	envToken, ok := os.LookupEnv(MeduzaAdminSecretKeyEnvVar)
+	if !ok {
+		log.Fatalf("server not configured correctly, missing '%s' environment variable", MeduzaAdminSecretKeyEnvVar)
+	}
+
+	return envToken
+}
+
+func GetMeduzaJWTToken() string {
+	jwt, ok := os.LookupEnv(MeduzaJWTTokenEnvVar)
+	if !ok {
+		log.Fatalf("server not configured correctly, missing %s environment variable", MeduzaJWTTokenEnvVar)
+	}
+
+	return jwt
 }

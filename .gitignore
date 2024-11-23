@@ -8,3 +8,4 @@ main.exe*
 
 teamserver/build
 teamserver/tmp
+teamserver/docker

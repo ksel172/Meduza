@@ -4,7 +4,6 @@ import (
 	"github.com/ksel172/Meduza/teamserver/internal/models"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"log"
-	"os"
 	"time"
 
 	"github.com/ksel172/Meduza/teamserver/conf"
@@ -36,7 +35,7 @@ func main() {
 	listenersDal := dal.NewListenerDAL(&redisService)
 	log.Println("Finished setting up data access layers")
 
-	secret := os.Getenv("JWT_SECRET")
+	secret := conf.GetMeduzaJWTToken()
 	jwtService := models.NewJWTService(secret, 15*time.Minute, 30*24*time.Hour)
 
 	userController := handlers.NewUserController(userDal)

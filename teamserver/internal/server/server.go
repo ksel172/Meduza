@@ -44,10 +44,9 @@ func NewServer(dependencies *DependencyContainer) *Server {
 	return server
 }
 
-func (s *Server) RegisterRoutes() http.Handler {
-	router := gin.Default()
+func (s *Server) RegisterRoutes() {
 
-	apiGroup := router.Group("/api")
+	apiGroup := s.engine.Group("/api")
 	{
 		v1Group := apiGroup.Group("/v1")
 		{
@@ -65,9 +64,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 			{
 				adminProtectedRoutes.Use(s.HandleCors())
 				adminProtectedRoutes.Use(s.AdminMiddleware())
-				adminProtectedRoutes.GET("/users", func(context *gin.Context) {
-					s.dependencies.UserController.GetUsers(context)
-				})
+				adminProtectedRoutes.GET("/users", s.dependencies.UserController.GetUsers)
+				adminProtectedRoutes.POST("/users", s.dependencies.UserController.AddUsers)
 			}
 
 			agentsGroup := v1Group.Group("/agents")
@@ -118,11 +116,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	}
 
 	// Default HelloWorld Handler
-	router.GET("/", func(context *gin.Context) {
+	s.engine.GET("/", func(context *gin.Context) {
 		context.String(http.StatusOK, "Hello, World!")
 	})
-
-	return router
 }
 
 func (s *Server) Run() error {
