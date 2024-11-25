@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"github.com/ksel172/Meduza/teamserver/internal/models"
-	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"net/http"
 	"time"
+
+	"github.com/ksel172/Meduza/teamserver/internal/models"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/utils"
@@ -86,6 +87,9 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 		"Message": "User Authenticated Successfully",
 		"Status":  "Success",
 	})
+}
+func (ac *AuthController) LogoutController(ctx *gin.Context) {
+	// TODO: Logout logic
 }
 
 func (ac *AuthController) RefreshTokenController(ctx *gin.Context) {
