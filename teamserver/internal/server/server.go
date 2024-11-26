@@ -59,6 +59,7 @@ func (s *Server) RegisterRoutes() {
 				authRoutes.POST("/add-admin", s.dependencies.AdminController.CreateAdmin)
 				authRoutes.POST("/login", s.dependencies.AuthController.LoginController)
 				authRoutes.GET("/refresh-token", s.dependencies.AuthController.RefreshTokenController)
+				authRoutes.POST("/logout", s.dependencies.AuthController.LogoutController)
 			}
 
 			adminProtectedRoutes := v1Group.Group("/teamserver")
