@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -89,7 +90,49 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 	})
 }
 func (ac *AuthController) LogoutController(ctx *gin.Context) {
-	// TODO: Logout logic
+	header := ctx.GetHeader("Authorization")
+	var accessToken string
+	if len(header) > 7 && header[:7] == "Bearer " {
+		accessToken = header[7:]
+	}
+
+	refreshToken, err := ctx.Cookie("refresh_token")
+	if err != nil {
+		refreshToken = ""
+	}
+
+	if accessToken != "" {
+		claims, err := ac.jwtS.ValidateToken(accessToken)
+		if err == nil {
+			expiry := time.Unix(claims.ExpiresAt.Unix(), 0)
+			ac.jwtS.RevokeToken(accessToken, expiry)
+		} else {
+			log.Printf("Access token invalid or already expired: %v", err)
+		}
+	}
+
+	if refreshToken != "" {
+		claims, err := ac.jwtS.ValidateToken(refreshToken)
+		if err == nil {
+			expiry := time.Unix(claims.ExpiresAt.Unix(), 0)
+			ac.jwtS.RevokeToken(refreshToken, expiry)
+		} else {
+			log.Printf("Access token invalid or already expired: %v", err)
+		}
+	}
+
+	ctx.SetCookie("refresh_token",
+		"",
+		-1,
+		cookie_path,
+		cookie_domain,
+		refresh_secure,
+		refresh_http)
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"Message": "Successfully logged Out",
+		"Status":  "Sucess",
+	})
 }
 
 func (ac *AuthController) RefreshTokenController(ctx *gin.Context) {

@@ -1,8 +1,10 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -13,6 +15,8 @@ type JWTService struct {
 	secret          string
 	accessTokenTTL  time.Duration
 	refreshTokenTTL time.Duration
+	revokedTokens   map[string]time.Time
+	mu              sync.Mutex
 }
 
 func NewJWTService(secret string, accessTokenTTL, refreshTokenTTL time.Duration) *JWTService {
@@ -20,6 +24,7 @@ func NewJWTService(secret string, accessTokenTTL, refreshTokenTTL time.Duration)
 		secret:          secret,
 		accessTokenTTL:  accessTokenTTL,
 		refreshTokenTTL: refreshTokenTTL,
+		revokedTokens:   make(map[string]time.Time),
 	}
 }
 
@@ -67,6 +72,11 @@ func (j *JWTService) GenerateTokens(userID, role string) (*AuthResponse, error) 
 
 // ValidateToken validates and parses a token
 func (j *JWTService) ValidateToken(tokenStr string) (*UserClaim, error) {
+
+	if j.IsTokenRevoked(tokenStr) {
+		return nil, errors.New("Token has been revoked")
+	}
+
 	token, err := jwt.ParseWithClaims(tokenStr, &UserClaim{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(j.secret), nil
 	})
@@ -81,13 +91,16 @@ func (j *JWTService) ValidateToken(tokenStr string) (*UserClaim, error) {
 		return nil, fmt.Errorf("invalid claims or token")
 	}
 
-	log.Printf("Validated token for user %s, role %s", claims.UserID, claims.Role)
 	return claims, nil
 }
 
 // RefreshTokens generates a new access and refresh token if the refresh token is valid
 func (j *JWTService) RefreshTokens(refreshToken string) (*AuthResponse, error) {
 	// Step 1: Validate the refresh token
+	if j.IsTokenRevoked(refreshToken) {
+		return nil, fmt.Errorf("Revoked Token.")
+	}
+
 	claims, err := j.ValidateToken(refreshToken)
 	if err != nil {
 		return nil, fmt.Errorf("invalid refresh token: %w", err)
@@ -114,4 +127,29 @@ func (j *JWTService) RefreshTokens(refreshToken string) (*AuthResponse, error) {
 func (j *JWTService) generateToken(claims *UserClaim) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 	return token.SignedString([]byte(j.secret))
+}
+
+// RevokeToken adds a token to the revoked list an expiration time
+func (j *JWTService) RevokeToken(token string, expiresAt time.Time) {
+	j.mu.Lock()         // Lock the mutex
+	defer j.mu.Unlock() //Ensure it's unlocked when the function exits
+
+	j.revokedTokens[token] = expiresAt
+}
+
+func (j *JWTService) IsTokenRevoked(token string) bool {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
+	expiry, exists := j.revokedTokens[token]
+	if !exists {
+		return false
+	}
+
+	if time.Now().After(expiry) {
+		delete(j.revokedTokens, token)
+		return false
+	}
+
+	return true
 }
