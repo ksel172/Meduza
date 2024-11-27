@@ -10,6 +10,10 @@ import (
 	"io"
 )
 
+const (
+	AES256KeySize = 32
+)
+
 // AES stands for Advanced Encryption Standard. It is encryption of electronic data established by the
 // U.S. National Institute of Standards and Technology (NIST) in 2001.
 
@@ -20,11 +24,12 @@ type Aes struct {
 }
 
 // Returns a new instance of Aes.
-func NewAES(key string) (*Aes, error) {
-	if len(key) != 32 {
-		return nil, errors.New("Key length must be 32 bytes for AES-256.")
+func NewAES() (*Aes, error) {
+	generateKey, err := GenerateAES256Key()
+	if err != nil {
+		return nil, fmt.Errorf("Invalid key length and failed to generate new AES-256 key: %v", err)
 	}
-	return &Aes{key: []byte(key)}, nil
+	return &Aes{key: generateKey}, nil
 }
 
 // AesEncrypt encrypts data using AES-GCM.
@@ -104,4 +109,13 @@ func (a *Aes) AesDecrypt(ciphertext []byte) ([]byte, error) {
 
 	// Return the decrypted data.
 	return data, nil
+}
+
+// GenerateAES256Key return a 32 bit AESKey in byte format.
+func GenerateAES256Key() ([]byte, error) {
+	key := make([]byte, AES256KeySize)
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+		return nil, fmt.Errorf("Failed to generate AES-256 key: %v", err)
+	}
+	return key, nil
 }

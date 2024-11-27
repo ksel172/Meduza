@@ -8,7 +8,6 @@ import (
 
 	"github.com/ksel172/Meduza/teamserver/internal/models"
 	redis2 "github.com/ksel172/Meduza/teamserver/internal/storage/repos"
-	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 // var (
