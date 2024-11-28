@@ -10,7 +10,7 @@
 
     public class AgentConfig
     {
-        public Guid Id { get; set; }
+        public string AgentId { get; set; }
 
         public Dictionary<string, string> Headers { get; set; } = [];
 

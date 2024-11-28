@@ -2,7 +2,7 @@
 {
     public class AgentInfo
     {
-        public string? UUMOID { get; set; }
+        public string? AgentId { get; set; }
 
         public string? HostName { get; set; }
 

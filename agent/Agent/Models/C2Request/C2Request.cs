@@ -1,10 +1,8 @@
-﻿using Agent.Models.Agent;
-
-namespace Agent.Models
+﻿namespace Agent.Models.C2Request
 {
     public class C2Request
     {
-        public Guid AgentId { get; set; }
+        public string AgentId { get; set; }
 
         public C2RequestReason Reason { get; set; } = C2RequestReason.Task;
 
