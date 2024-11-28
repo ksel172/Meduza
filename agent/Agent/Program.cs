@@ -3,15 +3,19 @@ using Agent.Services;
 
 AgentInformationService agentInformationService = new AgentInformationService();
 AgentInfo agentInformation = await agentInformationService.GetAgentInfoAsync();
+
 try
 {
     var baseConfig = ConfigLoader.LoadEmbeddedConfig();
-    
+
+    // Initialize baseConfig agentID
     if (agentInformation is not null)
     {
         baseConfig.AgentId = agentInformation.AgentId;
     }
 
+
+    // Main loop
     while (true)
     {
 
