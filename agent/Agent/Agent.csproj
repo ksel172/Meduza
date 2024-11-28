@@ -7,4 +7,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+	  <EmbeddedResource Include="baseconf.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Agent.ModuleBase\Agent.ModuleBase.csproj" />
+  </ItemGroup>
+
 </Project>
