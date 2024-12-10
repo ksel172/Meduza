@@ -1,10 +1,11 @@
 package main
 
 import (
+	"time"
+
 	"github.com/ksel172/Meduza/teamserver/internal/models"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
-	"log"
-	"time"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 
 	"github.com/ksel172/Meduza/teamserver/conf"
 	"github.com/ksel172/Meduza/teamserver/internal/api/handlers"
@@ -13,27 +14,26 @@ import (
 )
 
 func main() {
+	logger.Info("Connecting to Postgres db...")
 
-	// Initialize services
-	log.Println("Connecting to postgres db...")
 	pgsql, err := repos.Setup()
 	if err != nil {
-		log.Fatal("Failed to connect to pgsql. Terminating...", err)
+		logger.Fatal("Failed to connect to Pgsql. Terminating...", err)
 	}
 	defer pgsql.Close()
-	log.Println("Connected to postgres db")
+	logger.Good("Connected to Postgres DB")
 
-	log.Println("Connecting to redisService db...")
+	logger.Info("Connecting to RedisService Db...")
 	redisService := repos.NewRedisService()
-	log.Println("Connected to redisService db")
+	logger.Good("Connected to RedisService Db")
 
-	log.Println("Setting up data access layers...")
+	logger.Info("Setting up Data Access Layers...")
 	userDal := dal.NewUsersDAL(pgsql, conf.GetMeduzaDbSchema())
 	adminDal := dal.NewAdminsDAL(pgsql, conf.GetMeduzaDbSchema())
 	agentDal := dal.NewAgentDAL(&redisService)
 	checkInDal := dal.NewCheckInDAL(&redisService)
 	listenersDal := dal.NewListenerDAL(&redisService)
-	log.Println("Finished setting up data access layers")
+	logger.Good("Finished setting up data access layers")
 
 	secret := conf.GetMeduzaJWTToken()
 	jwtService := models.NewJWTService(secret, 15*time.Minute, 30*24*time.Hour)
@@ -59,8 +59,8 @@ func main() {
 	// NewServer initialize the Http Server
 	teamserver := server.NewServer(dependencies)
 
-	log.Println("Starting teamserver...")
+	logger.Info("Starting Teamserver...")
 	if err := teamserver.Run(); err != nil {
-		log.Panic("Failed to start teamserver. Terminating...", err)
+		logger.Panic("Failed to Start Teamserver. Terminating...", err)
 	}
 }
