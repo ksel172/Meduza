@@ -8,10 +8,24 @@ import (
 
 const delimiter = "jRlOPs"
 
-type XORUtil struct{}
+type XORUtil struct {
+	key []byte
+}
+
+func NewXorUtil() (*XORUtil, error) {
+	xorUtils := &XORUtil{}
+
+	key, err := xorUtils.GenerateRandomKey()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to generate random key: %w", err)
+	}
+	xorUtils.key = key
+
+	return xorUtils, nil
+}
 
 func (x *XORUtil) Encrypt(input string) (string, error) {
-	key, err := x.generateRandomKey()
+	key, err := x.GenerateRandomKey()
 	if err != nil {
 		return "", fmt.Errorf("failed to generate key: %v", err)
 	}
@@ -62,7 +76,7 @@ func (x *XORUtil) Decrypt(input string) (string, error) {
 	return string(result), nil
 }
 
-func (x *XORUtil) generateRandomKey() ([]byte, error) {
+func (x *XORUtil) GenerateRandomKey() ([]byte, error) {
 	n, err := rand.Int(rand.Reader, big.NewInt(9))
 	if err != nil {
 		return nil, err
