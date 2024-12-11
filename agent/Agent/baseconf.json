@@ -13,6 +13,8 @@
     "Jitter": 20,
     "KillDate": "9999-12-31T23:59:59",
     "WorkingHoursStart": "0001-01-01T00:00:00",
-    "WorkingHoursEnd": "0001-01-01T00:00:00"
+    "WorkingHoursEnd": "0001-01-01T00:00:00",
+    "AmsiPatching": false,
+    "EtwPatching": false
   }
 }

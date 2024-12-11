@@ -30,5 +30,11 @@
         public DateTime WorkingHoursStart { get; set; } = DateTime.MinValue;
 
         public DateTime WorkingHoursEnd { get; set; } = DateTime.MinValue;
+        
+        public bool AmsiPatching { get; set; } = false;
+
+        public bool ETWPatching { get; set; } = false;
+
+
     }
 }
