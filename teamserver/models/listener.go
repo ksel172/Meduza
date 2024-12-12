@@ -1,63 +1,114 @@
 package models
 
-import (
-	"time"
-)
+import "time"
 
 // Listener Types (Enum)
 const (
 	ListenerTypeHTTP    = "http"
-	ListenerTypeHTTPS   = "https"
 	ListenerTypeTCP     = "tcp"
 	ListenerTypeSMB     = "smb"
-	ListenerTypeForeign = "external"
+	ListenerTypeForeign = "foreign"
 )
 
-// AllowedListenerTypes - Valid listener types
 var AllowedListenerTypes = []string{
 	ListenerTypeHTTP,
-	ListenerTypeHTTPS,
 	ListenerTypeTCP,
 	ListenerTypeSMB,
 	ListenerTypeForeign,
 }
 
-// Listener Statuses (Enum)
 const (
 	StatusStopped    = 0
 	StatusRunning    = 1
 	StatusPaused     = 2
-	StatusProcessing = 4
-	StatusError      = 5
+	StatusProcessing = 3
+	StatusError      = 4
 )
 
-// Listener - Model stored in Redis
+type ListenerRequest struct {
+	Type        string `json:"type"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Config      any    `json:"config"`
+}
+
 type Listener struct {
-	ID          string `json:"id"`     // UUID
-	Type        string `json:"type"`   // Listener Type (http, tcp, etc.)
-	Host        string `json:"host"`   // IP or hostname
-	Port        int    `json:"port"`   // Port number
-	Status      int    `json:"status"` // 0 = stopped, 1 = running, 2 = paused, 3 = processing
-	Description string `json:"description,omitempty"`
+	ID          string     `json:"id"`
+	Type        string     `json:"type"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Status      int        `json:"status"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	StartedAt   *time.Time `json:"started_at"`
+	StoppedAt   *time.Time `json:"stopped_at"`
+	Config      any        `json:"config"`
+}
 
-	// Time related fields
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
-	StartedAt *time.Time `json:"startedAt,omitempty"`
-	StoppedAt *time.Time `json:"stoppedAt,omitempty"`
+type HTTPConfig struct {
+	KillDate         int64            `json:"kill_date"`
+	WorkingHours     string           `json:"working_hours"`
+	Hosts            []string         `json:"hosts"`
+	HostBind         string           `json:"host_bind"`
+	HostRotation     string           `json:"host_rotation"`
+	PortBind         string           `json:"port_bind"`
+	PortConn         string           `json:"port_conn"`
+	Secure           bool             `json:"secure"`
+	HostHeader       string           `json:"host_header"`
+	Headers          []Header         `json:"headers"`
+	Uris             []string         `json:"uris"`
+	Certificate      Certificate      `json:"certificate"`
+	WhitelistEnabled bool             `json:"whitelist_enabled"`
+	Whitelist        []string         `json:"whitelist,omitempty"`
+	BlacklistEnabled bool             `json:"blacklist_enabled"`
+	Blacklist        []string         `json:"blacklist,omitempty"`
+	ProxySettings    ProxyConfig      `json:"proxy_settings"`
+	ResponseRules    ResponseSettings `json:"response_rules"`
+}
 
-	// SSL/TLS
-	CertPath string `json:"certPath,omitempty"` // Certificate (HTTPS)
-	KeyPath  string `json:"keyPath,omitempty"`  // Private Key (HTTPS)
+type TCPConfig struct {
+	PortBind   string `json:"port_bind"`
+	HostBind   string `json:"host_bind"`
+	BufferSize int    `json:"buffer_size"`
+	Timeout    int    `json:"timeout"`
+}
 
-	// Whitelisting and Blacklisting
-	WhitelistEnabled bool     `json:"whitelistEnabled"`
-	Whitelist        []string `json:"whitelist,omitempty"`
-	BlacklistEnabled bool     `json:"blacklistEnabled"`
-	Blacklist        []string `json:"blacklist,omitempty"`
+type SMBConfig struct {
+	PipeName     string `json:"pipe_name"`
+	MaxInstances int    `json:"max_instances"`
+	KillDate     int64  `json:"kill_date"`
+}
 
-	// Logging
-	LoggingEnabled bool   `json:"loggingEnabled"`
-	LogPath        string `json:"logPath,omitempty"`
-	LogLevel       string `json:"logLevel"`
+type ForeignConfig struct {
+	Endpoint       string         `json:"endpoint"`
+	Authentication Authentication `json:"authentication"`
+}
+
+type Authentication struct {
+	Enabled  bool   `json:"enabled"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
+type Header struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type Certificate struct {
+	CertPath string `json:"cert_path"`
+	KeyPath  string `json:"key_path"`
+}
+
+type ProxyConfig struct {
+	Enabled  bool   `json:"enabled"`
+	Type     string `json:"type"`
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type ResponseSettings struct {
+	Headers []Header `json:"headers"`
 }

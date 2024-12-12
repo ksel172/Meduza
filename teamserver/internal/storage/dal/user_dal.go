@@ -50,7 +50,7 @@ func (dal *UserDAL) GetUserByUsername(ctx context.Context, username string) (*mo
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
 		}
-		return nil, fmt.Errorf("Failed to fetch user: %w", err)
+		return nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
 	return &user, nil
 }
@@ -63,7 +63,7 @@ func (dal *UserDAL) GetUserById(ctx context.Context, id string) (*models.ResUser
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
 		}
-		return nil, fmt.Errorf("Failed to fetch user: %w", err)
+		return nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
 	return &user, nil
 }
