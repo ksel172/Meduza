@@ -20,7 +20,7 @@ func NewListenerDAL(redis *redis.Service) *ListenerDAL {
 	return &ListenerDAL{*redis}
 }
 
-func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *models.Listener) error {
+func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *models.Listener) (*models.Listener, error) {
 	if listener.ID == "" {
 		listener.ID = uuid.New().String()
 	}
@@ -28,13 +28,13 @@ func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *models.Lis
 	key := fmt.Sprintf("%s%s", listenerPrefix, listener.ID)
 	data, err := json.MarshalContext(ctx, listener)
 	if err != nil {
-		return fmt.Errorf("failed to marshal listener: %w", err)
+		return nil, fmt.Errorf("failed to marshal listener: %w", err)
 	}
 
 	if err := dal.redis.JsonSet(ctx, key, data); err != nil {
-		return fmt.Errorf("failed to set listener: %w", err)
+		return nil, fmt.Errorf("failed to set listener: %w", err)
 	}
-	return nil
+	return listener, nil
 }
 
 func (dal *ListenerDAL) GetListener(ctx context.Context, id string) (*models.Listener, error) {
@@ -53,10 +53,19 @@ func (dal *ListenerDAL) GetListener(ctx context.Context, id string) (*models.Lis
 }
 
 func (dal *ListenerDAL) UpdateListener(ctx context.Context, listener *models.Listener) error {
-	return dal.CreateListener(ctx, listener)
+	_, err := dal.CreateListener(ctx, listener)
+	return err
 }
 
 func (dal *ListenerDAL) DeleteListener(ctx context.Context, id string) error {
 	key := fmt.Sprintf("%s%s", listenerPrefix, id)
 	return dal.redis.JsonDelete(ctx, key)
+}
+
+func (dal *ListenerDAL) GetListenerConfig(ctx context.Context, id string) (interface{}, error) {
+	listener, err := dal.GetListener(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return listener.Config, nil
 }
