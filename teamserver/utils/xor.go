@@ -17,7 +17,7 @@ func NewXorUtil() (*XORUtil, error) {
 
 	key, err := xorUtils.GenerateRandomKey()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to generate random key: %w", err)
+		return nil, fmt.Errorf("failed to generate random key: %w", err)
 	}
 	xorUtils.key = key
 

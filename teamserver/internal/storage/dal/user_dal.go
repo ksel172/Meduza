@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/ksel172/Meduza/teamserver/internal/models"
+
+	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 type UserDAL struct {

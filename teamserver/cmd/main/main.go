@@ -3,14 +3,14 @@ package main
 import (
 	"time"
 
-	"github.com/ksel172/Meduza/teamserver/internal/models"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
+	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 
-	"github.com/ksel172/Meduza/teamserver/conf"
-	"github.com/ksel172/Meduza/teamserver/internal/api/handlers"
+	"github.com/ksel172/Meduza/teamserver/internal/handlers"
 	"github.com/ksel172/Meduza/teamserver/internal/server"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 )
 
 func main() {

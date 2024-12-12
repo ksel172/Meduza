@@ -3,10 +3,11 @@ package dal
 import (
 	"context"
 	"fmt"
+
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
-	"github.com/ksel172/Meduza/teamserver/internal/models"
 	redis "github.com/ksel172/Meduza/teamserver/internal/storage/repos"
+	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 const listenerPrefix = "listener:"

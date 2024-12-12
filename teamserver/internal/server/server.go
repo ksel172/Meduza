@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/ksel172/Meduza/teamserver/conf"
-	"github.com/ksel172/Meduza/teamserver/internal/api/handlers"
-	"github.com/ksel172/Meduza/teamserver/internal/models"
+	"github.com/ksel172/Meduza/teamserver/internal/handlers"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
+	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 	"github.com/mattn/go-colorable"
 )
 

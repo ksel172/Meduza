@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/models"
+	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 func (s *Server) AuthV1(group *gin.RouterGroup) {

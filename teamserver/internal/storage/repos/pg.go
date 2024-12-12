@@ -4,7 +4,8 @@ import (
 	/* 	"context" */
 	"database/sql"
 	"fmt"
-	"github.com/ksel172/Meduza/teamserver/conf"
+
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 	_ "github.com/lib/pq"
 )
 

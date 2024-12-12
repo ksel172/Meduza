@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/models"
-	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
+	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 type ListenerHandler struct {

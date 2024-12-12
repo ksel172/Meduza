@@ -27,7 +27,7 @@ type Aes struct {
 func NewAES() (*Aes, error) {
 	generateKey, err := GenerateAES256Key()
 	if err != nil {
-		return nil, fmt.Errorf("Invalid key length and failed to generate new AES-256 key: %v", err)
+		return nil, fmt.Errorf("invalid key length and failed to generate new AES-256 key: %v", err)
 	}
 	return &Aes{key: generateKey}, nil
 }
@@ -41,14 +41,14 @@ func (a *Aes) AesEncrypt(data []byte) ([]byte, error) {
 	// Each block is processed independently, either encrypted or decrypted, using the same key.
 	block, err := aes.NewCipher(a.key)
 	if err != nil {
-		return nil, fmt.Errorf(`Error while creating a newcipher: %w`, err)
+		return nil, fmt.Errorf(`error while creating a newcipher: %w`, err)
 	}
 
 	//NewGCM creates a new AES from the cipher block.
 	//AES-GCM provides authenticated encryption, which ensures both confidentiality and integrity of data.
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf(`Error while creating a newGCM: %w`, err)
+		return nil, fmt.Errorf(`error while creating a newGCM: %w`, err)
 	}
 
 	//Nonce ensures that each encryption operation produces unique cipertext.
@@ -56,7 +56,7 @@ func (a *Aes) AesEncrypt(data []byte) ([]byte, error) {
 	nonce := make([]byte, aesGCM.NonceSize())
 	_, err = io.ReadFull(rand.Reader, nonce)
 	if err != nil {
-		return nil, fmt.Errorf(`Error while reading a nonce: %w`, err)
+		return nil, fmt.Errorf(`error while reading a nonce: %w`, err)
 	}
 
 	// The Seal method  encrypts and authenticate by append the data to the nonce.
@@ -74,20 +74,20 @@ func (a *Aes) AesDecrypt(ciphertext []byte) ([]byte, error) {
 	// It decodes the ciphertext from base to raw byte
 	decodeCipherText, err := base64.StdEncoding.DecodeString(string(ciphertext))
 	if err != nil {
-		return nil, fmt.Errorf(`Error Decoding ciphertext: %w`, err)
+		return nil, fmt.Errorf(`error Decoding ciphertext: %w`, err)
 	}
 
 	// Creates a new AES cipher block using the provided key.
 	// The key must be the same used while encryption.
 	block, err := aes.NewCipher(a.key)
 	if err != nil {
-		return nil, fmt.Errorf(`Error Creating a cipher block instance: %w`, err)
+		return nil, fmt.Errorf(`error Creating a cipher block instance: %w`, err)
 	}
 
 	//NewGCM creates a AES-GCM from the cipher block.
 	aesGcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf(`Error Creating a NewGCM instance: %w`, err)
+		return nil, fmt.Errorf(`error Creating a NewGCM instance: %w`, err)
 	}
 
 	//AES-GCM provides authenticated encryption, which ensures both confidentiality and integrity of data.
@@ -104,7 +104,7 @@ func (a *Aes) AesDecrypt(ciphertext []byte) ([]byte, error) {
 	// The `Open` function reverses the encryption process using the nonce and key.
 	data, err := aesGcm.Open(nil, nonce, encryptedData, nil)
 	if err != nil {
-		return nil, fmt.Errorf(`Error decoding encrypteddata: %w`, err)
+		return nil, fmt.Errorf(`error decoding encrypteddata: %w`, err)
 	}
 
 	// Return the decrypted data.
@@ -115,7 +115,7 @@ func (a *Aes) AesDecrypt(ciphertext []byte) ([]byte, error) {
 func GenerateAES256Key() ([]byte, error) {
 	key := make([]byte, AES256KeySize)
 	if _, err := io.ReadFull(rand.Reader, key); err != nil {
-		return nil, fmt.Errorf("Failed to generate AES-256 key: %v", err)
+		return nil, fmt.Errorf("failed to generate AES-256 key: %v", err)
 	}
 	return key, nil
 }

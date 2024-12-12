@@ -2,9 +2,10 @@ package conf
 
 import (
 	"fmt"
-	"github.com/ksel172/Meduza/teamserver/utils"
 	"log"
 	"os"
+
+	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 const (

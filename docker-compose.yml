@@ -4,7 +4,7 @@ services:
     container_name: ${TEAMSERVER_HOSTNAME}
     build:
       context: teamserver
-      dockerfile: deployment/docker/Dockerfile
+      dockerfile: docker/Dockerfile
     ports:
       - "${TEAMSERVER_PORT}:${TEAMSERVER_PORT}"
       - "${DLV_PORT:-2345}:${DLV_PORT:-2345}"
