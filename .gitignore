@@ -10,4 +10,3 @@ Makefile
 
 teamserver/build
 teamserver/tmp
-teamserver/docker
