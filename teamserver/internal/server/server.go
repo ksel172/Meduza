@@ -21,6 +21,7 @@ type DependencyContainer struct {
 	AgentController     *handlers.AgentController
 	CheckInController   *handlers.CheckInController
 	ListenersController *handlers.ListenerHandler
+	ListenerController  *handlers.ListenersHandler
 }
 
 type Server struct {

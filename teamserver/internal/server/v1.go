@@ -57,7 +57,7 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 
 	listenersGroup := group.Group("/listeners")
 	{
-		listenersGroup.POST("", s.dependencies.ListenersController.CreateListener)
+		listenersGroup.POST("", s.dependencies.ListenerController.AddListener)
 		listenersGroup.GET("/:id", s.dependencies.ListenersController.GetListener)
 		listenersGroup.PUT("", s.dependencies.ListenersController.UpdateListener)
 		listenersGroup.DELETE(":id", s.dependencies.ListenersController.DeleteListener)
