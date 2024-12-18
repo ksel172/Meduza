@@ -42,13 +42,12 @@ var ValidLogLevel = []LogLevel{
 
 // Listener represents a listener configuration , including settings for logging, response rules, and network configuration.
 type Listener struct {
-	ID            Id            `json:"id"`                    // UUID
-	Type          string        `json:"type"`                  // Listener Type (http, tcp, etc.)
-	Name          string        `json:"name"`                  // Name
-	Status        int           `json:"status"`                // 0 = stopped, 1 = running, 2 = paused, 3 = processing
-	Description   string        `json:"description,omitempty"` // description
-	Config        any           `json:"config"`                // Configuration of the Listener
-	ResponseRules ResponseRules `json:"response_rules"`        // Response Rules consists headers
+	ID          Id     `json:"id"`                    // UUID
+	Type        string `json:"type"`                  // Listener Type (http, tcp, etc.)
+	Name        string `json:"name"`                  // Name
+	Status      int    `json:"status"`                // 0 = stopped, 1 = running, 2 = paused, 3 = processing
+	Description string `json:"description,omitempty"` // description
+	Config      any    `json:"config"`                // Configuration of the Listener
 
 	// Logging
 	LoggingEnabled bool    `json:"logging_enabled"` // Toggle for enabling Logs
@@ -59,17 +58,6 @@ type Listener struct {
 	UpdatedAt time.Time  `json:"updated_at"`
 	StartedAt *time.Time `json:"started_at,omitempty"`
 	StoppedAt *time.Time `json:"stopped_at,omitempty"`
-}
-
-// Header represents a key-value pair used in HTTP headers.
-type Header struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
-// ResponseRules defines rules for response headers.
-type ResponseRules struct {
-	Headers []Header `json:"headers"`
 }
 
 // Logging defines the configuration for logging, including the log path and log level.
