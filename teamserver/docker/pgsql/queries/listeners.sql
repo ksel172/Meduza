@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS  {POSTGRES_SCHEMA}.{TABLE_NAME} (
    status INTEGER NOT NULL,
    description TEXT,
    config JSONB,
-   response_rules JSONB,
    logging_enabled BOOLEAN NOT NULL DEFAULT FALSE,
    logging JSONB,
    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

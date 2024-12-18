@@ -26,16 +26,12 @@ func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *listeners.
 	if err != nil {
 		logger.Error("Error in Listener Dal:", err)
 	}
-	rr, err := json.Marshal(listener.ResponseRules)
-	if err != nil {
-		logger.Error("Error in Listener Dal:", err)
-	}
 	logging, err := json.Marshal(listener.Logging)
 	if err != nil {
 		logger.Error("Error in Listener Dal:", err)
 	}
 	query := fmt.Sprintf(`INSERT INTO %s.listeners (type, name, status, description, config, response_rules, logging_enabled, logging, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, dal.schema)
-	_, err = dal.db.ExecContext(ctx, query, listener.Type, listener.Name, listener.Status, listener.Description, config, rr, listener.LoggingEnabled, logging, time.Now().UTC())
+	_, err = dal.db.ExecContext(ctx, query, listener.Type, listener.Name, listener.Status, listener.Description, config, listener.LoggingEnabled, logging, time.Now().UTC())
 	return err
 }
 
@@ -81,11 +77,6 @@ func (dal *ListenerDAL) GetListenerById(ctx context.Context, lId string) (listen
 		return listeners.Listener{}, fmt.Errorf("failed to parse Config field")
 	}
 
-	if err := json.Unmarshal(rawResponseRules, &listener.ResponseRules); err != nil {
-		logger.Error("Error unmarshalling ResponseRules", err)
-		return listeners.Listener{}, fmt.Errorf("failed to parse ResponseRules field")
-	}
-
 	if err := json.Unmarshal(rawLogging, &listener.Logging); err != nil {
 		logger.Error("Error unmarshalling Logging", err)
 		return listeners.Listener{}, fmt.Errorf("failed to parse Logging field")
@@ -117,12 +108,6 @@ func (dal *ListenerDAL) GetAllListeners(ctx context.Context) ([]listeners.Listen
 		if err := json.Unmarshal(rawConfig, &listener.Config); err != nil {
 			logger.Error("Failed to unmarshal config\n", err)
 			return nil, fmt.Errorf("failed to unmarshal config: %w", err)
-		}
-
-		// Unmarshal ResponseRules
-		if err := json.Unmarshal(rawResponseRules, &listener.ResponseRules); err != nil {
-			logger.Error("Failed to unmarshal response rules\n", err)
-			return nil, fmt.Errorf("failed to unmarshal response rules: %w", err)
 		}
 
 		// Unmarshal Logging

@@ -197,18 +197,6 @@ func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
 		}
 		updates["config"] = configJson
 	}
-	if listener.ResponseRules.Headers != nil && !reflect.DeepEqual(listener.ResponseRules.Headers, exists.ResponseRules.Headers) {
-		// Marshal the ResponseRules field only if it has changed
-		rrJson, err := json.Marshal(&listener.ResponseRules)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"status":  s.FAILED,
-				"message": "Failed to marshal response rules field",
-			})
-			return
-		}
-		updates["response_rules"] = rrJson
-	}
 	if listener.Logging != (listeners.Logging{}) && !reflect.DeepEqual(listener.Logging, exists.Logging) {
 		// Marshal the Logging field only if it has changed
 		logJson, err := json.Marshal(&listener.Logging)

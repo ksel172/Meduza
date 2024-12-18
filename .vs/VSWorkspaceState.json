@@ -1,0 +1,17 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\teamserver",
+    "\\teamserver\\cmd",
+    "\\teamserver\\cmd\\main",
+    "\\teamserver\\docker",
+    "\\teamserver\\docker\\pgsql",
+    "\\teamserver\\docker\\pgsql\\init-scripts",
+    "\\teamserver\\docker\\pgsql\\queries",
+    "\\teamserver\\pkg",
+    "\\teamserver\\pkg\\logger",
+    "\\teamserver\\utils"
+  ],
+  "SelectedNode": "\\teamserver\\docker\\pgsql\\init-scripts",
+  "PreviewInSolutionExplorer": false
+}
