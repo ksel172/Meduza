@@ -13,14 +13,14 @@ import (
 )
 
 type DependencyContainer struct {
-	UserController      *handlers.UserController
-	RedisService        *repos.Service
-	AuthController      *handlers.AuthController
-	JwtService          *models.JWTService
-	AdminController     *handlers.AdminController
-	AgentController     *handlers.AgentController
-	CheckInController   *handlers.CheckInController
-	ListenersController *handlers.ListenerHandler
+	UserController     *handlers.UserController
+	RedisService       *repos.Service
+	AuthController     *handlers.AuthController
+	JwtService         *models.JWTService
+	AdminController    *handlers.AdminController
+	AgentController    *handlers.AgentController
+	CheckInController  *handlers.CheckInController
+	ListenerController *handlers.ListenerHandler
 }
 
 type Server struct {

@@ -95,9 +95,9 @@ func (logger *Logger) Warn(args ...interface{}) {
 
 func (logger *Logger) Error(args ...interface{}) {
 	if logger.showTime {
-		logger.log.SetPrefix("[" + colors.Green(time.Now().Format("15:04:05")) + "] [" + colors.Red("ERRO") + "] ")
+		logger.log.SetPrefix("[" + colors.Green(time.Now().Format("15:04:05")) + "] [" + colors.Red("ERROR") + "] ")
 	} else {
-		logger.log.SetPrefix("[" + colors.Red("ERRO") + "] ")
+		logger.log.SetPrefix("[" + colors.Red("ERROR") + "] ")
 	}
 	logger.log.Println(args...)
 }
