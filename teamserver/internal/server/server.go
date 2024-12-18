@@ -20,7 +20,7 @@ type DependencyContainer struct {
 	AdminController    *handlers.AdminController
 	AgentController    *handlers.AgentController
 	CheckInController  *handlers.CheckInController
-	ListenerController *handlers.ListenersHandler
+	ListenerController *handlers.ListenerHandler
 }
 
 type Server struct {

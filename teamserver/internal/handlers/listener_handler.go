@@ -13,15 +13,15 @@ import (
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
-type ListenersHandler struct {
-	dal *dal.ListenersDAL
+type ListenerHandler struct {
+	dal *dal.ListenerDAL
 }
 
-func NewListenersHandler(dal *dal.ListenersDAL) *ListenersHandler {
-	return &ListenersHandler{dal: dal}
+func NewListenersHandler(dal *dal.ListenerDAL) *ListenerHandler {
+	return &ListenerHandler{dal: dal}
 }
 
-func (h *ListenersHandler) CreateListener(ctx *gin.Context) {
+func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 	var listener listeners.Listener
 
 	if err := ctx.ShouldBindJSON(&listener); err != nil {
@@ -47,7 +47,7 @@ func (h *ListenersHandler) CreateListener(ctx *gin.Context) {
 	}
 	listener.Config = configJSON
 
-	err = h.dal.CreateListeners(reqCtx, &listener)
+	err = h.dal.CreateListener(reqCtx, &listener)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"status":  s.ERROR,
@@ -64,8 +64,8 @@ func (h *ListenersHandler) CreateListener(ctx *gin.Context) {
 
 }
 
-func (h *ListenersHandler) GetAllListeners(ctx *gin.Context) {
-	lists, err := h.dal.GetAllListener(ctx.Request.Context())
+func (h *ListenerHandler) GetAllListeners(ctx *gin.Context) {
+	lists, err := h.dal.GetAllListeners(ctx.Request.Context())
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
@@ -80,7 +80,7 @@ func (h *ListenersHandler) GetAllListeners(ctx *gin.Context) {
 	})
 }
 
-func (h *ListenersHandler) GetListenerById(ctx *gin.Context) {
+func (h *ListenerHandler) GetListenerById(ctx *gin.Context) {
 	id := ctx.Param("id")
 	listener, err := h.dal.GetListenerById(ctx.Request.Context(), id)
 	if err != nil {
@@ -98,7 +98,7 @@ func (h *ListenersHandler) GetListenerById(ctx *gin.Context) {
 	})
 }
 
-func (h *ListenersHandler) DeleteListener(ctx *gin.Context) {
+func (h *ListenerHandler) DeleteListener(ctx *gin.Context) {
 	id := ctx.Param("id")
 	c := ctx.Request.Context()
 
@@ -128,7 +128,7 @@ func (h *ListenersHandler) DeleteListener(ctx *gin.Context) {
 	})
 }
 
-func (h *ListenersHandler) UpdateListener(ctx *gin.Context) {
+func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
 	id := ctx.Param("id")
 	c := ctx.Request.Context()
 

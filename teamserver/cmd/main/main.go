@@ -32,7 +32,7 @@ func main() {
 	adminDal := dal.NewAdminsDAL(pgsql, conf.GetMeduzaDbSchema())
 	agentDal := dal.NewAgentDAL(&redisService)
 	checkInDal := dal.NewCheckInDAL(&redisService)
-	listenerDal := dal.NewListenersDAL(pgsql, conf.GetMeduzaDbSchema())
+	listenerDal := dal.NewListenerDAL(pgsql, conf.GetMeduzaDbSchema())
 	logger.Good("Finished setting up data access layers")
 
 	secret := conf.GetMeduzaJWTToken()
