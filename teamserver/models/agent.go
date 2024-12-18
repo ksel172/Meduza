@@ -4,9 +4,12 @@ import (
 	"time"
 )
 
+// AgentTaskId is
+type AgentTaskId = string
+
 const (
-	ParamAgentID = "agent_id"
-	ParamTaskID  = "task_id"
+	ParamAgentID AgentTaskId = "agent_id" // Agents Id
+	ParamTaskID  AgentTaskId = "task_id"  // Tasks Id of a agent.
 )
 
 // Contains all information required for controlling an agent.

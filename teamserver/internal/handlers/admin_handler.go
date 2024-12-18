@@ -8,6 +8,7 @@ import (
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
@@ -18,6 +19,7 @@ var (
 	curAdminCount = 0        // Tracks the number of admins created
 	maxAdmin      = 4        // Maximum number of allowed admins
 	mu            sync.Mutex // Ensures thread safety for token counter
+	s             = utils.Status
 )
 
 type AdminController struct {
@@ -37,8 +39,8 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 	// it checks if route is restricted
 	if isRouteRestricted() {
 		ctx.JSONP(http.StatusForbidden, gin.H{
-			"Message": "Route Permanently restricted: Admin creation is not allowed",
-			"Status":  "Failed",
+			"message": "route permanently restricted: admin creation is not allowed",
+			"status":  s.ERROR,
 		})
 		ctx.Abort()
 		return
@@ -47,8 +49,8 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 	authToken := ctx.GetHeader("Authorization")
 	if authToken == "" {
 		ctx.JSONP(http.StatusForbidden, gin.H{
-			"Message": "Authorization token is missing",
-			"Status":  "Failed",
+			"message": "authorization token is missing",
+			"status":  s.FAILED,
 		})
 		ctx.Abort()
 		return
@@ -57,10 +59,10 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 	// It's Validate Token
 	if err := validateToken(authToken); err != nil {
 		remaining := maxAdmin - curAdminCount
+		logger.Error("Token Validation Error", err)
 		ctx.JSONP(http.StatusUnauthorized, gin.H{
-			"Error":            err.Error(),
-			"Message":          "Token Validation Error",
-			"Status":           "Failed",
+			"message":          "token validation error",
+			"status":           s.ERROR,
 			"admins_left":      remaining,
 			"max_admin_tokens": maxAdmin,
 			"token":            authToken,
@@ -71,10 +73,10 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 
 	// parsing request body
 	if err := ctx.ShouldBindJSON(&adminReq); err != nil {
+		logger.Error("Unable to parse error of request body", err)
 		ctx.JSONP(http.StatusUnprocessableEntity, gin.H{
-			"Error":   err.Error(),
-			"Message": "Unable to parse request body",
-			"Status":  "Failed",
+			"message": "unable to parse request body",
+			"status":  s.FAILED,
 		})
 		ctx.Abort()
 		return
@@ -83,9 +85,8 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 	hashPassword, err := utils.HashPassword(adminReq.PasswordHash)
 	if err != nil {
 		ctx.JSONP(http.StatusBadRequest, gin.H{
-			"Error":   err.Error(),
-			"Message": "Invalid Request Error",
-			"Status":  "Failed",
+			"message": "invalid request error",
+			"status":  s.ERROR,
 		})
 		ctx.Abort()
 		return
@@ -94,10 +95,10 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 
 	validate := utils.NewValidatorService()
 	if err := validate.ValidateStruct(adminReq); err != nil {
+		logger.Error("Validation Parsing Failed :", err)
 		ctx.JSONP(http.StatusBadRequest, gin.H{
-			"Error":   err.Error(),
-			"Message": "Validation failed",
-			"Status":  "Failed",
+			"message": "validation failed",
+			"status":  s.FAILED,
 		})
 		ctx.Abort()
 		return
@@ -105,10 +106,10 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 
 	err = aC.dal.CreateDefaultAdmins(ctx.Request.Context(), &adminReq)
 	if err != nil {
+		logger.Error("Error while creating/adding admin: ", err)
 		ctx.JSONP(http.StatusInternalServerError, gin.H{
-			"Error":   err.Error(),
-			"Message": "Error Adding Users",
-			"Status":  "Failed",
+			"message": "unable to add admin",
+			"status":  s.FAILED,
 		})
 		ctx.Abort()
 		return
@@ -119,8 +120,8 @@ func (aC *AdminController) CreateAdmin(ctx *gin.Context) {
 	remaining := maxAdmin - curAdminCount
 
 	ctx.JSONP(http.StatusCreated, gin.H{
-		"Message":          "User Created Successfully",
-		"Status":           "Success",
+		"message":          "admin created successfully",
+		"status":           s.SUCCESS,
 		"admins_left":      remaining,
 		"max_admin_tokens": maxAdmin,
 	})
