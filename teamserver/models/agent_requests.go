@@ -62,10 +62,10 @@ func (uacr UpdateAgentConfigRequest) IntoAgentConfig(agentConfig AgentConfig) Ag
 
 // AgentTask request
 type AgentTaskRequest struct {
-	Type     string `json:"type"`
-	Status   string `json:"status"`
-	Module   string `json:"module"`
-	Commmand string `json:"commmand"`
+	Type    string `json:"type"`
+	Status  string `json:"status"`
+	Module  string `json:"module"`
+	Command string `json:"command"`
 }
 
 // Initializes an AgentTask
@@ -80,7 +80,7 @@ func (agr AgentTaskRequest) IntoAgentTask() AgentTask {
 		Type:    agr.Type,
 		Status:  agr.Status,
 		Module:  agr.Module,
-		Command: agr.Commmand,
+		Command: agr.Command,
 		Created: time.Now(),
 	}
 }

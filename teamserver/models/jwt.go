@@ -74,7 +74,7 @@ func (j *JWTService) GenerateTokens(userID, role string) (*AuthResponse, error) 
 func (j *JWTService) ValidateToken(tokenStr string) (*UserClaim, error) {
 
 	if j.IsTokenRevoked(tokenStr) {
-		return nil, errors.New("Token has been revoked")
+		return nil, errors.New("token has been revoked")
 	}
 
 	token, err := jwt.ParseWithClaims(tokenStr, &UserClaim{}, func(token *jwt.Token) (interface{}, error) {
@@ -98,7 +98,7 @@ func (j *JWTService) ValidateToken(tokenStr string) (*UserClaim, error) {
 func (j *JWTService) RefreshTokens(refreshToken string) (*AuthResponse, error) {
 	// Step 1: Validate the refresh token
 	if j.IsTokenRevoked(refreshToken) {
-		return nil, fmt.Errorf("Revoked Token.")
+		return nil, fmt.Errorf("revoked token")
 	}
 
 	claims, err := j.ValidateToken(refreshToken)
