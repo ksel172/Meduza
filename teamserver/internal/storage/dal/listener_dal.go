@@ -1,6 +1,8 @@
 package dal
 
 import (
+
+	//standard
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -8,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	// internal
 	"github.com/ksel172/Meduza/teamserver/pkg/listeners"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
@@ -30,7 +33,7 @@ func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *listeners.
 	if err != nil {
 		logger.Error("Error in Listener Dal:", err)
 	}
-	query := fmt.Sprintf(`INSERT INTO %s.listeners (type, name, status, description, config, logging_enabled, logging, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, dal.schema)
+	query := fmt.Sprintf(`INSERT INTO %s.listeners (type, name, status, description, config, logging_enabled, logging, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
 	_, err = dal.db.ExecContext(ctx, query, listener.Type, listener.Name, listener.Status, listener.Description, config, listener.LoggingEnabled, logging, time.Now().UTC())
 	return err
 }

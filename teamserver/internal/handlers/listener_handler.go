@@ -13,6 +13,11 @@ import (
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
+var (
+	registry = listeners.NewRegistry()
+	service  = &listeners.ListenersService{}
+)
+
 type ListenerHandler struct {
 	dal *dal.ListenerDAL
 }
@@ -36,7 +41,7 @@ func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 	reqCtx := ctx.Request.Context()
 
 	// Convert the parsed configuration back to JSON
-	configJSON, err := json.Marshal(listener.Config)
+	/* configJSON, err := json.Marshal(listener.Config)
 	if err != nil {
 		logger.Error("Error converting parsed config to JSON:", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -45,9 +50,9 @@ func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 		})
 		return
 	}
-	listener.Config = configJSON
+	listener.Config = configJSON */
 
-	err = h.dal.CreateListener(reqCtx, &listener)
+	err := h.dal.CreateListener(reqCtx, &listener)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"status":  s.ERROR,
@@ -234,4 +239,77 @@ func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
 			"message": "No fields to update",
 		})
 	}
+}
+
+func (h *ListenerHandler) StartListener(ctx *gin.Context) {
+	c := ctx.Request.Context()
+	id := ctx.Param("id")
+	list, err := h.dal.GetListenerById(c, id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"status":  s.FAILED,
+			"message": "Listener Does Not exists",
+		})
+		logger.Error("Error Unable to get the listener", err)
+		return
+	}
+
+	if _, exists := registry.GetListener(id); exists {
+		ctx.JSON(http.StatusConflict, gin.H{
+			"error":  "listener already running",
+			"status": s.ERROR,
+		})
+		return
+	}
+	newListener, err := service.CreateListener(list.Type, list.Config)
+	if err != nil {
+		logger.Error("Failed at newListener :", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": "internal server error",
+			"status":  s.ERROR,
+		})
+		return
+	}
+
+	if err := newListener.Start(); err != nil {
+		logger.Error("Failed to start the listener:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"message": "failed to start server",
+			"status":  s.FAILED,
+		})
+		return
+	}
+	registry.AddListener(id, newListener)
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "listener started",
+		"status":  s.SUCCESS,
+	})
+}
+
+func (h *ListenerHandler) StopListerner(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	listener, exists := registry.GetListener(id)
+	if !exists {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"message": "listener not found",
+			"status":  s.ERROR,
+		})
+		return
+	}
+
+	if err := listener.Stop(10 * time.Second); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"message": "failed to stop listener",
+			"status":  s.FAILED,
+		})
+
+		return
+	}
+
+	registry.RemoveListener(id)
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "listener stopped",
+		"status":  s.SUCCESS,
+	})
 }
