@@ -22,7 +22,7 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 	// Decode the received JSON into a C2Request
 	// NewC2Request sets agentStatus as uninitialized if that is not provided by the agent in the JSON
 	c2request := models.NewC2Request()
-	if err := ctx.ShouldBindJSON(c2request); err != nil {
+	if err := ctx.ShouldBindJSON(&c2request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
