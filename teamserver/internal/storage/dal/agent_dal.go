@@ -73,6 +73,11 @@ func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
 		return models.Agent{}, fmt.Errorf("failed to get agent: %w", err)
 	}
 
+	// Parse headers JSON
+	if err := json.Unmarshal(headerJSON, &agent.Config.Headers); err != nil {
+		return models.Agent{}, fmt.Errorf("failed to parse headers: %w", err)
+	}
+
 	return agent, nil
 }
 
