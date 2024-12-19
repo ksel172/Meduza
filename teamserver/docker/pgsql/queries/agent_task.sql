@@ -9,8 +9,4 @@ CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.agent_task (
     started TIMESTAMPTZ,
     finished TIMESTAMPTZ,
     FOREIGN KEY (agent_id) REFERENCES {POSTGRES_SCHEMA}.agents(id) ON DELETE CASCADE
-<<<<<<< HEAD
 );
-=======
-);
->>>>>>> 98d79f3 (changes in listener)
