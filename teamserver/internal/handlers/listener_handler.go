@@ -244,45 +244,60 @@ func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
 func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 	c := ctx.Request.Context()
 	id := ctx.Param("id")
+
+	// Retrieve the listener from the database
 	list, err := h.dal.GetListenerById(c, id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"status":  s.FAILED,
-			"message": "Listener Does Not exists",
+			"message": "Listener does not exist",
 		})
-		logger.Error("Error Unable to get the listener", err)
+		logger.Error("Failed to retrieve listener from database:", err)
 		return
 	}
 
+	// Check if the listener is already running
 	if _, exists := registry.GetListener(id); exists {
 		ctx.JSON(http.StatusConflict, gin.H{
-			"error":  "listener already running",
-			"status": s.ERROR,
+			"status":  s.ERROR,
+			"message": "Listener already running",
 		})
+		logger.Warn("Attempt to start already running listener with ID:", id)
 		return
 	}
+
+	// Create a new listener instance
+	logger.Info("Attempting to create listener of type:", list.Type)
 	newListener, err := service.CreateListener(list.Type, list.Config)
 	if err != nil {
-		logger.Error("Failed at newListener :", err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"message": "internal server error",
+		logger.Error("Failed to create new listener:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.ERROR,
+			"message": "Internal server error while creating listener",
 		})
 		return
 	}
 
+	// Start the listener
+	logger.Info("Starting listener with ID:", id)
 	if err := newListener.Start(); err != nil {
 		logger.Error("Failed to start the listener:", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": "failed to start server",
 			"status":  s.FAILED,
+			"message": "Failed to start listener",
 		})
 		return
 	}
+
+	// Add the listener to the registry
+	logger.Info("Adding listener to the registry with ID:", id)
 	registry.AddListener(id, newListener)
+
+	// Send a success response
 	ctx.JSON(http.StatusOK, gin.H{
-		"message": "listener started",
 		"status":  s.SUCCESS,
+		"message": "Listener started successfully",
+		"id":      id,
 	})
 }
 
