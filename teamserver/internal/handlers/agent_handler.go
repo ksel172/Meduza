@@ -10,13 +10,13 @@ import (
 )
 
 type AgentController struct {
-	dal *dal.AgentDAL
+	dal dal.IAgentDAL
 }
 
-/* Agents API */
-
-func NewAgentController(dal *dal.AgentDAL) *AgentController {
-	return &AgentController{dal: dal}
+func NewAgentController(dal dal.IAgentDAL) *AgentController {
+	return &AgentController{
+		dal: dal,
+	}
 }
 
 func (ac *AgentController) GetAgent(ctx *gin.Context) {
