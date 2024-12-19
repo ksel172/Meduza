@@ -1,23 +1,38 @@
 package dal
 
 import (
-	"context"
+	"database/sql"
 	"fmt"
 
-	redis2 "github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 type CheckInDAL struct {
-	redis redis2.Service
+	db     *sql.DB
+	schema string
 }
 
-func NewCheckInDAL(redisService *redis2.Service) *CheckInDAL {
-	return &CheckInDAL{redis: *redisService}
+func NewCheckInDAL(db *sql.DB, schema string) *CheckInDAL {
+	return &CheckInDAL{db: db, schema: schema}
 }
+
 func (dal *CheckInDAL) CreateAgent(agent models.Agent) error {
-	if err := dal.redis.JsonSet(context.Background(), agent.RedisID(), agent); err != nil {
-		return fmt.Errorf("failed to register agent: %w", err)
+	tx, err := dal.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
 	}
-	return nil
+	defer tx.Rollback()
+
+	// Insert agent
+	agentQuery := fmt.Sprintf(`
+        INSERT INTO %s.agents (id, name, note, status, first_callback, last_callback, modified_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`, dal.schema)
+
+	_, err = tx.Exec(agentQuery, agent.ID, agent.Name, agent.Note, agent.Status,
+		agent.FirstCallback, agent.LastCallback, agent.ModifiedAt)
+	if err != nil {
+		return fmt.Errorf("failed to insert agent: %w", err)
+	}
+
+	return tx.Commit()
 }

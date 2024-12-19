@@ -28,7 +28,7 @@ type Agent struct {
 // AgentInfo contains information about the agent computer
 type AgentInfo struct {
 	HostName   string `json:"host_name"`
-	IPAddr     string `json:"ip_addr"`
+	IPAddress  string `json:"ip_addr"`
 	Username   string `json:"username"`
 	SystemInfo string `json:"system_info"`
 	OSInfo     string `json:"os_info"`

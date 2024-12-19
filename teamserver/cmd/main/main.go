@@ -28,11 +28,12 @@ func main() {
 	logger.Good("Connected to RedisService Db")
 
 	logger.Info("Setting up Data Access Layers...")
-	userDal := dal.NewUsersDAL(pgsql, conf.GetMeduzaDbSchema())
-	adminDal := dal.NewAdminsDAL(pgsql, conf.GetMeduzaDbSchema())
-	agentDal := dal.NewAgentDAL(&redisService)
-	checkInDal := dal.NewCheckInDAL(&redisService)
-	listenerDal := dal.NewListenerDAL(pgsql, conf.GetMeduzaDbSchema())
+	schema := conf.GetMeduzaDbSchema()
+	userDal := dal.NewUsersDAL(pgsql, schema)
+	adminDal := dal.NewAdminsDAL(pgsql, schema)
+	agentDal := dal.NewAgentDAL(pgsql, schema)
+	checkInDal := dal.NewCheckInDAL(pgsql, schema)
+	listenerDal := dal.NewListenerDAL(pgsql, schema)
 	logger.Good("Finished setting up data access layers")
 
 	secret := conf.GetMeduzaJWTToken()
