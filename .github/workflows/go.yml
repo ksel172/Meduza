@@ -31,3 +31,7 @@ jobs:
     - name: Run handler tests
       working-directory: ./teamserver
       run: go test -v ./tests/handlers/... || true
+      
+    - name: Build application
+      working-directory: ./teamserver
+      run: go build -v ./...
