@@ -9,7 +9,6 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
-<<<<<<< HEAD
 type IAgentDAL interface {
 	GetAgent(agentID string) (models.Agent, error)
 	UpdateAgent(ctx context.Context, agent models.Agent) error
@@ -20,8 +19,6 @@ type IAgentDAL interface {
 	DeleteAgentTasks(ctx context.Context, agentID string) error
 }
 
-=======
->>>>>>> b2ff608 (Migrate agents from redis to postgres)
 type AgentDAL struct {
 	db     *sql.DB
 	schema string

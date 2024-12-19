@@ -20,7 +20,7 @@ func (s *ListenersService) CreateListener(listenerType string, config any) (List
 		if !ok {
 			return nil, errors.New("parsed config is not of type *http.Config")
 		}
-		return http.NewHttpListener(httpConfig.HostHeader, *httpConfig), nil
+		return http.NewHttpListener(httpConfig.HostHeader, *httpConfig)
 	default:
 		return nil, fmt.Errorf("unsupported listener type: %s", listenerType)
 	}
