@@ -9,6 +9,16 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
+type IAgentDAL interface {
+	GetAgent(agentID string) (models.Agent, error)
+	UpdateAgent(ctx context.Context, agent models.Agent) error
+	DeleteAgent(ctx context.Context, agentID string) error
+	CreateAgentTask(ctx context.Context, task models.AgentTask) error
+	GetAgentTasks(ctx context.Context, agentID string) ([]models.AgentTask, error)
+	DeleteAgentTask(ctx context.Context, agentID string, taskID string) error
+	DeleteAgentTasks(ctx context.Context, agentID string) error
+}
+
 type AgentDAL struct {
 	db     *sql.DB
 	schema string
