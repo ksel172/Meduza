@@ -291,7 +291,7 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 
 	// Add the listener to the registry
 	logger.Info("Adding listener to the registry with ID:", id)
-	/* 	registry.AddListener(id, newListener) */
+	registry.AddListener(id, newListener)
 
 	// Send a success response
 	ctx.JSON(http.StatusOK, gin.H{
@@ -322,7 +322,7 @@ func (h *ListenerHandler) StopListerner(ctx *gin.Context) {
 		return
 	}
 
-	/* 	registry.RemoveListener(id) */
+	registry.RemoveListener(id)
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "listener stopped",
 		"status":  s.SUCCESS,

@@ -132,22 +132,43 @@ func (hlisten *HttpListener) Start() error {
 		Addr:    address,
 		Handler: hlisten.Server,
 	}
-	if hlisten.Config.Secure {
-		certPath := hlisten.Config.Certificate.CertPath
-		keyPath := hlisten.Config.Certificate.KeyPath
 
-		if err := validateCertificate(certPath, keyPath); err != nil {
-			return err
-		}
+	errChan := make(chan error, 1)
+	readyChan := make(chan struct{}, 1)
 
-		hlisten.httpServe.TLSConfig = &tls.Config{
-			MinVersion: tls.VersionTLS12,
+	go func() {
+		readyChan <- struct{}{}
+
+		var err error
+		if hlisten.Config.Secure {
+			certPath := hlisten.Config.Certificate.CertPath
+			keyPath := hlisten.Config.Certificate.KeyPath
+
+			if err := validateCertificate(certPath, keyPath); err != nil {
+				return
+			}
+
+			hlisten.httpServe.TLSConfig = &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			}
+			logger.Good("Starting HTTPS server on ", address)
+			err = hlisten.httpServe.ListenAndServeTLS(certPath, keyPath)
+		} else {
+			logger.Good("Starting HTTP server on ", address)
+			err = hlisten.httpServe.ListenAndServe()
 		}
-		logger.Good("Starting HTTPS server on ", address)
-		return hlisten.httpServe.ListenAndServeTLS(certPath, keyPath)
+		if err != nil && err != http.ErrServerClosed {
+			errChan <- err
+		}
+	}()
+	select {
+	case <-readyChan:
+		return nil
+	case err := <-errChan:
+		return fmt.Errorf("Failed to start server: %v", err)
+	case <-time.After(5 * time.Second):
+		return fmt.Errorf("timeout waiting for server to start")
 	}
-	logger.Good("Starting HTTP server on ", address)
-	return hlisten.httpServe.ListenAndServe()
 }
 
 // Stop gracefully shuts down the HTTP listener.
