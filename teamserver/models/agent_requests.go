@@ -16,15 +16,11 @@ type UpdateAgentRequest struct {
 
 // Contains only the fields that can be updated for any given agent configuration
 type UpdateAgentConfigRequest struct {
-	CallbackURLs    []string          `json:"callback_urls"`
-	RotationType    string            `json:"rotation_type"`
-	RotationRetries int               `json:"rotation_retries"`
-	Sleep           time.Duration     `json:"sleep"`
-	Jitter          int               `json:"jitter"`
-	StartDate       time.Time         `json:"start_date"`
-	KillDate        time.Time         `json:"kill_date"`
-	WorkingHours    [2]int            `json:"working_hours"`
-	Headers         map[string]string `json:"headers"`
+	Sleep        time.Duration `json:"sleep"`
+	Jitter       int           `json:"jitter"`
+	StartDate    time.Time     `json:"start_date"`
+	KillDate     time.Time     `json:"kill_date"`
+	WorkingHours [2]int        `json:"working_hours"`
 }
 
 // Conversion from UpdateAgentRequest to Agent
@@ -47,15 +43,11 @@ func (uar UpdateAgentRequest) IntoAgent(agent Agent) Agent {
 // Conversion from UpdateAgentConfigRequest to AgentConfig
 func (uacr UpdateAgentConfigRequest) IntoAgentConfig(agentConfig AgentConfig) AgentConfig {
 
-	agentConfig.CallbackURLs = uacr.CallbackURLs
-	agentConfig.RotationType = uacr.RotationType
-	agentConfig.RotationRetries = uacr.RotationRetries
 	agentConfig.Sleep = uacr.Sleep
 	agentConfig.Jitter = uacr.Jitter
 	agentConfig.StartDate = uacr.StartDate
 	agentConfig.KillDate = uacr.KillDate
 	agentConfig.WorkingHours = uacr.WorkingHours
-	agentConfig.Headers = uacr.Headers
 
 	return agentConfig
 }
