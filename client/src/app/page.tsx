@@ -30,7 +30,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 export default function Home() {
   return (
     <div className="items-center justify-items-center min-h-screen pb-4 p-0 mb-0 mt-10 font-[family-name:var(--font-geist-sans)]">
-      <Navbar />
+      {/* <Navbar /> */}
       <div className="grid grid-cols-2 gap-4 items-center justify-items-center min-h-screen p-0 mb-0 mt-10 font-[family-name:var(--font-geist-sans)]">
         <Card className="">
           <CardHeader>
