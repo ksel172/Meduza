@@ -16,13 +16,14 @@ import {
   SquareTerminal,
   LayoutDashboard,
   MessageSquareText,
-  BookOpenText
+  BookOpenText,
+  Database
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "./nav-projects"
 import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
+import { TeamSwitcher } from "./team-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -47,7 +48,7 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/",
       icon: LayoutDashboard,
       isActive: true,
     },
@@ -58,35 +59,50 @@ const data = {
       items: [
         {
           title: "Listeners",
-          url: "#",
+          url: "/listeners",
         },
         {
           title: "Agents",
-          url: "#",
+          url: "/agents",
         },
         {
           title: "Payloads",
-          url: "#",
+          url: "/payloads",
         },
         {
             title: "Modules",
-            url: "#",
+            url: "/modules",
         },
       ],
     },
     {
-      title: "Options",
+      title: "Data",
       url: "#",
+      icon: Database,
+      items: [
+        {
+          title: "Loot",
+          url: "/loot",
+        },
+        {
+          title: "Graph",
+          url: "/graph",
+        }
+      ],
+    },
+    {
+      title: "Options",
+      url: "/options",
       icon: Settings2,
     },
     {
       title: "Team Chat",
-      url: "#",
+      url: "/chat",
       icon: MessageSquareText,
     },
     {
       title: "Documentation",
-      url: "#",
+      url: "/docs",
       icon: BookOpenText,
     },
   ],

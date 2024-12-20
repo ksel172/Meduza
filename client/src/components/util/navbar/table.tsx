@@ -9,57 +9,55 @@ import {
     TableRow,
   } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Ellipsis } from "lucide-react"
 
   
   const shells = [
     {
-      shellId: "#1230",
+      name: "Tim Cooks Laptop",
       shellStatus: "Alive",
-      upTime: "12 Days",
+      compileType: "x64-win",
       targetIp: "10.10.14.12",
     },
     {
-        shellId: "#1231",
-        shellStatus: "dead",
-        upTime: "12 Days",
-        targetIp: "10.10.14.12",
+      name: "NSA's Systems",
+      shellStatus: "dead",
+      compileType: "x64-win",
+      targetIp: "10.10.14.13",
     },
     {
-        shellId: "#1232",
-        shellStatus: "Alive",
-        upTime: "12 Days",
-        targetIp: "10.10.14.12",
+      name: "CIA Backdoor",
+      shellStatus: "Alive",
+      compileType: "x64-win",
+      targetIp: "10.10.14.14",
     },
     {
-        shellId: "#1233",
-        shellStatus: "Alive",
-        upTime: "12 Days",
-        targetIp: "10.10.14.12",
+      name: "Another Backdoor",
+      shellStatus: "Alive",
+      compileType: "x64-win",
+      targetIp: "10.10.14.15",
     },
   ]
   
   export function TableComponent() {
     return (
       <Table>
-        <TableCaption>A list of your recent invoices.</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">Target</TableHead>
+            <TableHead>Name</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Up Time</TableHead>
-            <TableHead>Options</TableHead>
-            <TableHead className="text-right">Action</TableHead>
+            <TableHead>Compile Type</TableHead>
+            <TableHead>Target</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {shells.map((shell) => (
-            <TableRow key={shell.shellId}>
-              <TableCell>{shell.targetIp}</TableCell>
+            <TableRow key={shell.targetIp}>
+              <TableCell>{shell.name}</TableCell>
               <TableCell className={`font-medium ${shell.shellStatus === "dead" ? "text-red-600" : "text-green-400"}`}>{shell.shellStatus}</TableCell>
-              <TableCell>{shell.upTime}</TableCell>
-              <TableCell>modify</TableCell>
-              <TableCell className="text-right"><Button variant="outline">Interact</Button>
-              </TableCell>
+              <TableCell>{shell.compileType}</TableCell>
+              <TableCell>{shell.targetIp}</TableCell>
+              <TableCell className="text-right"><Ellipsis /></TableCell>
             </TableRow>
           ))}
         </TableBody>
