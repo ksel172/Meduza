@@ -18,6 +18,12 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogDescription, DialogTitle, DialogFooter } from "./ui/dialog"
+import { Button } from "./ui/button"
+import { Input } from "./ui/input"
+import { Label } from "./ui/label"
+import { UserManagement } from "./teams/user-management"
+
 export function NavMain({
   items,
 }: {
@@ -34,6 +40,17 @@ export function NavMain({
 }){
   return (
       <SidebarGroup>
+        <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline">View Team</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Team Manager</DialogTitle>
+              </DialogHeader>
+                <UserManagement />
+            </DialogContent>
+        </Dialog>
         <SidebarGroupLabel>Platform</SidebarGroupLabel>
         <SidebarMenu>
           {items.map((item) => (

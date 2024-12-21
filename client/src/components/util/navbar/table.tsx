@@ -21,7 +21,7 @@ import { Ellipsis } from "lucide-react"
     },
     {
       name: "NSA's Systems",
-      shellStatus: "dead",
+      shellStatus: "Dead",
       compileType: "x64-win",
       targetIp: "10.10.14.13",
     },
@@ -54,10 +54,10 @@ import { Ellipsis } from "lucide-react"
           {shells.map((shell) => (
             <TableRow key={shell.targetIp}>
               <TableCell>{shell.name}</TableCell>
-              <TableCell className={`font-medium ${shell.shellStatus === "dead" ? "text-red-600" : "text-green-400"}`}>{shell.shellStatus}</TableCell>
+              <TableCell className={`font-medium ${shell.shellStatus === "Dead" ? "text-red-600" : "text-green-400"}`}>{shell.shellStatus}</TableCell>
               <TableCell>{shell.compileType}</TableCell>
               <TableCell>{shell.targetIp}</TableCell>
-              <TableCell className="text-right"><Ellipsis /></TableCell>
+              <TableCell className="text-right m-0 p-0"><Ellipsis /></TableCell>
             </TableRow>
           ))}
         </TableBody>

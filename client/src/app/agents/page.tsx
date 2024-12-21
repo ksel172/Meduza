@@ -46,7 +46,7 @@ export default function Home() {
         <Input className="w-[50%]" type="email" placeholder="Search..." />
       </div>
       <Card className="w-[calc(95vw-var(--sidebar-width))]">
-        <CardContent>
+        <CardContent className="m-0 p-0">
           <TableComponent />
         </CardContent>
       </Card>
