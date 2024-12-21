@@ -9,11 +9,11 @@ import (
 )
 
 type CheckInController struct {
-	checkInDAL *dal.CheckInDAL
-	agentDAL   *dal.AgentDAL
+	checkInDAL dal.ICheckInDAL
+	agentDAL   dal.IAgentDAL
 }
 
-func NewCheckInController(checkInDAL *dal.CheckInDAL, agentDAL *dal.AgentDAL) *CheckInController {
+func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL) *CheckInController {
 	return &CheckInController{checkInDAL: checkInDAL, agentDAL: agentDAL}
 }
 

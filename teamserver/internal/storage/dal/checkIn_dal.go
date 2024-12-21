@@ -8,6 +8,10 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
+type ICheckInDAL interface {
+	CreateAgent(context.Context, models.Agent) error
+}
+
 type CheckInDAL struct {
 	db     *sql.DB
 	schema string
