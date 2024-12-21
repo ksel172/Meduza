@@ -45,7 +45,7 @@ func (ac *AgentController) UpdateAgent(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Update modified at
 	agentUpdateRequest.ModifiedAt = time.Now()
 
@@ -106,6 +106,10 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 
 func (ac *AgentController) GetAgentTasks(ctx *gin.Context) {
 	agentID := ctx.Param(models.ParamAgentID)
+	if agentID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
+		return
+	}
 
 	tasks, err := ac.dal.GetAgentTasks(ctx, agentID)
 	if err != nil {
@@ -119,7 +123,6 @@ func (ac *AgentController) GetAgentTasks(ctx *gin.Context) {
 // DeleteAgentTasks Deletes all tasks for a single agent
 func (ac *AgentController) DeleteAgentTasks(ctx *gin.Context) {
 	agentID := ctx.Param(models.ParamAgentID)
-
 	if agentID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
@@ -136,14 +139,12 @@ func (ac *AgentController) DeleteAgentTasks(ctx *gin.Context) {
 // DeleteAgentTask Delete a single task
 func (ac *AgentController) DeleteAgentTask(ctx *gin.Context) {
 	agentId := ctx.Param(models.ParamAgentID)
-
 	if agentId == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
 	}
 
 	taskID := ctx.Param(models.ParamTaskID)
-
 	if taskID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamTaskID)})
 		return
