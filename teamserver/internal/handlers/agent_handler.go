@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
@@ -35,23 +36,7 @@ func (ac *AgentController) GetAgent(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, agent)
 }
 
-// UpdateAgent This is technically vulnerable because it allows the client to update any agent
-// Also, allows any field to be edited if the request is hand-crafted
 func (ac *AgentController) UpdateAgent(ctx *gin.Context) {
-
-	// get the ID of the agent to be updated in the query params
-	agentID := ctx.Param(models.ParamAgentID)
-	if agentID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
-		return
-	}
-
-	// Get the agent that is going to be updated in the db
-	agent, err := ac.dal.GetAgent(agentID)
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, fmt.Sprintf("Agent %s not found: %s", agentID, err.Error()))
-		return
-	}
 
 	// Get the JSON for the fields that can be updated in the agent
 	// This prevents unintended modifications by the client manipulating the request JSON
@@ -60,12 +45,13 @@ func (ac *AgentController) UpdateAgent(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Update the agent fields
-	updatedAgent := agentUpdateRequest.IntoAgent(agent)
+	
+	// Update modified at
+	agentUpdateRequest.ModifiedAt = time.Now()
 
 	// Provide the updated agent to the data layer
-	if err := ac.dal.UpdateAgent(ctx, updatedAgent); err != nil {
+	updatedAgent, err := ac.dal.UpdateAgent(ctx, agentUpdateRequest)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent update failed: %s", err.Error()))
 		return
 	}
