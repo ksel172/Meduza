@@ -45,3 +45,12 @@ func (m *MockAgentDAL) DeleteAgentTasks(ctx context.Context, agentID string) err
 	args := m.Called(agentID)
 	return args.Error(0)
 }
+
+type MockCheckInDal struct {
+	mock.Mock
+}
+
+func (m *MockCheckInDal) CreateAgent(ctx context.Context, agent models.Agent) error {
+	args := m.Called(agent)
+	return args.Error(0)
+}
