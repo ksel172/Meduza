@@ -8,6 +8,13 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
+type IUserDAL interface {
+	AddUsers(context.Context, *models.ResUser) error
+	GetUsers(context.Context) ([]models.User, error)
+	GetUserByUsername(context.Context, string) (*models.ResUser, error)
+	GetUserById(context.Context, string) (*models.ResUser, error)
+}
+
 type UserDAL struct {
 	db     *sql.DB
 	schema string
