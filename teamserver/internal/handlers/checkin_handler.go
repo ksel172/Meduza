@@ -37,7 +37,7 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 	agent := c2request.IntoNewAgent()
 
 	// Create agent in the redis db
-	if err := cc.checkInDAL.CreateAgent(agent); err != nil {
+	if err := cc.checkInDAL.CreateAgent(ctx.Request.Context(), agent); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -1,6 +1,7 @@
 package dal
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -16,7 +17,7 @@ func NewCheckInDAL(db *sql.DB, schema string) *CheckInDAL {
 	return &CheckInDAL{db: db, schema: schema}
 }
 
-func (dal *CheckInDAL) CreateAgent(agent models.Agent) error {
+func (dal *CheckInDAL) CreateAgent(ctx context.Context, agent models.Agent) error {
 	tx, err := dal.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
