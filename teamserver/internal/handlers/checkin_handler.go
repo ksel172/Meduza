@@ -52,7 +52,7 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 func (cc *CheckInController) GetTasks(ctx *gin.Context) {
 
 	// Get the agent ID from the query params
-	agentID := ctx.Param("id")
+	agentID := ctx.Param(models.ParamAgentID)
 	if agentID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
 		return
