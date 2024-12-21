@@ -1,6 +1,6 @@
 # Meduza
 
-Command and Control Server.
+Command and Control Framework
 
 ## Development
 
