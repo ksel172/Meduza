@@ -108,3 +108,12 @@ func (m *MockListenerDAL) UpdateListener(ctx context.Context, lid string, update
 	args := m.Called(lid, updates)
 	return args.Error(0)
 }
+
+type MockAdminDal struct {
+	mock.Mock
+}
+
+func (m *MockAdminDal) CreateDefaultAdmins(ctx context.Context, admin *models.ResAdmin) error {
+	args := m.Called(admin)
+	return args.Error(0)
+}

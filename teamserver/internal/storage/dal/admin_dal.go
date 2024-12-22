@@ -8,6 +8,10 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
+type IAdminDal interface {
+	CreateDefaultAdmins(ctx context.Context, admin *models.ResAdmin) error
+}
+
 type AdminDAL struct {
 	db     *sql.DB
 	schema string
