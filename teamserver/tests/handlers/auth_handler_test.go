@@ -129,7 +129,7 @@ func TestLogout(t *testing.T) {
 		expectedStatus        int
 	}{
 		{
-			name:                  "successful login",
+			name:                  "successful logout",
 			accessToken:           "test-access-token",
 			refreshToken:          "test-refresh-token",
 			mockValidateAuthError: nil,
