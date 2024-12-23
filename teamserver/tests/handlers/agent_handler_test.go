@@ -2,8 +2,8 @@ package handler_tests
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,51 +12,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/tests/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-type MockAgentDAL struct {
-	mock.Mock
-}
-
-func (m *MockAgentDAL) GetAgent(agentID string) (models.Agent, error) {
-	args := m.Called(agentID)
-	return args.Get(0).(models.Agent), args.Error(1)
-}
-
-func (m *MockAgentDAL) UpdateAgent(ctx context.Context, agent models.Agent) error {
-	args := m.Called(ctx, agent)
-	return args.Error(0)
-}
-
-func (m *MockAgentDAL) DeleteAgent(ctx context.Context, agentID string) error {
-	args := m.Called(ctx, agentID)
-	return args.Error(0)
-}
-
-func (m *MockAgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask) error {
-	args := m.Called(ctx, task)
-	return args.Error(0)
-}
-
-func (m *MockAgentDAL) GetAgentTasks(ctx context.Context, agentID string) ([]models.AgentTask, error) {
-	args := m.Called(ctx, agentID)
-	return args.Get(0).([]models.AgentTask), args.Error(1)
-}
-
-func (m *MockAgentDAL) DeleteAgentTask(ctx context.Context, agentID string, taskID string) error {
-	args := m.Called(ctx, agentID, taskID)
-	return args.Error(0)
-}
-
-func (m *MockAgentDAL) DeleteAgentTasks(ctx context.Context, agentID string) error {
-	args := m.Called(ctx, agentID)
-	return args.Error(0)
-}
-
 func TestGetAgent(t *testing.T) {
-	mockDAL := new(MockAgentDAL)
+	mockDAL := new(mocks.MockAgentDAL)
 	handler := handlers.NewAgentController(mockDAL)
 	gin.SetMode(gin.TestMode)
 
@@ -102,7 +64,7 @@ func TestGetAgent(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			c.Params = gin.Params{{Key: "agent_id", Value: tt.agentID}}
+			c.Params = gin.Params{{Key: models.ParamAgentID, Value: tt.agentID}}
 
 			handler.GetAgent(c)
 
@@ -118,8 +80,179 @@ func TestGetAgent(t *testing.T) {
 	}
 }
 
+func TestUpdateAgent(t *testing.T) {
+	mockDAL := new(mocks.MockAgentDAL)
+	handler := handlers.NewAgentController(mockDAL)
+	gin.SetMode(gin.TestMode)
+
+	// Below agent is sent as JSON to the handler
+	agentUpdateRequest := models.UpdateAgentRequest{
+		ID:   "test-agent-id",
+		Name: "updated-agent-name",
+	}
+
+	// Handler returns the below agent from db
+	updatedAgent := models.Agent{
+		ID:   "test-agent-id",
+		Name: "updated-agent-name",
+	}
+
+	tests := []struct {
+		name               string
+		agentUpdateRequest models.UpdateAgentRequest
+		updatedAgent       models.Agent
+		mockError          error
+		expectedStatus     int
+	}{
+		{
+			name:               "successful agent update",
+			agentUpdateRequest: agentUpdateRequest,
+			updatedAgent:       updatedAgent,
+			mockError:          nil,
+			expectedStatus:     http.StatusOK,
+		},
+		{
+			name:               "agent update server error",
+			agentUpdateRequest: agentUpdateRequest,
+			updatedAgent:       updatedAgent,
+			mockError:          errors.New("example failed dal op"),
+			expectedStatus:     http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			// If functionality of the update handler is extended in the future, need to make sure to
+			// only setup the mockDAL on test cases that actually reach the dal
+			mockDAL.On("UpdateAgent", mock.AnythingOfType("models.UpdateAgentRequest")).Return(tt.updatedAgent, tt.mockError).Once()
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			body, _ := json.Marshal(tt.agentUpdateRequest)
+			c.Request, _ = http.NewRequest(http.MethodPut, "/", bytes.NewReader(body))
+
+			handler.UpdateAgent(c)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			mockDAL.AssertExpectations(t)
+		})
+	}
+}
+
+func TestDeleteAgent(t *testing.T) {
+	mockDAL := new(mocks.MockAgentDAL)
+	handler := handlers.NewAgentController(mockDAL)
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name           string
+		agentID        string
+		mockError      error
+		expectedStatus int
+	}{
+		{
+			name:           "successful delete agent",
+			agentID:        "test-agent-id",
+			mockError:      nil,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "missing agent id",
+			agentID:        "",
+			mockError:      nil,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "dal error",
+			agentID:        "non-existent",
+			mockError:      fmt.Errorf("failed dal op"),
+			expectedStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.agentID != "" {
+				mockDAL.On("DeleteAgent", tt.agentID).Return(tt.mockError).Once()
+			}
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Params = gin.Params{{Key: models.ParamAgentID, Value: tt.agentID}}
+
+			handler.DeleteAgent(c)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			mockDAL.AssertExpectations(t)
+		})
+	}
+}
+
+/* Agent tasks tests */
+
+func TestGetAgentTasks(t *testing.T) {
+	mockDAL := new(mocks.MockAgentDAL)
+	handler := handlers.NewAgentController(mockDAL)
+	gin.SetMode(gin.TestMode)
+
+	tasks := []models.AgentTask{
+		{ID: "found-agent-task-id"},
+	}
+
+	tests := []struct {
+		name           string
+		agentID        string
+		foundTasks     []models.AgentTask
+		mockError      error
+		reachDAL       bool
+		expectedStatus int
+	}{
+		{
+			name:           "successful get agent tasks",
+			agentID:        "test-agent-id",
+			foundTasks:     tasks,
+			mockError:      nil,
+			reachDAL:       true,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "missing agent id",
+			agentID:        "",
+			mockError:      nil,
+			reachDAL:       false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "dal error",
+			agentID:        "test-agent-id",
+			foundTasks:     tasks,
+			mockError:      errors.New("failed dal op"),
+			reachDAL:       true,
+			expectedStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.reachDAL {
+				mockDAL.On("GetAgentTasks", tt.agentID).Return(tt.foundTasks, tt.mockError).Once()
+			}
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Params = gin.Params{{Key: models.ParamAgentID, Value: tt.agentID}}
+
+			handler.GetAgentTasks(c)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			mockDAL.AssertExpectations(t)
+		})
+	}
+}
+
 func TestCreateAgentTask(t *testing.T) {
-	mockDAL := new(MockAgentDAL)
+	mockDAL := new(mocks.MockAgentDAL)
 	handler := handlers.NewAgentController(mockDAL)
 	gin.SetMode(gin.TestMode)
 
@@ -162,7 +295,7 @@ func TestCreateAgentTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.agentID != "" {
-				mockDAL.On("CreateAgentTask", mock.Anything, mock.AnythingOfType("models.AgentTask")).Return(tt.mockError).Once()
+				mockDAL.On("CreateAgentTask", mock.AnythingOfType("models.AgentTask")).Return(tt.mockError).Once()
 			}
 
 			w := httptest.NewRecorder()
@@ -181,7 +314,7 @@ func TestCreateAgentTask(t *testing.T) {
 	}
 }
 func TestDeleteAgentTasks(t *testing.T) {
-	mockDAL := new(MockAgentDAL)
+	mockDAL := new(mocks.MockAgentDAL)
 	handler := handlers.NewAgentController(mockDAL)
 	gin.SetMode(gin.TestMode)
 
@@ -214,14 +347,77 @@ func TestDeleteAgentTasks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.agentID != "" {
-				mockDAL.On("DeleteAgentTasks", mock.Anything, tt.agentID).Return(tt.mockError).Once()
+				mockDAL.On("DeleteAgentTasks", tt.agentID).Return(tt.mockError).Once()
 			}
 
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			c.Params = gin.Params{{Key: "agent_id", Value: tt.agentID}}
+			c.Params = gin.Params{{Key: models.ParamAgentID, Value: tt.agentID}}
 
 			handler.DeleteAgentTasks(c)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			mockDAL.AssertExpectations(t)
+		})
+	}
+}
+
+func TestDeleteAgentTask(t *testing.T) {
+	mockDAL := new(mocks.MockAgentDAL)
+	handler := handlers.NewAgentController(mockDAL)
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name           string
+		agentID        string
+		taskID         string
+		mockError      error
+		expectedStatus int
+	}{
+		{
+			name:           "successful tasks deletion",
+			agentID:        "test-agent-id",
+			taskID:         "test-task-id",
+			mockError:      nil,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "missing agent id",
+			agentID:        "",
+			taskID:         "test-task-id",
+			mockError:      nil,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "missing task id",
+			agentID:        "test-agent-id",
+			taskID:         "",
+			mockError:      nil,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "dal error",
+			agentID:        "test-agent-id",
+			taskID:         "test-task-id",
+			mockError:      fmt.Errorf("dal error"),
+			expectedStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.agentID != "" && tt.taskID != "" {
+				mockDAL.On("DeleteAgentTask", tt.agentID, tt.taskID).Return(tt.mockError).Once()
+			}
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Params = gin.Params{
+				{Key: models.ParamAgentID, Value: tt.agentID},
+				{Key: models.ParamTaskID, Value: tt.taskID},
+			}
+
+			handler.DeleteAgentTask(c)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			mockDAL.AssertExpectations(t)

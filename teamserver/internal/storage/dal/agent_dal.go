@@ -10,7 +10,7 @@ import (
 
 type IAgentDAL interface {
 	GetAgent(agentID string) (models.Agent, error)
-	UpdateAgent(ctx context.Context, agent models.Agent) error
+	UpdateAgent(ctx context.Context, agent models.UpdateAgentRequest) (models.Agent, error)
 	DeleteAgent(ctx context.Context, agentID string) error
 	CreateAgentTask(ctx context.Context, task models.AgentTask) error
 	GetAgentTasks(ctx context.Context, agentID string) ([]models.AgentTask, error)
@@ -51,25 +51,39 @@ func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
 	return agent, nil
 }
 
-func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.Agent) error {
+func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgentRequest) (models.Agent, error) {
 	tx, err := dal.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to start transaction: %w", err)
+		return models.Agent{}, fmt.Errorf("failed to start transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	agentQuery := fmt.Sprintf(`
         UPDATE %s.agents 
         SET name = $1, note = $2, status = $3, modified_at = $4
-        WHERE id = $5`, dal.schema)
+        WHERE id = $5
+		RETURNING id, name, note, status, first_callback, last_callback, modified_at`, dal.schema)
 
-	_, err = tx.ExecContext(ctx, agentQuery,
-		agent.Name, agent.Note, agent.Status, agent.ModifiedAt, agent.ID)
-	if err != nil {
-		return fmt.Errorf("failed to update agent: %w", err)
+	var updatedAgent models.Agent	
+	if err = tx.QueryRowContext(ctx, agentQuery,
+		agent.Name, agent.Note, agent.Status, agent.ModifiedAt, agent.ID,
+	).Scan(
+		&updatedAgent.ID,
+		&updatedAgent.Name,
+		&updatedAgent.Note,
+		&updatedAgent.Status,
+		&updatedAgent.FirstCallback,
+		&updatedAgent.LastCallback,
+		&updatedAgent.ModifiedAt,
+	); err != nil {
+		return models.Agent{}, fmt.Errorf("failed to update agent: %w", err)
 	}
 
-	return tx.Commit()
+	if err = tx.Commit(); err != nil {
+		return models.Agent{}, fmt.Errorf("failed to execte transaction: %w", err)
+	}
+
+	return updatedAgent, nil
 }
 
 func (dal *AgentDAL) DeleteAgent(ctx context.Context, agentID string) error {

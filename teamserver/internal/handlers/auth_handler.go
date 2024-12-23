@@ -21,11 +21,11 @@ var (
 )
 
 type AuthController struct {
-	dal  *dal.UserDAL
-	jwtS *models.JWTService
+	dal  dal.IUserDAL
+	jwtS models.JWTServiceProvider
 }
 
-func NewAuthController(dal *dal.UserDAL, jwtS *models.JWTService) *AuthController {
+func NewAuthController(dal dal.IUserDAL, jwtS models.JWTServiceProvider) *AuthController {
 	return &AuthController{
 		dal:  dal,
 		jwtS: jwtS,
@@ -57,6 +57,7 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 	}
 
 	if !utils.CheckPasswordHash(loginR.Password, user.PasswordHash) {
+		log.Print("failed password check: ", loginR.Password, user.PasswordHash)
 		ctx.JSONP(http.StatusUnauthorized, gin.H{
 			"message": "Invalid Credentials or Request Error",
 			"status":  "Failed",
@@ -65,6 +66,7 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 		return
 	}
 	tokens, err := ac.jwtS.GenerateTokens(user.ID, user.Role)
+	log.Printf("token errors: %v", err)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"Error":   err.Error(),

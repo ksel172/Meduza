@@ -10,6 +10,14 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+type JWTServiceProvider interface {
+	GenerateTokens(string, string) (*AuthResponse, error)
+	ValidateToken(string) (*UserClaim, error)
+	RefreshTokens(string) (*AuthResponse, error)
+	RevokeToken(string, time.Time)
+	IsTokenRevoked(string) bool
+}
+
 // JWTService handles token operations
 type JWTService struct {
 	secret          string

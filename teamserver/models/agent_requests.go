@@ -8,10 +8,12 @@ import (
 
 // Contains only the fields that can be updated for any given agent
 type UpdateAgentRequest struct {
+	ID 	   string 					`json:"agent_id"`
 	Name   string                   `json:"name"`
 	Note   string                   `json:"note"`
 	Status string                   `json:"status"`
 	Config UpdateAgentConfigRequest `json:"config"`
+	ModifiedAt time.Time   			`json:"modified_at"`
 }
 
 // Contains only the fields that can be updated for any given agent configuration
@@ -21,23 +23,6 @@ type UpdateAgentConfigRequest struct {
 	StartDate    time.Time     `json:"start_date"`
 	KillDate     time.Time     `json:"kill_date"`
 	WorkingHours [2]int        `json:"working_hours"`
-}
-
-// Conversion from UpdateAgentRequest to Agent
-func (uar UpdateAgentRequest) IntoAgent(agent Agent) Agent {
-
-	// Update main fields
-	agent.Name = uar.Name
-	agent.Note = uar.Note
-	agent.Status = uar.Status
-
-	// Update config fields
-	agent.Config = uar.Config.IntoAgentConfig(agent.Config)
-
-	// Set last modified time
-	agent.ModifiedAt = time.Now()
-
-	return agent
 }
 
 // Conversion from UpdateAgentConfigRequest to AgentConfig

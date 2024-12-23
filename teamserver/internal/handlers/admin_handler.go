@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
@@ -23,10 +25,10 @@ var (
 )
 
 type AdminController struct {
-	dal *dal.AdminDAL
+	dal dal.IAdminDal
 }
 
-func NewAdminController(dal *dal.AdminDAL) *AdminController {
+func NewAdminController(dal dal.IAdminDal) *AdminController {
 	return &AdminController{
 		dal: dal,
 	}
@@ -138,11 +140,19 @@ func adminCount() {
 }
 
 func validateToken(reqToken string) error {
+
+	reqTokenSplit := strings.Split(reqToken, " ")
+	if len(reqTokenSplit) != 2 {
+		return fmt.Errorf("invalid token")
+	}
+	reqToken = reqTokenSplit[1] // Grab only the token, ignore Bearer text
+
 	envToken := conf.GetMeduzaAdminSecret()
-	if envToken != "" {
+	if envToken == "" {
 		return fmt.Errorf("error loading admin secret, empty")
 	}
 
+	log.Println(envToken, "     DAUDHAWUHDAWUHDAWUD     ", reqToken)
 	if reqToken != envToken {
 		return fmt.Errorf("invalid or expired token")
 	}
