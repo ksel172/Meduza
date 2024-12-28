@@ -19,16 +19,16 @@ var status = utils.Status
 
 // Config represents the configuration settings for the service, including network, security, and proxy settings.
 type Config struct {
-	WorkingHours     string        `json:"working_hours"`
-	Hosts            []string      `json:"hosts"`
-	HostBind         string        `json:"host_bind"`
-	HostRotation     string        `json:"host_rotation"`
-	PortBind         string        `json:"port_bind"`
-	PortConn         string        `json:"port_conn"`
-	Secure           bool          `json:"secure"`
-	HostHeader       string        `json:"host_header"`
-	Headers          []Header      `json:"headers"`
-	Uris             []string      `json:"uris"`
+	WorkingHours string   `json:"working_hours"`
+	Hosts        []string `json:"hosts"`
+	HostBind     string   `json:"host_bind"`
+	HostRotation string   `json:"host_rotation"`
+	PortBind     string   `json:"port_bind"`
+	PortConn     string   `json:"port_conn"`
+	Secure       bool     `json:"secure"`
+	HostHeader   string   `json:"host_header"`
+	Headers      []Header `json:"headers"`
+	//Uris             []string      `json:"uris"`
 	Certificate      Certificate   `json:"certificate"`
 	WhitelistEnabled bool          `json:"whitelist_enabled"`
 	Whitelist        []string      `json:"whitelist"`
@@ -88,15 +88,16 @@ func NewHttpListener(name string, config Config) (*HttpListener, error) {
 		}
 		ctx.Next()
 	})
-
-	for _, uri := range config.Uris {
-		server.GET(uri, func(ctx *gin.Context) {
-			ctx.JSON(http.StatusOK, gin.H{
-				"message": "Ok",
-				"status":  status.SUCCESS,
+	/*
+		for _, uri := range config.Uris {
+			server.GET(uri, func(ctx *gin.Context) {
+				ctx.JSON(http.StatusOK, gin.H{
+					"message": "Ok",
+					"status":  status.SUCCESS,
+				})
 			})
-		})
-	}
+		}
+	*/
 
 	return &HttpListener{
 		Name:      name,
@@ -114,9 +115,11 @@ func (config *Config) Validate() error {
 	if config.PortBind == "" {
 		return fmt.Errorf("PortBind is required")
 	}
-	if len(config.Uris) == 0 {
-		return fmt.Errorf("At least one URI is required")
-	}
+	/*
+		if len(config.Uris) == 0 {
+			return fmt.Errorf("At least one URI is required")
+		}
+	*/
 	if config.Secure {
 		if config.Certificate.CertPath == "" || config.Certificate.KeyPath == "" {
 			return fmt.Errorf("Certificate paths are required for secure mode")
@@ -165,7 +168,7 @@ func (hlisten *HttpListener) Start() error {
 	case <-readyChan:
 		return nil
 	case err := <-errChan:
-		return fmt.Errorf("Failed to start server: %v", err)
+		return fmt.Errorf("failed to start server: %v", err)
 	case <-time.After(5 * time.Second):
 		return fmt.Errorf("timeout waiting for server to start")
 	}
@@ -204,7 +207,7 @@ func validateCertificate(certPath, keyPath string) error {
 		return fmt.Errorf("Certificate file not found: %s", certPath)
 	}
 	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
-		return fmt.Errorf("Key file not found: %s", keyPath)
+		return fmt.Errorf("key file not found: %s", keyPath)
 	}
 	return nil
 }

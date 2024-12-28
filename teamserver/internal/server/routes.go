@@ -1,7 +1,5 @@
 package server
 
-import ()
-
 func (s *Server) RegisterRoutes() {
 	// Routes will look like this :- /api/v1
 	apiGroup := s.engine.Group("/api")
