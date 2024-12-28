@@ -65,7 +65,7 @@ If we are planning to spawn listeners on ports from 8000 to 8010 we can go into 
     ports:
       - "${TEAMSERVER_PORT}:${TEAMSERVER_PORT}"
       - "${DLV_PORT:-2345}:${DLV_PORT:-2345}"
-      - "8000-8010:8000-8010"
+      - "8000-8010:8000-8010" // Individual ports can be specified as well with "<some_port>:<some_port>"
     ...
 ```
 
