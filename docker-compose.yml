@@ -8,6 +8,7 @@ services:
     ports:
       - "${TEAMSERVER_PORT}:${TEAMSERVER_PORT}"
       - "${DLV_PORT:-2345}:${DLV_PORT:-2345}"
+      - "8000-8010:8000-8010"
     environment:
       TEAMSERVER_PORT: ${TEAMSERVER_PORT}
       TEAMSERVER_HOSTNAME: ${TEAMSERVER_HOSTNAME}

@@ -62,7 +62,7 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 		listenersGroup.GET("/all", s.dependencies.ListenerController.GetAllListeners)
 		listenersGroup.PUT("/:id", s.dependencies.ListenerController.UpdateListener)
 		listenersGroup.DELETE("/:id", s.dependencies.ListenerController.DeleteListener)
-		listenersGroup.GET("/:id/start", s.dependencies.ListenerController.StartListener)
-		listenersGroup.GET("/:id/stop", s.dependencies.ListenerController.StopListerner)
+		listenersGroup.POST("/:id/start", s.dependencies.ListenerController.StartListener)
+		listenersGroup.POST("/:id/stop", s.dependencies.ListenerController.StopListerner)
 	}
 }
