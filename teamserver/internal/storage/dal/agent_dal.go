@@ -46,36 +46,20 @@ func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
 	}
 	// Get main agent data
 	query := fmt.Sprintf(`
-        SELECT a.id, a.name, a.note, a.status, a.first_callback, a.last_callback, a.modified_at,
-               ac.callback_urls, ac.rotation_type, ac.rotation_retries, ac.sleep, ac.jitter, 
-               ac.start_date, ac.kill_date, ac.working_hours, ac.headers,
-               ai.host_name, ai.ip_address, ai.user_name, ai.system_info, ai.os_info
+        SELECT a.id, a.name, a.note, a.status, a.first_callback, a.last_callback, a.modified_at
         FROM %s.agents a
-        LEFT JOIN %s.agent_config ac ON a.id = ac.agent_id 
-        LEFT JOIN %s.agent_info ai ON a.id = ai.agent_id
-        WHERE a.id = $1`, dal.schema, dal.schema, dal.schema)
+        WHERE a.id = $1`, dal.schema)
 
 	var agent models.Agent
-	var headerJSON []byte
 	err := dal.db.QueryRow(query, agentID).Scan(
 		&agent.ID, &agent.Name, &agent.Note, &agent.Status,
-		&agent.FirstCallback, &agent.LastCallback, &agent.ModifiedAt,
-		&agent.Config.CallbackURLs, &agent.Config.RotationType, &agent.Config.RotationRetries,
-		&agent.Config.Sleep, &agent.Config.Jitter, &agent.Config.StartDate, &agent.Config.KillDate,
-		&agent.Config.WorkingHours, &headerJSON,
-		&agent.Info.HostName, &agent.Info.IPAddress, &agent.Info.Username,
-		&agent.Info.SystemInfo, &agent.Info.OSInfo)
+		&agent.FirstCallback, &agent.LastCallback, &agent.ModifiedAt)
 
 	if err == sql.ErrNoRows {
 		return models.Agent{}, fmt.Errorf("agent not found")
 	}
 	if err != nil {
 		return models.Agent{}, fmt.Errorf("failed to get agent: %w", err)
-	}
-
-	// Parse headers JSON
-	if err := json.Unmarshal(headerJSON, &agent.Config.Headers); err != nil {
-		return models.Agent{}, fmt.Errorf("failed to parse headers: %w", err)
 	}
 
 	return agent, nil
@@ -114,28 +98,6 @@ func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgentRe
 	}
 
 	return updatedAgent, nil
-	// Update config
-	headerJSON, err := json.Marshal(agent.Config.Headers)
-	if err != nil {
-		return fmt.Errorf("failed to marshal headers: %w", err)
-	}
-
-	configQuery := fmt.Sprintf(`
-        UPDATE %s.agent_config
-        SET callback_urls = $1, rotation_type = $2, rotation_retries = $3,
-            sleep = $4, jitter = $5, start_date = $6, kill_date = $7,
-            working_hours = $8, headers = $9
-        WHERE agent_id = $10`, dal.schema)
-
-	_, err = tx.ExecContext(ctx, configQuery,
-		agent.Config.CallbackURLs, agent.Config.RotationType, agent.Config.RotationRetries,
-		agent.Config.Sleep, agent.Config.Jitter, agent.Config.StartDate, agent.Config.KillDate,
-		agent.Config.WorkingHours, headerJSON, agent.ID)
-	if err != nil {
-		return fmt.Errorf("failed to update agent config: %w", err)
-	}
-
-	return tx.Commit()
 }
 
 func (dal *AgentDAL) DeleteAgent(ctx context.Context, agentID string) error {
