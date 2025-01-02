@@ -30,7 +30,6 @@ func NewAgentDAL(db *sql.DB, schema string) *AgentDAL {
 	}
 }
 
-<<<<<<< HEAD
 func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
 	query := fmt.Sprintf(`
         SELECT a.id, a.name, a.note, a.status, a.first_callback, a.last_callback, a.modified_at
@@ -45,10 +44,6 @@ func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
 	if err == sql.ErrNoRows {
 		return models.Agent{}, fmt.Errorf("agent not found")
 	}
-=======
-// Get returns a single agent
-func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
->>>>>>> 1c89cd8 (changes to init.sh)
 	// Get main agent data
 	query := fmt.Sprintf(`
         SELECT a.id, a.name, a.note, a.status, a.first_callback, a.last_callback, a.modified_at,
