@@ -15,12 +15,20 @@ import (
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
+type IListenerDal interface {
+	CreateListener(context.Context, *listeners.Listener) error
+	GetListenerById(context.Context, string) (listeners.Listener, error)
+	GetAllListeners(context.Context) ([]listeners.Listener, error)
+	DeleteListener(context.Context, string) error
+	UpdateListener(context.Context, string, map[string]any) error
+}
+
 type ListenerDAL struct {
 	db     *sql.DB
 	schema string
 }
 
-func NewListenerDAL(db *sql.DB, schema string) *ListenerDAL {
+func NewListenerDAL(db *sql.DB, schema string) IListenerDal {
 	return &ListenerDAL{db: db, schema: schema}
 }
 

@@ -11,10 +11,10 @@ import (
 )
 
 type UserController struct {
-	dal *dal.UserDAL
+	dal dal.IUserDAL
 }
 
-func NewUserController(dal *dal.UserDAL) *UserController {
+func NewUserController(dal dal.IUserDAL) *UserController {
 	return &UserController{dal: dal}
 }
 

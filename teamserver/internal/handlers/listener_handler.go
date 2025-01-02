@@ -19,10 +19,10 @@ var (
 )
 
 type ListenerHandler struct {
-	dal *dal.ListenerDAL
+	dal dal.IListenerDal
 }
 
-func NewListenersHandler(dal *dal.ListenerDAL) *ListenerHandler {
+func NewListenersHandler(dal dal.IListenerDal) *ListenerHandler {
 	return &ListenerHandler{dal: dal}
 }
 

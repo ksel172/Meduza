@@ -16,7 +16,7 @@ type DependencyContainer struct {
 	UserController     *handlers.UserController
 	RedisService       *repos.Service
 	AuthController     *handlers.AuthController
-	JwtService         *models.JWTService
+	JwtService         models.JWTServiceProvider
 	AdminController    *handlers.AdminController
 	AgentController    *handlers.AgentController
 	CheckInController  *handlers.CheckInController

@@ -9,11 +9,11 @@ import (
 )
 
 type CheckInController struct {
-	checkInDAL *dal.CheckInDAL
-	agentDAL   *dal.AgentDAL
+	checkInDAL dal.ICheckInDAL
+	agentDAL   dal.IAgentDAL
 }
 
-func NewCheckInController(checkInDAL *dal.CheckInDAL, agentDAL *dal.AgentDAL) *CheckInController {
+func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL) *CheckInController {
 	return &CheckInController{checkInDAL: checkInDAL, agentDAL: agentDAL}
 }
 
@@ -37,7 +37,7 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 	agent := c2request.IntoNewAgent()
 
 	// Create agent in the redis db
-	if err := cc.checkInDAL.CreateAgent(agent); err != nil {
+	if err := cc.checkInDAL.CreateAgent(ctx.Request.Context(), agent); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -52,7 +52,7 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 func (cc *CheckInController) GetTasks(ctx *gin.Context) {
 
 	// Get the agent ID from the query params
-	agentID := ctx.Param("id")
+	agentID := ctx.Param(models.ParamAgentID)
 	if agentID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
 		return
