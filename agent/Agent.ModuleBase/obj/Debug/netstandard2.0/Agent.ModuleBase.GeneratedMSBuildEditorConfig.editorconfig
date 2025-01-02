@@ -1,7 +1,0 @@
-is_global = true
-build_property.RootNamespace = Agent.ModuleBase
-build_property.ProjectDir = C:\Users\MagicMan\Documents\Golang\Meduza\agent\Agent.ModuleBase\
-build_property.EnableComHosting = 
-build_property.EnableGeneratedComInterfaceComImportInterop = 
-build_property.EffectiveAnalysisLevelStyle = 
-build_property.EnableCodeStyleSeverity = 
