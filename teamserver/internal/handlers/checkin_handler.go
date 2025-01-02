@@ -8,6 +8,11 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
+type ICheckInController interface {
+	CreateAgent(ctx *gin.Context)
+	GetTasks(ctx *gin.Context)
+}
+
 type CheckInController struct {
 	checkInDAL dal.ICheckInDAL
 	agentDAL   dal.IAgentDAL

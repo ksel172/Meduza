@@ -66,6 +66,8 @@ type HttpListener struct {
 	whitelistMu sync.RWMutex
 }
 
+var listenerRoute = "/check-in"
+
 // NewHttpListener initializes a new HTTP listener.
 func NewHttpListener(name string, config Config) (*HttpListener, error) {
 	if err := config.Validate(); err != nil {
@@ -88,8 +90,15 @@ func NewHttpListener(name string, config Config) (*HttpListener, error) {
 		}
 		ctx.Next()
 	})
+
+	server.Handle("GET", listenerRoute, func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, "OK")
+	})
+	server.Handle("POST", listenerRoute, func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, "Ok POST")
+	})
+
 	/*
-		for _, uri := range config.Uris {
 			server.GET(uri, func(ctx *gin.Context) {
 				ctx.JSON(http.StatusOK, gin.H{
 					"message": "Ok",
