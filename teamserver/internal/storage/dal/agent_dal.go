@@ -44,6 +44,7 @@ func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
 	if err == sql.ErrNoRows {
 		return models.Agent{}, fmt.Errorf("agent not found")
 	}
+<<<<<<< HEAD
 	// Get main agent data
 	query = fmt.Sprintf(`
         SELECT a.id, a.name, a.note, a.status, a.first_callback, a.last_callback, a.modified_at
@@ -57,6 +58,8 @@ func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
 	if err == sql.ErrNoRows {
 		return models.Agent{}, fmt.Errorf("agent not found")
 	}
+=======
+>>>>>>> 93366d73802ad05fe4b27ae66b1ecb9d4e3420cf
 	if err != nil {
 		return models.Agent{}, fmt.Errorf("failed to get agent: %w", err)
 	}

@@ -66,7 +66,7 @@ type HttpListener struct {
 	whitelistMu sync.RWMutex
 }
 
-var listenerRoute = "/check-in"
+var listenerRoute = "/" // Changed to "/" from "/check-in"
 
 // NewHttpListener initializes a new HTTP listener.
 func NewHttpListener(name string, config Config) (*HttpListener, error) {
