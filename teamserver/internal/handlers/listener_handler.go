@@ -296,7 +296,7 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 	// Send a success response
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":  s.SUCCESS,
-		"message": "Listener started successfully",
+		"message": "listener started successfully",
 		"id":      id,
 	})
 }

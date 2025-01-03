@@ -3,7 +3,6 @@ package listeners
 import (
 	"errors"
 	"fmt"
-
 	"github.com/ksel172/Meduza/teamserver/pkg/listeners/http"
 )
 

@@ -1,64 +1,23 @@
 package main
 
 import (
-	"time"
-
-	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
-	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 
-	"github.com/ksel172/Meduza/teamserver/internal/handlers"
+	"github.com/ksel172/Meduza/teamserver/internal/container"
 	"github.com/ksel172/Meduza/teamserver/internal/server"
-	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
-	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 )
 
 func main() {
-	logger.Info("Connecting to Postgres db...")
-
-	pgsql, err := repos.Setup()
+	dependencies, err := container.NewContainer()
 	if err != nil {
-		logger.Fatal("Failed to connect to Pgsql. Terminating...", err)
-	}
-	defer pgsql.Close()
-	logger.Good("Connected to Postgres DB")
-
-	logger.Info("Connecting to RedisService Db...")
-	redisService := repos.NewRedisService()
-	logger.Good("Connected to RedisService Db")
-
-	logger.Info("Setting up Data Access Layers...")
-	schema := conf.GetMeduzaDbSchema()
-	userDal := dal.NewUsersDAL(pgsql, schema)
-	adminDal := dal.NewAdminsDAL(pgsql, schema)
-	agentDal := dal.NewAgentDAL(pgsql, schema)
-	checkInDal := dal.NewCheckInDAL(pgsql, schema)
-	listenerDal := dal.NewListenerDAL(pgsql, schema)
-	logger.Good("Finished setting up data access layers")
-
-	secret := conf.GetMeduzaJWTToken()
-	jwtService := models.NewJWTService(secret, 15*time.Minute, 30*24*time.Hour)
-
-	userController := handlers.NewUserController(userDal)
-	authController := handlers.NewAuthController(userDal, jwtService)
-	adminController := handlers.NewAdminController(adminDal)
-	agentController := handlers.NewAgentController(agentDal)
-	checkInController := handlers.NewCheckInController(checkInDal, agentDal)
-	listenerController := handlers.NewListenersHandler(listenerDal)
-
-	dependencies := &server.DependencyContainer{
-		UserController:     userController,
-		RedisService:       &redisService,
-		AuthController:     authController,
-		JwtService:         jwtService,
-		AdminController:    adminController,
-		AgentController:    agentController,
-		CheckInController:  checkInController,
-		ListenerController: listenerController,
+		logger.Error("Error While Setting dependencies", err)
+		return
 	}
 
 	// NewServer initialize the Http Server
 	teamserver := server.NewServer(dependencies)
+
+	teamserver.RegisterRoutes()
 
 	logger.Info("Starting Teamserver...")
 	if err := teamserver.Run(); err != nil {

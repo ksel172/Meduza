@@ -91,11 +91,11 @@ func NewHttpListener(name string, config Config) (*HttpListener, error) {
 		ctx.Next()
 	})
 
-	mux.Handle("GET", listenerRoute, func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, "OK")
-	})
+	mux.Handle("GET", listenerRoute)
 	mux.Handle("POST", listenerRoute, func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, "Ok POST")
+		ctx.JSON(http.StatusOK, gin.H{
+			"message": "hello post",
+		})
 	})
 
 	/*
