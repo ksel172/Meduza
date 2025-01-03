@@ -74,9 +74,9 @@ func NewHttpListener(name string, config Config) (*HttpListener, error) {
 		return nil, err
 	}
 
-	server := gin.Default()
+	mux := gin.Default()
 
-	server.Use(func(ctx *gin.Context) {
+	mux.Use(func(ctx *gin.Context) {
 		if config.WhitelistEnabled {
 			clientIP := ctx.ClientIP()
 			if !isIpWhitelisted(clientIP, config.Whitelist) {
@@ -91,10 +91,10 @@ func NewHttpListener(name string, config Config) (*HttpListener, error) {
 		ctx.Next()
 	})
 
-	server.Handle("GET", listenerRoute, func(ctx *gin.Context) {
+	mux.Handle("GET", listenerRoute, func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "OK")
 	})
-	server.Handle("POST", listenerRoute, func(ctx *gin.Context) {
+	mux.Handle("POST", listenerRoute, func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "Ok POST")
 	})
 
@@ -111,7 +111,7 @@ func NewHttpListener(name string, config Config) (*HttpListener, error) {
 	return &HttpListener{
 		Name:      name,
 		Config:    config,
-		Server:    server,
+		Server:    mux,
 		httpServe: nil,
 	}, nil
 }

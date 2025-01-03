@@ -45,13 +45,12 @@ func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
 		return models.Agent{}, fmt.Errorf("agent not found")
 	}
 	// Get main agent data
-	query := fmt.Sprintf(`
+	query = fmt.Sprintf(`
         SELECT a.id, a.name, a.note, a.status, a.first_callback, a.last_callback, a.modified_at
         FROM %s.agents a
         WHERE a.id = $1`, dal.schema)
 
-	var agent models.Agent
-	err := dal.db.QueryRow(query, agentID).Scan(
+	err = dal.db.QueryRow(query, agentID).Scan(
 		&agent.ID, &agent.Name, &agent.Note, &agent.Status,
 		&agent.FirstCallback, &agent.LastCallback, &agent.ModifiedAt)
 
@@ -78,7 +77,7 @@ func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgentRe
         WHERE id = $5
 		RETURNING id, name, note, status, first_callback, last_callback, modified_at`, dal.schema)
 
-	var updatedAgent models.Agent	
+	var updatedAgent models.Agent
 	if err = tx.QueryRowContext(ctx, agentQuery,
 		agent.Name, agent.Note, agent.Status, agent.ModifiedAt, agent.ID,
 	).Scan(
