@@ -10,19 +10,19 @@ import (
 
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/listeners"
-	http_listener "github.com/ksel172/Meduza/teamserver/pkg/listeners/http"
 )
 
 type ListenersService struct {
-
-	// controller is used internally to create and manage listeners
-	controller listeners.ListenerController
-
-	registry *listeners.Registry
+	controller        listeners.ListenerController // controller is used internally to create and manage listeners
+	checkinController *CheckInController
+	registry          *listeners.Registry
 }
 
-func NewListenerService() *ListenersService {
-	listenerService := &ListenersService{registry: listeners.NewRegistry()}
+func NewListenerService(CheckInController *CheckInController) *ListenersService {
+	listenerService := &ListenersService{
+		registry:          listeners.NewRegistry(),
+		checkinController: CheckInController,
+	}
 
 	// Create default http controller
 	// TODO: add default listener HTTP Listener config
@@ -54,7 +54,7 @@ func (s *ListenersService) CreateListenerController(listenerType string, config 
 		}
 
 		// Create HTTP controller and save to controller field
-		controller, err := http_listener.NewHTTPListenerController(httpConfig.HostHeader, *httpConfig)
+		controller, err := NewHTTPListenerController(httpConfig.HostHeader, *httpConfig, s.checkinController)
 		if err != nil {
 			return fmt.Errorf("failed to create HTTP listener controller: %v", err)
 		}

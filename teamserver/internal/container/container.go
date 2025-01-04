@@ -2,7 +2,7 @@ package container
 
 import (
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
-	"github.com/ksel172/Meduza/teamserver/internal/services"
+	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -17,7 +17,7 @@ type Container struct {
 	JwtService         models.JWTServiceProvider
 	AdminController    *handlers.AdminController
 	AgentController    *handlers.AgentController
-	CheckInController  *handlers.CheckInController
+	CheckInController  *services.CheckInController // handler is not directly accessible by the C2 server
 	ListenerController *handlers.ListenerHandler
 }
 
@@ -39,8 +39,11 @@ func NewContainer() (*Container, error) {
 	checkInDal := dal.NewCheckInDAL(pgsql, schema)
 	listenerDal := dal.NewListenerDAL(pgsql, schema)
 
+	// Check In Controller
+	checkInController := services.NewCheckInController(checkInDal, agentDal)
+
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 15, 30*24*60*60)
-	listenersService := services.NewListenerService()
+	listenersService := services.NewListenerService(checkInController)
 
 	return &Container{
 		UserController:     handlers.NewUserController(userDal),
@@ -49,7 +52,7 @@ func NewContainer() (*Container, error) {
 		JwtService:         jwtService,
 		AdminController:    handlers.NewAdminController(adminDal),
 		AgentController:    handlers.NewAgentController(agentDal),
-		CheckInController:  handlers.NewCheckInController(checkInDal, agentDal),
+		CheckInController:  checkInController,
 		ListenerController: handlers.NewListenersHandler(listenerDal, listenersService),
 	}, nil
 }

@@ -6,18 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
-	"github.com/ksel172/Meduza/teamserver/utils"
 )
-
-var status = utils.Status
-var listenerRoute = "/" // Changed to "/" from "/check-in"
 
 // HttpListener manages the HTTP server with configuration and security options.
 type HTTPListenerController struct {
@@ -28,43 +23,10 @@ type HTTPListenerController struct {
 	WhitelistMu sync.RWMutex
 }
 
-// NewHTTPListener initializes a new HTTP listener server.
-func NewHTTPListenerController(name string, config models.HTTPListenerConfig) (*HTTPListenerController, error) {
-	if err := config.Validate(); err != nil {
-		return nil, err
-	}
-
-	mux := gin.Default()
-
-	mux.Use(func(ctx *gin.Context) {
-		if config.WhitelistEnabled {
-			clientIP := ctx.ClientIP()
-			if !isIpWhitelisted(clientIP, config.Whitelist) {
-				logger.Warn("IP not allowed:", clientIP)
-				ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-					"message": "IP not allowed",
-					"status":  status.ERROR,
-				})
-				return
-			}
-		}
-		ctx.Next()
-	})
-
-	mux.Handle("GET", listenerRoute)
-	mux.Handle("POST", listenerRoute, func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{
-			"message": "hello post",
-		})
-	})
-
-	return &HTTPListenerController{
-		Name:      name,
-		Config:    config,
-		Server:    mux,
-		HTTPServe: nil,
-	}, nil
-}
+// type ICheckInController interface {
+// 	CreateAgent(ctx *gin.Context)
+// 	GetTasks(ctx *gin.Context)
+// }
 
 // Start begins the HTTP listener.
 func (c *HTTPListenerController) Start() error {
@@ -131,16 +93,6 @@ func (c *HTTPListenerController) Stop(timeout time.Duration) error {
 
 func (c *HTTPListenerController) GetName() string {
 	return c.Name
-}
-
-// isIpWhitelisted checks if an IP is in the whitelist.
-func isIpWhitelisted(ip string, whitelist []string) bool {
-	for _, allowedIP := range whitelist {
-		if strings.TrimSpace(allowedIP) == ip {
-			return true
-		}
-	}
-	return false
 }
 
 // validateCertificate checks if certificate files exist.
