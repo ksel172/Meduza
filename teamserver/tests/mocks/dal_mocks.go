@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/pkg/listeners"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -84,19 +83,19 @@ type MockListenerDAL struct {
 	mock.Mock
 }
 
-func (m *MockListenerDAL) CreateListener(ctx context.Context, listener *listeners.Listener) error {
+func (m *MockListenerDAL) CreateListener(ctx context.Context, listener *models.Listener) error {
 	args := m.Called(listener)
 	return args.Error(0)
 }
 
-func (m *MockListenerDAL) GetListenerById(ctx context.Context, lid string) (listeners.Listener, error) {
+func (m *MockListenerDAL) GetListenerById(ctx context.Context, lid string) (models.Listener, error) {
 	args := m.Called(lid)
-	return args.Get(0).(listeners.Listener), args.Error(1)
+	return args.Get(0).(models.Listener), args.Error(1)
 }
 
-func (m *MockListenerDAL) GetAllListeners(ctx context.Context) ([]listeners.Listener, error) {
+func (m *MockListenerDAL) GetAllListeners(ctx context.Context) ([]models.Listener, error) {
 	args := m.Called()
-	return args.Get(0).([]listeners.Listener), args.Error(1)
+	return args.Get(0).([]models.Listener), args.Error(1)
 }
 
 func (m *MockListenerDAL) DeleteListener(ctx context.Context, lid string) error {
