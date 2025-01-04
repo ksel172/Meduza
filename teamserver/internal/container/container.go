@@ -2,6 +2,7 @@ package container
 
 import (
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
+	"github.com/ksel172/Meduza/teamserver/internal/services"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -39,6 +40,7 @@ func NewContainer() (*Container, error) {
 	listenerDal := dal.NewListenerDAL(pgsql, schema)
 
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 15, 30*24*60*60)
+	listenersService := services.NewListenerService()
 
 	return &Container{
 		UserController:     handlers.NewUserController(userDal),
@@ -48,6 +50,6 @@ func NewContainer() (*Container, error) {
 		AdminController:    handlers.NewAdminController(adminDal),
 		AgentController:    handlers.NewAgentController(agentDal),
 		CheckInController:  handlers.NewCheckInController(checkInDal, agentDal),
-		ListenerController: handlers.NewListenersHandler(listenerDal),
+		ListenerController: handlers.NewListenersHandler(listenerDal, listenersService),
 	}, nil
 }

@@ -11,14 +11,14 @@ import (
 	"time"
 
 	// internal
-	"github.com/ksel172/Meduza/teamserver/pkg/listeners"
+	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
 type IListenerDal interface {
-	CreateListener(context.Context, *listeners.Listener) error
-	GetListenerById(context.Context, string) (listeners.Listener, error)
-	GetAllListeners(context.Context) ([]listeners.Listener, error)
+	CreateListener(context.Context, *models.Listener) error
+	GetListenerById(context.Context, string) (models.Listener, error)
+	GetAllListeners(context.Context) ([]models.Listener, error)
 	DeleteListener(context.Context, string) error
 	UpdateListener(context.Context, string, map[string]any) error
 }
@@ -32,7 +32,7 @@ func NewListenerDAL(db *sql.DB, schema string) IListenerDal {
 	return &ListenerDAL{db: db, schema: schema}
 }
 
-func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *listeners.Listener) error {
+func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *models.Listener) error {
 	config, err := json.Marshal(listener.Config)
 	if err != nil {
 		logger.Error("Error in Listener Dal:", err)
@@ -46,14 +46,14 @@ func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *listeners.
 	return err
 }
 
-func (dal *ListenerDAL) GetListenerById(ctx context.Context, lId string) (listeners.Listener, error) {
+func (dal *ListenerDAL) GetListenerById(ctx context.Context, lId string) (models.Listener, error) {
 	query := fmt.Sprintf(`SELECT id, type, name, status, description, config, logging_enabled, logging, created_at, updated_at, started_at, stopped_at FROM %s.listeners WHERE id=$1`, dal.schema)
 	row := dal.db.QueryRowContext(ctx, query, lId)
 
 	var (
 		rawConfig  json.RawMessage
 		rawLogging json.RawMessage
-		listener   listeners.Listener
+		listener   models.Listener
 	)
 
 	if err := row.Scan(
@@ -72,26 +72,26 @@ func (dal *ListenerDAL) GetListenerById(ctx context.Context, lId string) (listen
 	); err != nil {
 		if err == sql.ErrNoRows {
 			logger.Error("Listener not found", err)
-			return listeners.Listener{}, fmt.Errorf("unable to find the listener with id: %s", lId)
+			return models.Listener{}, fmt.Errorf("unable to find the listener with id: %s", lId)
 		}
 		logger.Error("Error retrieving listener", err)
-		return listeners.Listener{}, fmt.Errorf("failed to get listener")
+		return models.Listener{}, fmt.Errorf("failed to get listener")
 	}
 
 	if err := json.Unmarshal(rawConfig, &listener.Config); err != nil {
 		logger.Error("Error unmarshalling Config", err)
-		return listeners.Listener{}, fmt.Errorf("failed to parse Config field")
+		return models.Listener{}, fmt.Errorf("failed to parse Config field")
 	}
 
 	if err := json.Unmarshal(rawLogging, &listener.Logging); err != nil {
 		logger.Error("Error unmarshalling Logging", err)
-		return listeners.Listener{}, fmt.Errorf("failed to parse Logging field")
+		return models.Listener{}, fmt.Errorf("failed to parse Logging field")
 	}
 
 	return listener, nil
 }
 
-func (dal *ListenerDAL) GetAllListeners(ctx context.Context) ([]listeners.Listener, error) {
+func (dal *ListenerDAL) GetAllListeners(ctx context.Context) ([]models.Listener, error) {
 	query := fmt.Sprintf(`SELECT id, type, name, status, description, config, logging_enabled, logging, created_at, updated_at, started_at, stopped_at FROM %s.listeners ORDER BY created_at DESC`, dal.schema)
 	rows, err := dal.db.QueryContext(ctx, query)
 	if err != nil {
@@ -99,9 +99,9 @@ func (dal *ListenerDAL) GetAllListeners(ctx context.Context) ([]listeners.Listen
 		return nil, fmt.Errorf("failed to get listeners")
 	}
 	defer rows.Close()
-	var lists []listeners.Listener
+	var lists []models.Listener
 	for rows.Next() {
-		var listener listeners.Listener
+		var listener models.Listener
 		var rawConfig json.RawMessage
 		var rawLogging json.RawMessage
 		if err := rows.Scan(&listener.ID, &listener.Type, &listener.Name, &listener.Status, &listener.Description, &rawConfig, &listener.LoggingEnabled, &rawLogging, &listener.CreatedAt, &listener.UpdatedAt, &listener.StartedAt, &listener.StoppedAt); err != nil {

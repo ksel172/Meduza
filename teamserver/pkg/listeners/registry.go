@@ -2,39 +2,34 @@ package listeners
 
 import (
 	"sync"
-	"time"
-)
 
-// Interface for ListenerRegistry
-type ListenerRegistry interface {
-	Start() error
-	Stop(timeout time.Duration) error
-}
+	"github.com/ksel172/Meduza/teamserver/models"
+)
 
 // Registry holds active listeners by ID
 type Registry struct {
 	mu        sync.Mutex
-	listeners map[string]ListenerRegistry
+	listeners map[string]models.Listener
 }
 
 // Create a New Instance of ListenerRegistry.
 // Returns map of ListenerRegistry :- map[string]ListenerRegistry
 func NewRegistry() *Registry {
 	return &Registry{
-		listeners: make(map[string]ListenerRegistry),
+		listeners: make(map[string]models.Listener),
 	}
 }
 
 // AddListener function adds a Listener to registry.
-func (r *Registry) AddListener(id string, listener ListenerRegistry) {
+func (r *Registry) AddListener(listener models.Listener) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.listeners[id] = listener
+	r.listeners[listener.ID.String()] = listener
 }
 
 // GetListener function help to get the added listeners
 // Help in checking if the listener is currently running or not.
-func (r *Registry) GetListener(id string) (ListenerRegistry, bool) {
+func (r *Registry) GetListener(id string) (models.Listener, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

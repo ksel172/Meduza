@@ -1,6 +1,26 @@
 package models
 
-import "time"
+import (
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type (
+	Id       = uuid.UUID
+	status   = int32
+	LogLevel = string
+)
+
+// Listener Statuses (Enum)
+const (
+	StatusStopped    status = 0
+	StatusRunning    status = 1
+	StatusPaused     status = 2
+	StatusProcessing status = 3
+	StatusError      status = 4
+)
 
 // Listener Types (Enum)
 const (
@@ -17,13 +37,51 @@ var AllowedListenerTypes = []string{
 	ListenerTypeForeign,
 }
 
+// Log levels
 const (
-	StatusStopped    = 0
-	StatusRunning    = 1
-	StatusPaused     = 2
-	StatusProcessing = 3
-	StatusError      = 4
+	Silly LogLevel = "silly" // logs everthing, including verbose information
+	Debug LogLevel = "debug" // logs detailed debugging information.
+	Info  LogLevel = "info"  // logs general informational messages.
+	Error LogLevel = "error" // logs error messages about critical failures.
+	Fatal LogLevel = "fatal" // logs critical failures.
+	All   LogLevel = "all"   // logs all levels
 )
+
+// ValidLogLevel contains all valid logging levels for runtime validation.
+var ValidLogLevel = []LogLevel{
+	Silly,
+	Debug,
+	Info,
+	Error,
+	Fatal,
+	All,
+}
+
+// Listener represents a listener configuration , including settings for logging, response rules, and network configuration.
+type Listener struct {
+	ID          Id     `json:"id"`                    // UUID
+	Type        string `json:"type"`                  // Listener Type (http, tcp, etc.)
+	Name        string `json:"name"`                  // Name
+	Status      int    `json:"status"`                // 0 = stopped, 1 = running, 2 = paused, 3 = processing
+	Description string `json:"description,omitempty"` // description
+	Config      any    `json:"config"`                // Configuration of the Listener
+
+	// Logging
+	LoggingEnabled bool    `json:"logging_enabled"` // Toggle for enabling Logs
+	Logging        Logging `json:"logging"`         // logging structure
+
+	// Time related fields
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	StartedAt *time.Time `json:"started_at,omitempty"`
+	StoppedAt *time.Time `json:"stopped_at,omitempty"`
+}
+
+// Logging defines the configuration for logging, including the log path and log level.
+type Logging struct {
+	LogPath  string   `json:"log_path,omitempty"` // Log path
+	LogLevel LogLevel `json:"log_level"`          // Log Level (Example - Silly , debug , info)
+}
 
 type ListenerRequest struct {
 	Type        string `json:"type"`
@@ -32,20 +90,7 @@ type ListenerRequest struct {
 	Config      any    `json:"config"`
 }
 
-type Listener struct {
-	ID          string     `json:"id"`
-	Type        string     `json:"type"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Status      int        `json:"status"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	StartedAt   *time.Time `json:"started_at"`
-	StoppedAt   *time.Time `json:"stopped_at"`
-	Config      any        `json:"config"`
-}
-
-type HTTPConfig struct {
+type HTTPListenerConfig struct {
 	KillDate         int64            `json:"kill_date"`
 	WorkingHours     string           `json:"working_hours"`
 	Hosts            []string         `json:"hosts"`
@@ -66,24 +111,46 @@ type HTTPConfig struct {
 	ResponseRules    ResponseSettings `json:"response_rules"`
 }
 
-type TCPConfig struct {
+// Validate ensures the configuration is valid before use.
+func (config *HTTPListenerConfig) Validate() error {
+	if config.HostBind == "" {
+		return fmt.Errorf("HostBind is required")
+	}
+	if config.PortBind == "" {
+		return fmt.Errorf("PortBind is required")
+	}
+	/*
+		if len(config.Uris) == 0 {
+			return fmt.Errorf("At least one URI is required")
+		}
+	*/
+	if config.Secure {
+		if config.Certificate.CertPath == "" || config.Certificate.KeyPath == "" {
+			return fmt.Errorf("Certificate paths are required for secure mode")
+		}
+	}
+	return nil
+}
+
+type TCPListenerConfig struct {
 	PortBind   string `json:"port_bind"`
 	HostBind   string `json:"host_bind"`
 	BufferSize int    `json:"buffer_size"`
 	Timeout    int    `json:"timeout"`
 }
 
-type SMBConfig struct {
+type SMBListenerConfig struct {
 	PipeName     string `json:"pipe_name"`
 	MaxInstances int    `json:"max_instances"`
 	KillDate     int64  `json:"kill_date"`
 }
 
-type ForeignConfig struct {
+type ForeignListenerConfig struct {
 	Endpoint       string         `json:"endpoint"`
 	Authentication Authentication `json:"authentication"`
 }
 
+// Used by foreign listeners
 type Authentication struct {
 	Enabled  bool   `json:"enabled"`
 	Username string `json:"username,omitempty"`

@@ -11,65 +11,25 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 var status = utils.Status
-
-// Config represents the configuration settings for the service, including network, security, and proxy settings.
-type Config struct {
-	WorkingHours string   `json:"working_hours"`
-	Hosts        []string `json:"hosts"`
-	HostBind     string   `json:"host_bind"`
-	HostRotation string   `json:"host_rotation"`
-	PortBind     string   `json:"port_bind"`
-	PortConn     string   `json:"port_conn"`
-	Secure       bool     `json:"secure"`
-	HostHeader   string   `json:"host_header"`
-	Headers      []Header `json:"headers"`
-	//Uris             []string      `json:"uris"`
-	Certificate      Certificate   `json:"certificate"`
-	WhitelistEnabled bool          `json:"whitelist_enabled"`
-	Whitelist        []string      `json:"whitelist"`
-	BlacklistEnabled bool          `json:"blacklist_enabled"`
-	ProxySettings    ProxySettings `json:"proxy_settings"`
-}
-
-// Certificate holds the paths to the SSL certificate and its corresponding private key.
-type Certificate struct {
-	CertPath string `json:"cert_path"`
-	KeyPath  string `json:"key_path"`
-}
-
-// ProxySettings represents the configuration for a proxy server.
-type ProxySettings struct {
-	Enabled  bool   `json:"enabled"`
-	Type     string `json:"type"`
-	Port     string `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-// Header represents a key-value pair used in HTTP headers.
-type Header struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
-// HttpListener manages the HTTP server with configuration and security options.
-type HttpListener struct {
-	Name        string
-	Config      Config
-	Server      *gin.Engine
-	httpServe   *http.Server
-	whitelistMu sync.RWMutex
-}
-
 var listenerRoute = "/" // Changed to "/" from "/check-in"
 
-// NewHttpListener initializes a new HTTP listener.
-func NewHttpListener(name string, config Config) (*HttpListener, error) {
+// HttpListener manages the HTTP server with configuration and security options.
+type HTTPListenerController struct {
+	Name        string
+	Config      models.HTTPListenerConfig
+	Server      *gin.Engine
+	HTTPServe   *http.Server
+	WhitelistMu sync.RWMutex
+}
+
+// NewHTTPListener initializes a new HTTP listener server.
+func NewHTTPListenerController(name string, config models.HTTPListenerConfig) (*HTTPListenerController, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
@@ -98,51 +58,20 @@ func NewHttpListener(name string, config Config) (*HttpListener, error) {
 		})
 	})
 
-	/*
-			server.GET(uri, func(ctx *gin.Context) {
-				ctx.JSON(http.StatusOK, gin.H{
-					"message": "Ok",
-					"status":  status.SUCCESS,
-				})
-			})
-		}
-	*/
-
-	return &HttpListener{
+	return &HTTPListenerController{
 		Name:      name,
 		Config:    config,
 		Server:    mux,
-		httpServe: nil,
+		HTTPServe: nil,
 	}, nil
 }
 
-// Validate ensures the configuration is valid before use.
-func (config *Config) Validate() error {
-	if config.HostBind == "" {
-		return fmt.Errorf("HostBind is required")
-	}
-	if config.PortBind == "" {
-		return fmt.Errorf("PortBind is required")
-	}
-	/*
-		if len(config.Uris) == 0 {
-			return fmt.Errorf("At least one URI is required")
-		}
-	*/
-	if config.Secure {
-		if config.Certificate.CertPath == "" || config.Certificate.KeyPath == "" {
-			return fmt.Errorf("Certificate paths are required for secure mode")
-		}
-	}
-	return nil
-}
-
 // Start begins the HTTP listener.
-func (hlisten *HttpListener) Start() error {
-	address := hlisten.Config.HostBind + ":" + hlisten.Config.PortBind
-	hlisten.httpServe = &http.Server{
+func (c *HTTPListenerController) Start() error {
+	address := c.Config.HostBind + ":" + c.Config.PortBind
+	c.HTTPServe = &http.Server{
 		Addr:    address,
-		Handler: hlisten.Server,
+		Handler: c.Server,
 	}
 
 	errChan := make(chan error, 1)
@@ -152,22 +81,22 @@ func (hlisten *HttpListener) Start() error {
 		readyChan <- struct{}{}
 
 		var err error
-		if hlisten.Config.Secure {
-			certPath := hlisten.Config.Certificate.CertPath
-			keyPath := hlisten.Config.Certificate.KeyPath
+		if c.Config.Secure {
+			certPath := c.Config.Certificate.CertPath
+			keyPath := c.Config.Certificate.KeyPath
 
 			if err := validateCertificate(certPath, keyPath); err != nil {
 				return
 			}
 
-			hlisten.httpServe.TLSConfig = &tls.Config{
+			c.HTTPServe.TLSConfig = &tls.Config{
 				MinVersion: tls.VersionTLS12,
 			}
 			logger.Good("Starting HTTPS server on ", address)
-			err = hlisten.httpServe.ListenAndServeTLS(certPath, keyPath)
+			err = c.HTTPServe.ListenAndServeTLS(certPath, keyPath)
 		} else {
 			logger.Good("Starting HTTP server on ", address)
-			err = hlisten.httpServe.ListenAndServe()
+			err = c.HTTPServe.ListenAndServe()
 		}
 		if err != nil && err != http.ErrServerClosed {
 			errChan <- err
@@ -184,20 +113,24 @@ func (hlisten *HttpListener) Start() error {
 }
 
 // Stop gracefully shuts down the HTTP listener.
-func (hlisten *HttpListener) Stop(timeout time.Duration) error {
-	if hlisten.httpServe == nil {
+func (c *HTTPListenerController) Stop(timeout time.Duration) error {
+	if c.HTTPServe == nil {
 		return fmt.Errorf("HTTP server is not running")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	logger.Info("Stopping server:", hlisten.Name)
-	if err := hlisten.httpServe.Shutdown(ctx); err != nil {
+	logger.Info("Stopping server:", c.Name)
+	if err := c.HTTPServe.Shutdown(ctx); err != nil {
 		logger.Error("Failed to gracefully shutdown server, forcing close:", err)
-		return hlisten.httpServe.Close()
+		return c.HTTPServe.Close()
 	}
 	return nil
+}
+
+func (c *HTTPListenerController) GetName() string {
+	return c.Name
 }
 
 // isIpWhitelisted checks if an IP is in the whitelist.
@@ -213,7 +146,7 @@ func isIpWhitelisted(ip string, whitelist []string) bool {
 // validateCertificate checks if certificate files exist.
 func validateCertificate(certPath, keyPath string) error {
 	if _, err := os.Stat(certPath); os.IsNotExist(err) {
-		return fmt.Errorf("Certificate file not found: %s", certPath)
+		return fmt.Errorf("certificate file not found: %s", certPath)
 	}
 	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 		return fmt.Errorf("key file not found: %s", keyPath)
