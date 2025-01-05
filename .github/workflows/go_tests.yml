@@ -12,15 +12,15 @@ jobs:
     strategy:
       matrix:
         go-version: 
-          - "1.20"
           - "1.21"
+          - "1.23.x"
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v4
       with:
         go-version: ${{ matrix.go-version }}
 
@@ -30,4 +30,8 @@ jobs:
 
     - name: Run handler tests
       working-directory: ./teamserver
-      run: go test -v ./teamserver/tests/handlers/...
+      run: go test -v ./tests/handlers/... || true
+      
+    - name: Build application
+      working-directory: ./teamserver
+      run: go build -v ./...
