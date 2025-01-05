@@ -48,3 +48,42 @@ After generating JWT secret, add it your .env file as follows:
 ```bash
 JWT_SECRET=your_generated_secret
 ```
+
+
+### 5. Listener creation
+
+WIP:
+Before creating a listener, an array of ports that will be opened in the docker container of the teamserver should be specified. 
+If we are planning to spawn listeners on ports from 8000 to 8010 we can go into the `docker-compose.yml` and add the following line:
+```shell
+  ...
+  teamserver:
+    container_name: ${TEAMSERVER_HOSTNAME}
+    build:
+      context: teamserver
+      dockerfile: docker/Dockerfile
+    ports:
+      - "${TEAMSERVER_PORT}:${TEAMSERVER_PORT}"
+      - "${DLV_PORT:-2345}:${DLV_PORT:-2345}"
+      - "8000-8010:8000-8010" // Individual ports can be specified as well with "<some_port>:<some_port>"
+    ...
+```
+
+- To start a listener, a `POST` request should be sent to `http://<server_ip>:<server_port>/api/v1/listeners` with the following body:
+```shell
+{
+        "type":"",
+        "name": "",
+        "status": ,
+        "description": "",
+        "config": {}
+}
+```
+which should be modified based on the listener type. 
+*Fair notice: the status is an int.*
+- After the listener is created, it's UUID can be extracted using a `GET` request to `http://<server_ip>:<server_port>/api/v1/listeners/all`
+- The listener can be started using a `POST` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>/start`
+- The listener can be stopped using a `POST` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>/stop`
+- The listener can be deleted using a `DELETE` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>`
+- The listener can be updated using a `PUT` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>`
+- The listener can be queried individually using a `GET` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>`

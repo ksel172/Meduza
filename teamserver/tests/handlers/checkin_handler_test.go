@@ -10,7 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/ksel172/Meduza/teamserver/internal/handlers"
+	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/tests/mocks"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +20,7 @@ import (
 func TestCreateAgent(t *testing.T) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
 	mockCheckInDal := new(mocks.MockCheckInDal)
-	handler := handlers.NewCheckInController(mockCheckInDal, mockAgentDAL)
+	handler := services.NewCheckInController(mockCheckInDal, mockAgentDAL)
 	gin.SetMode(gin.TestMode)
 
 	// Create c2 request and give it an UUID
@@ -80,7 +80,7 @@ func TestCreateAgent(t *testing.T) {
 func TestGetTasks(t *testing.T) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
 	mockCheckInDal := new(mocks.MockCheckInDal)
-	handler := handlers.NewCheckInController(mockCheckInDal, mockAgentDAL)
+	handler := services.NewCheckInController(mockCheckInDal, mockAgentDAL)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {

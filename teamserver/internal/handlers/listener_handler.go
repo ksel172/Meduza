@@ -8,22 +8,28 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
-	"github.com/ksel172/Meduza/teamserver/pkg/listeners"
+	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
 type ListenerHandler struct {
-	dal dal.IListenerDal
+	dal     dal.IListenerDal
+	service *services.ListenersService
 }
 
-func NewListenersHandler(dal dal.IListenerDal) *ListenerHandler {
-	return &ListenerHandler{dal: dal}
+func NewListenersHandler(dal dal.IListenerDal, service *services.ListenersService) *ListenerHandler {
+	return &ListenerHandler{
+		dal:     dal,
+		service: service,
+	}
 }
 
 func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
-	var listener listeners.Listener
 
+	// Read the request body into listener model
+	var listener models.Listener
 	if err := ctx.ShouldBindJSON(&listener); err != nil {
 		ctx.JSON(http.StatusConflict, gin.H{
 			"message": "Invalid Request body.Please type correct input",
@@ -36,7 +42,7 @@ func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 	reqCtx := ctx.Request.Context()
 
 	// Convert the parsed configuration back to JSON
-	configJSON, err := json.Marshal(listener.Config)
+	/* configJSON, err := json.Marshal(listener.Config)
 	if err != nil {
 		logger.Error("Error converting parsed config to JSON:", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -45,9 +51,10 @@ func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 		})
 		return
 	}
-	listener.Config = configJSON
+	listener.Config = configJSON */
 
-	err = h.dal.CreateListener(reqCtx, &listener)
+	// Create the listener in the database
+	err := h.dal.CreateListener(reqCtx, &listener)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"status":  s.ERROR,
@@ -132,7 +139,7 @@ func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
 	id := ctx.Param("id")
 	c := ctx.Request.Context()
 
-	var listener listeners.Listener
+	var listener models.Listener
 
 	if err := ctx.ShouldBindJSON(&listener); err != nil {
 		ctx.JSON(http.StatusConflict, gin.H{
@@ -178,7 +185,7 @@ func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
 
 	//TODO: implement a functionality for config updated based on the type.
 	if listener.Config != nil && !reflect.DeepEqual(listener.Config, exists.Config) {
-		parsedConfig, err := listeners.ValidateAndParseConfig(exists.Type, listener.Config)
+		parsedConfig, err := services.ValidateAndParseConfig(exists.Type, listener.Config)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{
 				"status":  s.ERROR,
@@ -197,7 +204,7 @@ func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
 		}
 		updates["config"] = configJson
 	}
-	if listener.Logging != (listeners.Logging{}) && !reflect.DeepEqual(listener.Logging, exists.Logging) {
+	if listener.Logging != (models.Logging{}) && !reflect.DeepEqual(listener.Logging, exists.Logging) {
 		// Marshal the Logging field only if it has changed
 		logJson, err := json.Marshal(&listener.Logging)
 		if err != nil {
@@ -234,4 +241,67 @@ func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
 			"message": "No fields to update",
 		})
 	}
+}
+
+func (h *ListenerHandler) StartListener(ctx *gin.Context) {
+	c := ctx.Request.Context()
+	id := ctx.Param("id")
+
+	// Retrieve the listener from the database
+	list, err := h.dal.GetListenerById(c, id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"status":  s.FAILED,
+			"message": "Listener does not exist",
+		})
+		logger.Error("Failed to retrieve listener from database:", err)
+		return
+	}
+
+	// Create a new listener controller instance
+	logger.Info("Attempting to create listener of type:", list.Type)
+	if err := h.service.CreateListenerController(list.Type, list.Config); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.ERROR,
+			"message": "Failed to create listener controller",
+		})
+		logger.Error("Failed to create listener controller:", err)
+		return
+	}
+
+	// Start the listener, service handles registry addition
+	logger.Info("Starting listener with ID:", id)
+	if err := h.service.Start(list); err != nil {
+		logger.Error("Failed to start the listener:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to start listener",
+		})
+		return
+	}
+
+	// Send a success response
+	ctx.JSON(http.StatusOK, gin.H{
+		"status":  s.SUCCESS,
+		"message": "listener started successfully",
+		"id":      id,
+	})
+}
+
+func (h *ListenerHandler) StopListener(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	// Try stopping the listener, service handles possible errors
+	if err := h.service.Stop(id, 10*time.Second); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"message": "failed to stop listener",
+			"status":  s.FAILED,
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "listener stopped",
+		"status":  s.SUCCESS,
+	})
 }

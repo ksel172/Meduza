@@ -64,7 +64,7 @@ func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgentRe
         WHERE id = $5
 		RETURNING id, name, note, status, first_callback, last_callback, modified_at`, dal.schema)
 
-	var updatedAgent models.Agent	
+	var updatedAgent models.Agent
 	if err = tx.QueryRowContext(ctx, agentQuery,
 		agent.Name, agent.Note, agent.Status, agent.ModifiedAt, agent.ID,
 	).Scan(

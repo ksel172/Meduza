@@ -5,32 +5,19 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/ksel172/Meduza/teamserver/internal/handlers"
-	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
-	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/internal/container"
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 	"github.com/mattn/go-colorable"
 )
-
-type DependencyContainer struct {
-	UserController     *handlers.UserController
-	RedisService       *repos.Service
-	AuthController     *handlers.AuthController
-	JwtService         models.JWTServiceProvider
-	AdminController    *handlers.AdminController
-	AgentController    *handlers.AgentController
-	CheckInController  *handlers.CheckInController
-	ListenerController *handlers.ListenerHandler
-}
 
 type Server struct {
 	host         string
 	port         int
 	engine       *gin.Engine
-	dependencies *DependencyContainer
+	dependencies *container.Container
 }
 
-func NewServer(dependencies *DependencyContainer) *Server {
+func NewServer(dependencies *container.Container) *Server {
 
 	// it force the console output to be colored.
 	gin.ForceConsoleColor()
@@ -44,8 +31,6 @@ func NewServer(dependencies *DependencyContainer) *Server {
 	}
 
 	gin.DefaultWriter = colorable.NewColorableStdout()
-
-	server.RegisterRoutes()
 
 	return server
 }

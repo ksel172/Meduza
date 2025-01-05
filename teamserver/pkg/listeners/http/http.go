@@ -1,41 +1,107 @@
 package http
 
-// Config represents the configuration settings for the service, including network, security, and proxy settings.
-type Config struct {
-	WorkingHours     string        `json:"working_hours"`
-	Hosts            []string      `json:"hosts"`
-	HostBind         string        `json:"host_bind"`
-	HostRotation     string        `json:"host_rotation"`
-	PortBind         string        `json:"port_bind"`
-	PortConn         string        `json:"port_conn"`
-	Secure           bool          `json:"secure"`
-	HostHeader       string        `json:"host_header"`
-	Headers          []Header      `json:"headers"`
-	Uris             []string      `json:"uris"`
-	Certificate      Certificate   `json:"certificate"`
-	WhitelistEnabled bool          `json:"whitelist_enabled"`
-	Whitelist        []string      `json:"whitelist"`
-	BlacklistEnabled bool          `json:"blacklist_enabled"`
-	ProxySettings    ProxySettings `json:"proxy_settings"`
+import (
+	"context"
+	"crypto/tls"
+	"fmt"
+	"net/http"
+	"os"
+	"sync"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
+)
+
+// HttpListener manages the HTTP server with configuration and security options.
+type HTTPListenerController struct {
+	Name        string
+	Config      models.HTTPListenerConfig
+	Server      *gin.Engine
+	HTTPServe   *http.Server
+	WhitelistMu sync.RWMutex
 }
 
-// Certificate holds the paths to the SSL certificate and its corresponding private key.
-type Certificate struct {
-	CertPath string `json:"cert_path"`
-	KeyPath  string `json:"key_path"`
+// type ICheckInController interface {
+// 	CreateAgent(ctx *gin.Context)
+// 	GetTasks(ctx *gin.Context)
+// }
+
+// Start begins the HTTP listener.
+func (c *HTTPListenerController) Start() error {
+	address := c.Config.HostBind + ":" + c.Config.PortBind
+	c.HTTPServe = &http.Server{
+		Addr:    address,
+		Handler: c.Server,
+	}
+
+	errChan := make(chan error, 1)
+	readyChan := make(chan struct{}, 1)
+
+	go func() {
+		readyChan <- struct{}{}
+
+		var err error
+		if c.Config.Secure {
+			certPath := c.Config.Certificate.CertPath
+			keyPath := c.Config.Certificate.KeyPath
+
+			if err := validateCertificate(certPath, keyPath); err != nil {
+				return
+			}
+
+			c.HTTPServe.TLSConfig = &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			}
+			logger.Good("Starting HTTPS server on ", address)
+			err = c.HTTPServe.ListenAndServeTLS(certPath, keyPath)
+		} else {
+			logger.Good("Starting HTTP server on ", address)
+			err = c.HTTPServe.ListenAndServe()
+		}
+		if err != nil && err != http.ErrServerClosed {
+			errChan <- err
+		}
+	}()
+	select {
+	case <-readyChan:
+		return nil
+	case err := <-errChan:
+		return fmt.Errorf("failed to start server: %v", err)
+	case <-time.After(5 * time.Second):
+		return fmt.Errorf("timeout waiting for server to start")
+	}
 }
 
-// ProxySettings represents the configuration for a proxy server.
-type ProxySettings struct {
-	Enabled  bool   `json:"enabled"`
-	Type     string `json:"type"`
-	Port     string `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+// Stop gracefully shuts down the HTTP listener.
+func (c *HTTPListenerController) Stop(timeout time.Duration) error {
+	if c.HTTPServe == nil {
+		return fmt.Errorf("HTTP server is not running")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	logger.Info("Stopping server:", c.Name)
+	if err := c.HTTPServe.Shutdown(ctx); err != nil {
+		logger.Error("Failed to gracefully shutdown server, forcing close:", err)
+		return c.HTTPServe.Close()
+	}
+	return nil
 }
 
-// Header represents a key-value pair used in HTTP headers.
-type Header struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+func (c *HTTPListenerController) GetName() string {
+	return c.Name
+}
+
+// validateCertificate checks if certificate files exist.
+func validateCertificate(certPath, keyPath string) error {
+	if _, err := os.Stat(certPath); os.IsNotExist(err) {
+		return fmt.Errorf("certificate file not found: %s", certPath)
+	}
+	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+		return fmt.Errorf("key file not found: %s", keyPath)
+	}
+	return nil
 }
