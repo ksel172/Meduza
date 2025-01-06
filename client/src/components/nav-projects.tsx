@@ -45,7 +45,7 @@ export function NavProjects({
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild>
               <a href={item.url}>
-                <item.icon className={`${item.status === "alive" ? "fill-green-500 stroke-green-500" : "fill-red-500 stroke-red-500"}`} />
+                <item.icon className={`${item.status === "alive" ? "fill-green-600 stroke-none" : "fill-red-600 stroke-none"}`} />
                 <span>{item.name}</span>
               </a>
             </SidebarMenuButton>

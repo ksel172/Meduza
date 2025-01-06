@@ -40,7 +40,7 @@ const comboboxOptions = [
 
 export default function Home() {
   return (
-    <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] flex flex-col gap-4 justify-items-center min-h-screen pb-4 p-0 m-6 font-[family-name:var(--font-geist-sans)]">
+    <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] flex flex-col gap-4 justify-items-center min-h-screen pb-4 p-0 m-6">
       <div className="flex flex-row gap-2 w-[100%]">
         <Combobox options={comboboxOptions} deafultLabel="Select Filter" />
         <Input className="w-[50%]" type="email" placeholder="Search..." />
@@ -57,6 +57,11 @@ export default function Home() {
           <Button>Next</Button>
         </div>
       </div>
+      <Card className="w-[calc(95vw-var(--sidebar-width))]">
+        <CardContent className="m-0 p-0 h-[60vh]">
+          <ConsoleWidget />
+        </CardContent>
+      </Card>
     </div>
   );
 }
