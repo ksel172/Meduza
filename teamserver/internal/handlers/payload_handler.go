@@ -26,6 +26,7 @@ func NewPayloadHandler(agentDAL dal.IAgentDAL, listenerDAL dal.IListenerDAL) *Pa
 func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	var agentConfig models.AgentConfig
 
+	// Agent config is taken
 	if err := ctx.ShouldBindJSON(&agentConfig); err != nil {
 		ctx.JSON(http.StatusConflict, gin.H{
 			"message": "Invalid Request body. Please enter correct input",
@@ -34,7 +35,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		logger.Error("Request Body Error while bind the json:\n", err)
 		return
 	}
-
+	// listener is extracted from agent config listener ID
 	listener, err := h.listenerDAL.GetListenerById(ctx, agentConfig.ListenerID)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
@@ -45,7 +46,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
-	// Init payload config
+	// Payload config is initialized to be embedded into the payload executable
 	var payloadConfig = models.IntoPayloadConfig(agentConfig)
 	payloadConfig.ListenerConfig = listener.Config
 
@@ -58,8 +59,8 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		logger.Error("Error marshalling payload config to JSON", err)
 		return
 	}
-
-	err = ioutil.WriteFile("payload_config.json", file, 0644)
+	// Payload config is written to a file
+	err = ioutil.WriteFile("baseconf.json", file, 0644)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
@@ -68,6 +69,8 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		logger.Error("Error writing JSON file", err)
 		return
 	}
+
+	// TODO: Make payload generation and output...
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":  s.SUCCESS,
