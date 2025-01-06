@@ -406,3 +406,10 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# JetBrains Rider
+*.sln.iml
+/agent/Agent/obj/*
+/agent/Agent/bin/*
+/agent/Agent.ModuleBase/obj/*
+/agent/Agent.ModuleBase/bin/*
