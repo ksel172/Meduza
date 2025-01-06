@@ -8,7 +8,7 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
-type IAdminDal interface {
+type IAdminDAL interface {
 	CreateDefaultAdmins(ctx context.Context, admin *models.ResAdmin) error
 }
 

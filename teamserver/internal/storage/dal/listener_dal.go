@@ -15,7 +15,7 @@ import (
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
-type IListenerDal interface {
+type IListenerDAL interface {
 	CreateListener(context.Context, *models.Listener) error
 	GetListenerById(context.Context, string) (models.Listener, error)
 	GetAllListeners(context.Context) ([]models.Listener, error)
@@ -28,7 +28,7 @@ type ListenerDAL struct {
 	schema string
 }
 
-func NewListenerDAL(db *sql.DB, schema string) IListenerDal {
+func NewListenerDAL(db *sql.DB, schema string) IListenerDAL {
 	return &ListenerDAL{db: db, schema: schema}
 }
 

@@ -25,10 +25,10 @@ var (
 )
 
 type AdminController struct {
-	dal dal.IAdminDal
+	dal dal.IAdminDAL
 }
 
-func NewAdminController(dal dal.IAdminDal) *AdminController {
+func NewAdminController(dal dal.IAdminDAL) *AdminController {
 	return &AdminController{
 		dal: dal,
 	}
