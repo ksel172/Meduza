@@ -32,7 +32,7 @@ func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 	var listener models.Listener
 	if err := ctx.ShouldBindJSON(&listener); err != nil {
 		ctx.JSON(http.StatusConflict, gin.H{
-			"message": "Invalid Request body.Please type correct input",
+			"message": "Invalid Request body. Please enter correct input",
 			"status":  s.ERROR,
 		})
 		logger.Error("Request Body Error while bind the json:\n", err)
@@ -72,7 +72,7 @@ func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 }
 
 func (h *ListenerHandler) GetAllListeners(ctx *gin.Context) {
-	lists, err := h.dal.GetAllListeners(ctx.Request.Context())
+	listeners, err := h.dal.GetAllListeners(ctx.Request.Context())
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
@@ -83,7 +83,7 @@ func (h *ListenerHandler) GetAllListeners(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, gin.H{
 		"status": s.SUCCESS,
-		"data":   lists,
+		"data":   listeners,
 	})
 }
 
@@ -93,7 +93,7 @@ func (h *ListenerHandler) GetListenerById(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"status":  s.FAILED,
-			"message": "Listener Does Not exists",
+			"message": "Listener does not exist",
 		})
 		logger.Error("Error Unable to get the listener", err)
 		return

@@ -36,10 +36,12 @@ type AgentInfo struct {
 
 // AgentConfig controls how the agent operates
 type AgentConfig struct {
-	//ID              string            `json:"id"`
+	ID string `json:"id"`
 	//CallbackURLs    []string          `json:"callback_urls"`
 	//RotationType    string            `json:"rotation_type"`
 	//RotationRetries int               `json:"rotation_retries"`
+	ListenerID   string        `json:"listenerID"`
+	ListenerType string        `json:"listenerType"`
 	Sleep        time.Duration `json:"sleep"`
 	Jitter       int           `json:"jitter"` // Jitter as a percentage
 	StartDate    time.Time     `json:"start_date"`
