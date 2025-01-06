@@ -1,66 +1,26 @@
 package main
 
 import (
-	"github.com/ksel172/Meduza/teamserver/internal/models"
-	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
-	"log"
-	"time"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 
-	"github.com/ksel172/Meduza/teamserver/conf"
-	"github.com/ksel172/Meduza/teamserver/internal/api/handlers"
+	"github.com/ksel172/Meduza/teamserver/internal/container"
 	"github.com/ksel172/Meduza/teamserver/internal/server"
-	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 )
 
 func main() {
-
-	// Initialize services
-	log.Println("Connecting to postgres db...")
-	pgsql, err := repos.Setup()
+	dependencies, err := container.NewContainer()
 	if err != nil {
-		log.Fatal("Failed to connect to pgsql. Terminating...", err)
-	}
-	defer pgsql.Close()
-	log.Println("Connected to postgres db")
-
-	log.Println("Connecting to redisService db...")
-	redisService := repos.NewRedisService()
-	log.Println("Connected to redisService db")
-
-	log.Println("Setting up data access layers...")
-	userDal := dal.NewUsersDAL(pgsql, conf.GetMeduzaDbSchema())
-	adminDal := dal.NewAdminsDAL(pgsql, conf.GetMeduzaDbSchema())
-	agentDal := dal.NewAgentDAL(&redisService)
-	checkInDal := dal.NewCheckInDAL(&redisService)
-	listenersDal := dal.NewListenerDAL(&redisService)
-	log.Println("Finished setting up data access layers")
-
-	secret := conf.GetMeduzaJWTToken()
-	jwtService := models.NewJWTService(secret, 15*time.Minute, 30*24*time.Hour)
-
-	userController := handlers.NewUserController(userDal)
-	authController := handlers.NewAuthController(userDal, jwtService)
-	adminController := handlers.NewAdminController(adminDal)
-	agentController := handlers.NewAgentController(agentDal)
-	checkInController := handlers.NewCheckInController(checkInDal, agentDal)
-	listenersController := handlers.NewListenerHandler(listenersDal)
-
-	dependencies := &server.DependencyContainer{
-		UserController:      userController,
-		RedisService:        &redisService,
-		AuthController:      authController,
-		JwtService:          jwtService,
-		AdminController:     adminController,
-		AgentController:     agentController,
-		CheckInController:   checkInController,
-		ListenersController: listenersController,
+		logger.Error("Error While Setting dependencies", err)
+		return
 	}
 
 	// NewServer initialize the Http Server
 	teamserver := server.NewServer(dependencies)
 
-	log.Println("Starting teamserver...")
+	teamserver.RegisterRoutes()
+
+	logger.Info("Starting Teamserver...")
 	if err := teamserver.Run(); err != nil {
-		log.Panic("Failed to start teamserver. Terminating...", err)
+		logger.Panic("Failed to Start Teamserver. Terminating...", err)
 	}
 }

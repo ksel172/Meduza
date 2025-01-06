@@ -2,129 +2,185 @@ package dal
 
 import (
 	"context"
-	"encoding/json"
+	"database/sql"
 	"fmt"
-	"github.com/ksel172/Meduza/teamserver/internal/models"
-	redis2 "github.com/ksel172/Meduza/teamserver/internal/storage/repos"
-	"time"
+
+	"github.com/ksel172/Meduza/teamserver/models"
 )
 
-// var (
-// 	ErrNotFound = errors.New("Resource not found")
-// )
+type IAgentDAL interface {
+	GetAgent(agentID string) (models.Agent, error)
+	UpdateAgent(ctx context.Context, agent models.UpdateAgentRequest) (models.Agent, error)
+	DeleteAgent(ctx context.Context, agentID string) error
+	CreateAgentTask(ctx context.Context, task models.AgentTask) error
+	GetAgentTasks(ctx context.Context, agentID string) ([]models.AgentTask, error)
+	DeleteAgentTask(ctx context.Context, agentID string, taskID string) error
+	DeleteAgentTasks(ctx context.Context, agentID string) error
+}
 
 type AgentDAL struct {
-	redis redis2.Service
+	db     *sql.DB
+	schema string
 }
 
-func NewAgentDAL(redisService *redis2.Service) *AgentDAL {
-	return &AgentDAL{redis: *redisService}
+func NewAgentDAL(db *sql.DB, schema string) *AgentDAL {
+	return &AgentDAL{
+		db:     db,
+		schema: schema,
+	}
 }
 
-// Get returns a single agent
 func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
-	agentJSON, err := dal.redis.JsonGet(context.Background(), "agents:"+agentID)
+	query := fmt.Sprintf(`
+        SELECT a.id, a.name, a.note, a.status, a.first_callback, a.last_callback, a.modified_at
+        FROM %s.agents a
+        WHERE a.id = $1`, dal.schema)
+
+	var agent models.Agent
+	err := dal.db.QueryRow(query, agentID).Scan(
+		&agent.ID, &agent.Name, &agent.Note, &agent.Status,
+		&agent.FirstCallback, &agent.LastCallback, &agent.ModifiedAt)
+
+	if err == sql.ErrNoRows {
+		return models.Agent{}, fmt.Errorf("agent not found")
+	}
 	if err != nil {
 		return models.Agent{}, fmt.Errorf("failed to get agent: %w", err)
 	}
 
-	// Check if empty
-	if agentJSON == "" {
-		return models.Agent{}, fmt.Errorf("agent not found")
-	}
-
-	// Unmarshall
-	var agent models.Agent
-	json.Unmarshal([]byte(agentJSON), &agent)
-
 	return agent, nil
 }
 
-func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.Agent) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgentRequest) (models.Agent, error) {
+	tx, err := dal.db.BeginTx(ctx, nil)
+	if err != nil {
+		return models.Agent{}, fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
 
-	// Try to get agent, if not succesful, return error
-	// later: update err.Error() into some custom error handling to ensure the
-	// returned error is of type ErrNotFound
-	if _, err := dal.GetAgent(agent.ID); err != nil {
-		if err.Error() == "agent not found" {
-			return fmt.Errorf("cannot update non-existing agent: %w", err)
-		} else {
-			return fmt.Errorf("unexpected error: %w", err)
-		}
+	agentQuery := fmt.Sprintf(`
+        UPDATE %s.agents 
+        SET name = $1, note = $2, status = $3, modified_at = $4
+        WHERE id = $5
+		RETURNING id, name, note, status, first_callback, last_callback, modified_at`, dal.schema)
+
+	var updatedAgent models.Agent
+	if err = tx.QueryRowContext(ctx, agentQuery,
+		agent.Name, agent.Note, agent.Status, agent.ModifiedAt, agent.ID,
+	).Scan(
+		&updatedAgent.ID,
+		&updatedAgent.Name,
+		&updatedAgent.Note,
+		&updatedAgent.Status,
+		&updatedAgent.FirstCallback,
+		&updatedAgent.LastCallback,
+		&updatedAgent.ModifiedAt,
+	); err != nil {
+		return models.Agent{}, fmt.Errorf("failed to update agent: %w", err)
 	}
 
-	if err := dal.redis.JsonSet(ctx, agent.RedisID(), agent); err != nil {
-		return fmt.Errorf("failed to update agent: %w", err)
+	if err = tx.Commit(); err != nil {
+		return models.Agent{}, fmt.Errorf("failed to execte transaction: %w", err)
 	}
 
-	return nil
+	return updatedAgent, nil
 }
 
 func (dal *AgentDAL) DeleteAgent(ctx context.Context, agentID string) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+	tx, err := dal.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
 
-	if err := dal.redis.JsonDelete(ctx, "agents:"+agentID); err != nil {
+	agentQuery := fmt.Sprintf(`DELETE FROM %s.agents WHERE id = $1`, dal.schema)
+	result, err := tx.ExecContext(ctx, agentQuery, agentID)
+	if err != nil {
 		return fmt.Errorf("failed to delete agent: %w", err)
 	}
 
-	return nil
-}
-
-func (dal *AgentDAL) CreateAgentTask(ctx context.Context, agentTask models.AgentTask) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	if err := dal.redis.JsonSet(ctx, agentTask.RedisID(), agentTask); err != nil {
-		return fmt.Errorf("failed to create agent task: %w", err)
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("agent not found")
 	}
 
+	return tx.Commit()
+}
+
+func (dal *AgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask) error {
+	query := fmt.Sprintf(`
+        INSERT INTO %s.agent_tasks (id, agent_id, type, status, module, command, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query,
+		task.ID, task.AgentID, task.Type, task.Status, task.Module,
+		task.Command, task.Created)
+	if err != nil {
+		return fmt.Errorf("failed to create agent task: %w", err)
+	}
 	return nil
 }
-func (dal *AgentDAL) GetAgentTasks(ctx context.Context, agentID string) ([]models.AgentTask, error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 
-	// Get all tasks by partial key
-	tasks, err := dal.redis.GetAllByPartial(ctx, "tasks:"+agentID)
+func (dal *AgentDAL) GetAgentTasks(ctx context.Context, agentID string) ([]models.AgentTask, error) {
+	query := fmt.Sprintf(`
+        SELECT id, agent_id, type, status, module, command, 
+               created_at, started_at, finished_at
+        FROM %s.agent_tasks 
+        WHERE agent_id = $1 
+        ORDER BY created_at DESC`, dal.schema)
+
+	rows, err := dal.db.QueryContext(ctx, query, agentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get agent tasks: %w", err)
 	}
+	defer rows.Close()
 
-	tasksModel := make([]models.AgentTask, 0, len(tasks))
-	for _, task := range tasks {
-		var agentTask models.AgentTask
-
-		if err := json.Unmarshal([]byte(task.(string)), &agentTask); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal agent task: %w", err)
+	var tasks []models.AgentTask
+	for rows.Next() {
+		var task models.AgentTask
+		err := rows.Scan(
+			&task.ID, &task.AgentID, &task.Type, &task.Status,
+			&task.Module, &task.Command, &task.Created,
+			&task.Started, &task.Finished)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan task row: %w", err)
 		}
-		tasksModel = append(tasksModel, agentTask)
+		tasks = append(tasks, task)
 	}
-
-	return tasksModel, nil
+	return tasks, nil
 }
 
 func (dal *AgentDAL) DeleteAgentTask(ctx context.Context, agentID, taskID string) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+	query := fmt.Sprintf(`
+        DELETE FROM %s.agent_tasks 
+        WHERE agent_id = $1 AND id = $2`, dal.schema)
 
-	if err := dal.redis.JsonDelete(ctx, "tasks:"+agentID+":"+taskID); err != nil {
+	result, err := dal.db.ExecContext(ctx, query, agentID, taskID)
+	if err != nil {
 		return fmt.Errorf("failed to delete agent task: %w", err)
 	}
 
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("task not found")
+	}
 	return nil
 }
 
 func (dal *AgentDAL) DeleteAgentTasks(ctx context.Context, agentID string) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+	query := fmt.Sprintf(`
+        DELETE FROM %s.agent_tasks 
+        WHERE agent_id = $1`, dal.schema)
 
-	// Get all tasks by partial key
-	if err := dal.redis.DeleteAllByPartial(ctx, "tasks:"+agentID); err != nil {
+	_, err := dal.db.ExecContext(ctx, query, agentID)
+	if err != nil {
 		return fmt.Errorf("failed to delete agent tasks: %w", err)
 	}
-
 	return nil
 }

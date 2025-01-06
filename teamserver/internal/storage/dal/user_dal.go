@@ -4,8 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/ksel172/Meduza/teamserver/internal/models"
+
+	"github.com/ksel172/Meduza/teamserver/models"
 )
+
+type IUserDAL interface {
+	AddUsers(context.Context, *models.ResUser) error
+	GetUsers(context.Context) ([]models.User, error)
+	GetUserByUsername(context.Context, string) (*models.ResUser, error)
+	GetUserById(context.Context, string) (*models.ResUser, error)
+}
 
 type UserDAL struct {
 	db     *sql.DB
@@ -49,7 +57,7 @@ func (dal *UserDAL) GetUserByUsername(ctx context.Context, username string) (*mo
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
 		}
-		return nil, fmt.Errorf("Failed to fetch user: %w", err)
+		return nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
 	return &user, nil
 }
@@ -62,7 +70,7 @@ func (dal *UserDAL) GetUserById(ctx context.Context, id string) (*models.ResUser
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
 		}
-		return nil, fmt.Errorf("Failed to fetch user: %w", err)
+		return nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
 	return &user, nil
 }

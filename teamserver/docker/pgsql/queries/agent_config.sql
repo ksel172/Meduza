@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.agent_config (
+    agent_id UUID PRIMARY KEY,
+    sleep INTEGER NOT NULL,
+    jitter INTEGER NOT NULL,
+    start_date TIMESTAMPTZ NOT NULL,
+    kill_date TIMESTAMPTZ NOT NULL,
+    working_hours INTEGER[2] NOT NULL,
+    FOREIGN KEY (agent_id) REFERENCES {POSTGRES_SCHEMA}.agents(id) ON DELETE CASCADE
+);
