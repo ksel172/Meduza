@@ -3,9 +3,9 @@ package models
 import "time"
 
 type PayloadConfig struct {
-	ID             string        `json:"id"`
-	ListenerID     string        `json:"listenerID"`
-	ListenerType   string        `json:"listenerType"`
+	ID         string `json:"id"`
+	ListenerID string `json:"listenerID"`
+	//ListenerType   string        `json:"listenerType"`
 	ListenerConfig any           `json:"config"`
 	Sleep          time.Duration `json:"sleep"`
 	Jitter         int           `json:"jitter"` // Jitter as a percentage
