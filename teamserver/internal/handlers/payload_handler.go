@@ -11,6 +11,12 @@ import (
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
+func New(dal dal.IAgentDAL) *AgentController {
+	return &AgentController{
+		dal: dal,
+	}
+}
+
 type PayloadHandler struct {
 	agentDAL    dal.IAgentDAL
 	listenerDAL dal.IListenerDAL
@@ -35,8 +41,19 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		logger.Error("Request Body Error while bind the json:\n", err)
 		return
 	}
+
+	// Check if listenerDAL is nil
+	if h.listenerDAL == nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Internal server error",
+		})
+		logger.Error("listenerDAL is nil")
+		return
+	}
+
 	// listener is extracted from agent config listener ID
-	listener, err := h.listenerDAL.GetListenerById(ctx, agentConfig.ListenerID)
+	listener, err := h.listenerDAL.GetListenerById(ctx.Request.Context(), agentConfig.ListenerID)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"status":  s.FAILED,
@@ -70,7 +87,9 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: Make payload generation and output...
+	// TODO: Make payload generation and output and modify the payload to contain only vital
+	// information for the embedded config. Also need to make the agentID also assign by making
+	// a payload creation type that contains only the necessary data for the API
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":  s.SUCCESS,
@@ -82,10 +101,10 @@ func (h *PayloadHandler) DeletePayload(ctx *gin.Context) {
 
 }
 
-func (h *PayloadHandler) GetAllPayloads(ctx *gin.Context) {
+func (h *PayloadHandler) DownloadPayload(ctx *gin.Context) {
 
 }
 
-func (h *PayloadHandler) DownloadPayload(ctx *gin.Context) {
+func (h *PayloadHandler) GetAllPayloads(ctx *gin.Context) {
 
 }

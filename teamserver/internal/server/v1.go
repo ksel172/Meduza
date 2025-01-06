@@ -66,3 +66,10 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 		listenersGroup.POST("/:id/stop", s.dependencies.ListenerController.StopListener)
 	}
 }
+func (s *Server) PayloadV1(group *gin.RouterGroup) {
+
+	payloadsGroup := group.Group("/payloads")
+	{
+		payloadsGroup.POST("/create", s.dependencies.PayloadController.CreatePayload)
+	}
+}

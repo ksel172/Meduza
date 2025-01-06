@@ -19,6 +19,7 @@ type Container struct {
 	AgentController    *handlers.AgentController
 	CheckInController  *services.CheckInController // handler is not directly accessible by the C2 server
 	ListenerController *handlers.ListenerHandler
+	PayloadController  *handlers.PayloadHandler
 }
 
 func NewContainer() (*Container, error) {
@@ -54,5 +55,6 @@ func NewContainer() (*Container, error) {
 		AgentController:    handlers.NewAgentController(agentDal),
 		CheckInController:  checkInController,
 		ListenerController: handlers.NewListenersHandler(listenerDal, listenersService),
+		PayloadController:  handlers.NewPayloadHandler(agentDal, listenerDal),
 	}, nil
 }
