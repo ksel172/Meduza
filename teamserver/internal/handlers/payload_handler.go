@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
@@ -30,10 +31,10 @@ func NewPayloadHandler(agentDAL dal.IAgentDAL, listenerDAL dal.IListenerDAL) *Pa
 }
 
 func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
-	var agentConfig models.AgentConfig
+	var payloadRequest models.PayloadRequest
 
 	// Agent config is taken
-	if err := ctx.ShouldBindJSON(&agentConfig); err != nil {
+	if err := ctx.ShouldBindJSON(&payloadRequest); err != nil {
 		ctx.JSON(http.StatusConflict, gin.H{
 			"message": "Invalid Request body. Please enter correct input",
 			"status":  s.ERROR,
@@ -53,7 +54,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	}
 
 	// listener is extracted from agent config listener ID
-	listener, err := h.listenerDAL.GetListenerById(ctx.Request.Context(), agentConfig.ListenerID)
+	listener, err := h.listenerDAL.GetListenerById(ctx.Request.Context(), payloadRequest.ListenerID)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"status":  s.FAILED,
@@ -64,7 +65,8 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	}
 
 	// Payload config is initialized to be embedded into the payload executable
-	var payloadConfig = models.IntoPayloadConfig(agentConfig)
+	var payloadConfig = models.IntoPayloadConfig(payloadRequest)
+	payloadConfig.ID = uuid.New().String()
 	payloadConfig.ListenerConfig = listener.Config
 
 	file, err := json.MarshalIndent(payloadConfig, "", "  ")
@@ -90,6 +92,10 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	// TODO: Make payload generation and output and modify the payload to contain only vital
 	// information for the embedded config. Also need to make the agentID also assign by making
 	// a payload creation type that contains only the necessary data for the API
+
+	// TODO: Need to make the payload also be saved as an agent config in the DB for future
+	// Need to resolve issue #58 Add endpoints for agent config management first before taking on
+	// the rest so that I could save the config in the DB before writing it to a file
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":  s.SUCCESS,
