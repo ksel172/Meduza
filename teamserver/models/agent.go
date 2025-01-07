@@ -43,6 +43,8 @@ type AgentConfig struct {
 	StartDate    time.Time `json:"start_date"`
 	KillDate     time.Time `json:"kill_date"`
 	WorkingHours [2]int    `json:"working_hours"`
+	//CommunicationType   string    `json:"communication_type"`
+	//CommunicationConfig any `json:"communication_config"`
 	//CallbackURLs    []string          `json:"callback_urls"`
 	//RotationType    string            `json:"rotation_type"`
 	//RotationRetries int               `json:"rotation_retries"`
@@ -71,15 +73,3 @@ type AgentCommand struct {
 	Parameters []string  `json:"parameters"`
 	Output     string    `json:"output"`
 }
-
-/*
-// RedisID How agent is stored in redis
-func (a Agent) RedisID() string {
-	return "agents:" + a.ID
-}
-
-// RedisID How agent task is stored in redis
-func (at *AgentTask) RedisID() string {
-	return "tasks:" + at.AgentID + ":" + at.ID
-}
-*/

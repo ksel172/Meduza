@@ -46,6 +46,26 @@ func (m *MockAgentDAL) DeleteAgentTasks(ctx context.Context, agentID string) err
 	return args.Error(0)
 }
 
+func (m *MockAgentDAL) CreateAgentConfig(ctx context.Context, agentConfig models.AgentConfig) error {
+	args := m.Called(agentConfig)
+	return args.Error(0)
+}
+
+func (m *MockAgentDAL) GetAgentConfig(ctx context.Context, agentID string) (models.AgentConfig, error) {
+	args := m.Called(agentID)
+	return args.Get(0).(models.AgentConfig), args.Error(1)
+}
+
+func (m *MockAgentDAL) UpdateAgentConfig(ctx context.Context, agentID string, newConfig models.AgentConfig) error {
+	args := m.Called(agentID)
+	return args.Error(0)
+}
+
+func (m *MockAgentDAL) DeleteAgentConfig(ctx context.Context, agentID string) error {
+	args := m.Called(agentID)
+	return args.Error(0)
+}
+
 type MockCheckInDal struct {
 	mock.Mock
 }

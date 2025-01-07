@@ -157,3 +157,72 @@ func (ac *AgentController) DeleteAgentTask(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Agent '%s' task '%s' deleted", agentId, taskID)})
 }
+
+func (ac *AgentController) CreateAgentConfig(ctx *gin.Context) {
+	var config models.AgentConfig
+
+	if err := ctx.ShouldBindJSON(&config); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := ac.dal.CreateAgentConfig(ctx, config); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+}
+
+func (ac *AgentController) GetAgentConfig(ctx *gin.Context) {
+	var agentID = ctx.Param(models.ParamAgentID)
+
+	if agentID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
+		return
+	}
+
+	config, err := ac.dal.GetAgentConfig(ctx, agentID)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, config)
+}
+
+func (ac *AgentController) UpdateAgentConfig(ctx *gin.Context) {
+	agentId := ctx.Param(models.ParamAgentID)
+	var agentConfig models.AgentConfig
+
+	if err := ctx.ShouldBindJSON(&agentConfig); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if agentId == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
+		return
+	}
+
+	if err := ac.dal.UpdateAgentConfig(ctx, agentId, agentConfig); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{})
+}
+
+func (ac *AgentController) DeleteAgentConfig(ctx *gin.Context) {
+	agentId := ctx.Param(models.ParamAgentID)
+
+	if agentId == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
+		return
+	}
+
+	if err := ac.dal.DeleteAgentConfig(ctx, agentId); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{})
+}
