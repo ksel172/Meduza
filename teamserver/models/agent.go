@@ -14,7 +14,7 @@ const (
 
 // Contains all information required for controlling an agent.
 type Agent struct {
-	ID            string      `json:"id"`
+	AgentID       string      `json:"agent_id"`
 	Name          string      `json:"name"`
 	Note          string      `json:"note"`
 	Status        string      `json:"status"`
@@ -36,13 +36,15 @@ type AgentInfo struct {
 
 // AgentConfig controls how the agent operates
 type AgentConfig struct {
-	ID           string    `json:"id"`
-	ListenerID   string    `json:"listenerID"`
-	Sleep        int       `json:"sleep"`
-	Jitter       int       `json:"jitter"` // Jitter as a percentage
-	StartDate    time.Time `json:"start_date"`
-	KillDate     time.Time `json:"kill_date"`
-	WorkingHours [2]int    `json:"working_hours"`
+	ID                string    `json:"id"` // Agent ID
+	AgentID           string    `json:"agent_id"`
+	ListenerID        string    `json:"listener_id"`
+	Sleep             int       `json:"sleep"`
+	Jitter            int       `json:"jitter"` // Jitter as a percentage
+	StartDate         time.Time `json:"start_date"`
+	KillDate          time.Time `json:"kill_date"`
+	WorkingHoursStart int       `json:"working_hours_start"`
+	WorkingHoursEnd   int       `json:"working_hours_end"`
 	//CommunicationType   string    `json:"communication_type"`
 	//CommunicationConfig any `json:"communication_config"`
 	//CallbackURLs    []string          `json:"callback_urls"`
@@ -53,8 +55,8 @@ type AgentConfig struct {
 
 // AgentTask represents the information of a task sent to an Agent
 type AgentTask struct {
-	ID       string    `json:"id"`
 	AgentID  string    `json:"agent_id"`
+	TaskID   string    `json:"task_id"`
 	Type     string    `json:"type"`
 	Status   string    `json:"status"`
 	Module   string    `json:"module"`
@@ -66,7 +68,8 @@ type AgentTask struct {
 
 // AgentCommand represents the information of a command sent to an Agent
 type AgentCommand struct {
-	ID         string    `json:"id"`
+	CommandID  string    `json:"command_id"`
+	AgentID    string    `json:"agent_id"`
 	Name       string    `json:"name"`
 	Started    time.Time `json:"started"`
 	Completed  time.Time `json:"completed"`

@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.agent_task (
     id UUID PRIMARY KEY,
-    agent_id UUID NOT NULL REFERENCES meduza.agents(id),
+    agent_id UUID NOT NULL REFERENCES {POSTGRES_SCHEMA}.agents(id),
     type VARCHAR(50) NOT NULL,
     status VARCHAR(50) NOT NULL,
     module VARCHAR(255),

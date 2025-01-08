@@ -66,7 +66,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 
 	// Payload config is initialized to be embedded into the payload executable
 	var payloadConfig = models.IntoPayloadConfig(payloadRequest)
-	payloadConfig.ID = uuid.New().String()
+	payloadConfig.AgentID = uuid.New().String()
 	payloadConfig.ListenerConfig = listener.Config
 
 	file, err := json.MarshalIndent(payloadConfig, "", "  ")
@@ -89,11 +89,24 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
+	var agentConfig = models.IntoAgentConfig(payloadConfig)
+	agentConfig.ID = uuid.New().String()
+	logger.Info("Agent Config: ", agentConfig)
+	err = h.agentDAL.CreateAgentConfig(ctx.Request.Context(), agentConfig)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to create agent config" + err.Error(),
+		})
+		return
+	}
 	// TODO: Make payload generation and output and modify the payload to contain only vital
 	// information for the embedded config. Also need to make the agentID also assign by making
 	// a payload creation type that contains only the necessary data for the API
-
 	// TODO: Need to make the payload also be saved as an agent config in the DB for future
+
+	// COMPLETE
 	// Need to resolve issue #58 Add endpoints for agent config management first before taking on
 	// the rest so that I could save the config in the DB before writing it to a file
 

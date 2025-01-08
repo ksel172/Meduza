@@ -33,9 +33,9 @@ func TestGetAgent(t *testing.T) {
 			name:    "successful get agent",
 			agentID: "test-agent-id",
 			mockAgent: models.Agent{
-				ID:     "test-agent-id",
-				Name:   "test-agent",
-				Status: "active",
+				AgentID: "test-agent-id",
+				Name:    "test-agent",
+				Status:  "active",
 			},
 			mockError:      nil,
 			expectedStatus: http.StatusOK,
@@ -87,14 +87,14 @@ func TestUpdateAgent(t *testing.T) {
 
 	// Below agent is sent as JSON to the handler
 	agentUpdateRequest := models.UpdateAgentRequest{
-		ID:   "test-agent-id",
-		Name: "updated-agent-name",
+		AgentID: "test-agent-id",
+		Name:    "updated-agent-name",
 	}
 
 	// Handler returns the below agent from db
 	updatedAgent := models.Agent{
-		ID:   "test-agent-id",
-		Name: "updated-agent-name",
+		AgentID: "test-agent-id",
+		Name:    "updated-agent-name",
 	}
 
 	tests := []struct {
@@ -197,7 +197,7 @@ func TestGetAgentTasks(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	tasks := []models.AgentTask{
-		{ID: "found-agent-task-id"},
+		{AgentID: "found-agent-task-id"},
 	}
 
 	tests := []struct {
