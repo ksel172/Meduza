@@ -1,6 +1,5 @@
 CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.agent_config (
-    id UUID PRIMARY KEY,
-    agent_id UUID NOT NULL,
+    config_id UUID PRIMARY KEY,
     listener_id UUID NOT NULL REFERENCES {POSTGRES_SCHEMA}.listeners(id),
     sleep INTEGER NOT NULL,
     jitter INTEGER NOT NULL,

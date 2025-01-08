@@ -66,7 +66,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 
 	// Payload config is initialized to be embedded into the payload executable
 	var payloadConfig = models.IntoPayloadConfig(payloadRequest)
-	payloadConfig.AgentID = uuid.New().String()
+	payloadConfig.ConfigID = uuid.New().String()
 	payloadConfig.ListenerConfig = listener.Config
 
 	file, err := json.MarshalIndent(payloadConfig, "", "  ")
@@ -90,7 +90,6 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	}
 
 	var agentConfig = models.IntoAgentConfig(payloadConfig)
-	agentConfig.ID = uuid.New().String()
 	logger.Info("Agent Config: ", agentConfig)
 	err = h.agentDAL.CreateAgentConfig(ctx.Request.Context(), agentConfig)
 

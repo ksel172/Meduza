@@ -3,7 +3,7 @@ package models
 import "time"
 
 type PayloadRequest struct {
-	ListenerID        string    `json:"listenerID"`
+	ListenerID        string    `json:"listener_id"`
 	Sleep             int       `json:"sleep"`
 	Jitter            int       `json:"jitter"` // Jitter as a percentage
 	StartDate         time.Time `json:"start_date"`
@@ -14,8 +14,8 @@ type PayloadRequest struct {
 }
 
 type PayloadConfig struct {
-	AgentID           string    `json:"id"`
-	ListenerID        string    `json:"listenerID"`
+	ConfigID          string    `json:"config_id"`
+	ListenerID        string    `json:"listener_id"`
 	ListenerConfig    any       `json:"config"`
 	Sleep             int       `json:"sleep"`
 	Jitter            int       `json:"jitter"` // Jitter as a percentage
@@ -28,7 +28,7 @@ type PayloadConfig struct {
 
 func IntoPayloadConfig(payloadRequest PayloadRequest) PayloadConfig {
 	return PayloadConfig{
-		AgentID:           "",
+		ConfigID:          "",
 		ListenerID:        payloadRequest.ListenerID,
 		ListenerConfig:    nil,
 		Sleep:             payloadRequest.Sleep,
@@ -42,7 +42,7 @@ func IntoPayloadConfig(payloadRequest PayloadRequest) PayloadConfig {
 
 func IntoAgentConfig(payloadConfig PayloadConfig) AgentConfig {
 	return AgentConfig{
-		AgentID:           payloadConfig.AgentID,
+		ConfigID:          payloadConfig.ConfigID,
 		ListenerID:        payloadConfig.ListenerID,
 		Sleep:             payloadConfig.Sleep,
 		Jitter:            payloadConfig.Jitter,

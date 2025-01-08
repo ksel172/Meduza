@@ -36,8 +36,7 @@ type AgentInfo struct {
 
 // AgentConfig controls how the agent operates
 type AgentConfig struct {
-	ID                string    `json:"id"` // Agent ID
-	AgentID           string    `json:"agent_id"`
+	ConfigID          string    `json:"agent_id"`
 	ListenerID        string    `json:"listener_id"`
 	Sleep             int       `json:"sleep"`
 	Jitter            int       `json:"jitter"` // Jitter as a percentage

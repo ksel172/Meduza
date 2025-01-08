@@ -191,11 +191,11 @@ func (dal *AgentDAL) DeleteAgentTasks(ctx context.Context, agentID string) error
 
 func (dal *AgentDAL) CreateAgentConfig(ctx context.Context, agentConfig models.AgentConfig) error {
 	query := fmt.Sprintf(`
-		INSERT INTO %s.agent_config (id, agent_id, listener_id, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, dal.schema)
+		INSERT INTO %s.agent_config (config_id, listener_id, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
 
 	_, err := dal.db.ExecContext(ctx, query,
-		agentConfig.ID, agentConfig.AgentID, agentConfig.ListenerID,
+		agentConfig.ConfigID, agentConfig.ListenerID,
 		agentConfig.Sleep, agentConfig.Jitter, agentConfig.StartDate,
 		agentConfig.KillDate, agentConfig.WorkingHoursStart, agentConfig.WorkingHoursEnd)
 	if err != nil {
@@ -212,7 +212,7 @@ func (dal *AgentDAL) GetAgentConfig(ctx context.Context, agentID string) (models
 
 	var agentConfig models.AgentConfig
 	err := dal.db.QueryRowContext(ctx, query, agentID).Scan(
-		&agentConfig.ID, &agentConfig.AgentID, &agentConfig.ListenerID, &agentConfig.Sleep,
+		&agentConfig.ConfigID, &agentConfig.ListenerID, &agentConfig.Sleep,
 		&agentConfig.Jitter, &agentConfig.StartDate, &agentConfig.KillDate,
 		&agentConfig.WorkingHoursStart, &agentConfig.WorkingHoursEnd)
 	if err != nil {
@@ -224,11 +224,11 @@ func (dal *AgentDAL) GetAgentConfig(ctx context.Context, agentID string) (models
 func (dal *AgentDAL) UpdateAgentConfig(ctx context.Context, agentID string, agentConfig models.AgentConfig) error {
 	query := fmt.Sprintf(`
         UPDATE %s.agent_config
-        SET agent_id = $1, listener_id = $2, sleep = $3, jitter = $4, start_date = $5, kill_date = $6,
+        SET config_id = $1, listener_id = $2, sleep = $3, jitter = $4, start_date = $5, kill_date = $6,
             working_hours_start = $7, working_hours_end = $8
         WHERE agent_id = $9`, dal.schema)
 
-	_, err := dal.db.ExecContext(ctx, query, agentConfig.ID, agentConfig.ListenerID, agentConfig.Sleep, agentConfig.Jitter,
+	_, err := dal.db.ExecContext(ctx, query, agentConfig.ConfigID, agentConfig.ListenerID, agentConfig.Sleep, agentConfig.Jitter,
 		agentConfig.StartDate, agentConfig.KillDate, agentConfig.WorkingHoursStart, agentConfig.WorkingHoursEnd, agentID)
 	if err != nil {
 		return fmt.Errorf("failed to update agent config: %w", err)
