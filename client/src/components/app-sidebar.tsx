@@ -17,7 +17,9 @@ import {
   LayoutDashboard,
   MessageSquareText,
   BookOpenText,
-  Database
+  Database,
+  Shrink,
+  ShrinkIcon
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
