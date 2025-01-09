@@ -76,7 +76,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	}
 
 	// Write configuration to a JSON file
-	err = ioutil.WriteFile("baseconf.json", file, 0644)
+	err = ioutil.WriteFile("./agent/Agent/baseconf.json", file, 0644)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
@@ -117,6 +117,10 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		logger.Error("Error saving agent configuration:", err)
 		return
 	}
+
+	// TODO: Clean the written temp baseconf.json in the agent dir and avoid creation of unnecessary folders such as /agent/output or /teamserver/agent
+	// Add compile types and make payloads save under a specific directory (probably by adding something like payload names)
+	// Clean up compilation and improve error handling and logging
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":  s.SUCCESS,
