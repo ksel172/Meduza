@@ -2,7 +2,7 @@
 {
     public class C2Request
     {
-        public string AgentId { get; set; }
+        public string AgentId { get; set; } = string.Empty;
 
         public C2RequestReason Reason { get; set; } = C2RequestReason.Task;
 

@@ -27,6 +27,9 @@ services:
       ADMIN_SECRET: ${ADMIN_SECRET}
     volumes:
       - ./teamserver:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./agent:/app/agent
+      - ./teamserver/build/agent:/app/output
     depends_on:
       - meduza_db
       - meduza_redis

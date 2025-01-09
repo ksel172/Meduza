@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Agent.ModuleBase")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d6838a06c0ba600b80c7ef3480309f8cf17647ab")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+df40594ab2b2b5577ed8f6d1df4b39163f837278")]
 [assembly: System.Reflection.AssemblyProductAttribute("Agent.ModuleBase")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Agent.ModuleBase")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

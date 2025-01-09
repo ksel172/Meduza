@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"os/exec"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -11,12 +13,6 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
-
-func New(dal dal.IAgentDAL) *AgentController {
-	return &AgentController{
-		dal: dal,
-	}
-}
 
 type PayloadHandler struct {
 	agentDAL    dal.IAgentDAL
@@ -33,39 +29,39 @@ func NewPayloadHandler(agentDAL dal.IAgentDAL, listenerDAL dal.IListenerDAL) *Pa
 func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	var payloadRequest models.PayloadRequest
 
-	// Agent config is taken
+	// Parse and validate the request body
 	if err := ctx.ShouldBindJSON(&payloadRequest); err != nil {
-		ctx.JSON(http.StatusConflict, gin.H{
-			"message": "Invalid Request body. Please enter correct input",
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid request body. Please enter correct input.",
 			"status":  s.ERROR,
 		})
-		logger.Error("Request Body Error while bind the json:\n", err)
+		logger.Error("Request body error while binding the JSON:", err)
 		return
 	}
 
-	// Check if listenerDAL is nil
+	// Ensure listenerDAL is initialized
 	if h.listenerDAL == nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
-			"message": "Internal server error",
+			"message": "Internal server error: listenerDAL is not initialized.",
 		})
 		logger.Error("listenerDAL is nil")
 		return
 	}
 
-	// listener is extracted from agent config listener ID
+	// Retrieve the listener configuration
 	listener, err := h.listenerDAL.GetListenerById(ctx.Request.Context(), payloadRequest.ListenerID)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"status":  s.FAILED,
-			"message": "Listener does not exist",
+			"message": "Listener does not exist.",
 		})
-		logger.Error("Error Unable to get the listener", err)
+		logger.Error("Error retrieving the listener:", err)
 		return
 	}
 
-	// Payload config is initialized to be embedded into the payload executable
-	var payloadConfig = models.IntoPayloadConfig(payloadRequest)
+	// Create payload configuration
+	payloadConfig := models.IntoPayloadConfig(payloadRequest)
 	payloadConfig.ConfigID = uuid.New().String()
 	payloadConfig.ListenerConfig = listener.Config
 
@@ -73,45 +69,58 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
-			"message": "Failed to create JSON file",
+			"message": "Failed to serialize payload config to JSON.",
 		})
-		logger.Error("Error marshalling payload config to JSON", err)
+		logger.Error("Error marshalling payload config to JSON:", err)
 		return
 	}
-	// Payload config is written to a file
+
+	// Write configuration to a JSON file
 	err = ioutil.WriteFile("baseconf.json", file, 0644)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
-			"message": "Failed to write JSON file",
+			"message": "Failed to write JSON configuration file.",
 		})
-		logger.Error("Error writing JSON file", err)
+		logger.Error("Error writing JSON file:", err)
 		return
 	}
 
-	var agentConfig = models.IntoAgentConfig(payloadConfig)
-	logger.Info("Agent Config: ", agentConfig)
-	err = h.agentDAL.CreateAgentConfig(ctx.Request.Context(), agentConfig)
+	// Define paths for Docker container
+	// sourcePath := "C:/Users/MagicMan/Documents/Golang/Meduza/agent"
+	// outputPath := "C:/Users/MagicMan/Downloads/meduza-publish:/app/output"
 
-	if err != nil {
+	// Run Docker container to compile the agent
+	dockerCmd := exec.Command(
+		"dotnet", "publish", "--configuration", "Release", "--self-contained", "true", "-o", "/app/output", "-p:PublishSingleFile=true", "-r", "win-x64", "agent/Agent/Agent.csproj",
+	)
+
+	dockerCmd.Stdout = os.Stdout
+	dockerCmd.Stderr = os.Stderr
+
+	if err := dockerCmd.Run(); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
-			"message": "Failed to create agent config" + err.Error(),
+			"message": "Failed to compile the C# agent.",
 		})
+		logger.Error("Error running Docker container to compile agent:", err)
 		return
 	}
-	// TODO: Make payload generation and output and modify the payload to contain only vital
-	// information for the embedded config. Also need to make the agentID also assign by making
-	// a payload creation type that contains only the necessary data for the API
-	// TODO: Need to make the payload also be saved as an agent config in the DB for future
 
-	// COMPLETE
-	// Need to resolve issue #58 Add endpoints for agent config management first before taking on
-	// the rest so that I could save the config in the DB before writing it to a file
+	// Save the agent configuration in the database
+	agentConfig := models.IntoAgentConfig(payloadConfig)
+	if err := h.agentDAL.CreateAgentConfig(ctx.Request.Context(), agentConfig); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to save agent configuration.",
+		})
+		logger.Error("Error saving agent configuration:", err)
+		return
+	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":  s.SUCCESS,
-		"message": "Payload created successfully",
+		"message": "Payload created and compiled successfully.",
 	})
 }
 
