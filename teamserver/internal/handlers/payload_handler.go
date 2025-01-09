@@ -92,7 +92,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 
 	// Run Docker container to compile the agent
 	dockerCmd := exec.Command(
-		"dotnet", "publish", "--configuration", "Release", "--self-contained", "true", "-o", "/app/output", "-p:PublishSingleFile=true", "-r", "win-x64", "agent/Agent/Agent.csproj",
+		"dotnet", "publish", "--configuration", "Release", "--self-contained", "true", "-o", "/app/build/agent", "-p:PublishSingleFile=true", "-r", "win-x64", "agent/Agent/Agent.csproj",
 	)
 
 	dockerCmd.Stdout = os.Stdout
@@ -118,7 +118,13 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: Clean the written temp baseconf.json in the agent dir and avoid creation of unnecessary folders such as /agent/output or /teamserver/agent
+	baseconfPath := "./agent/Agent/baseconf.json"
+	truncErr := os.Truncate(baseconfPath, 0)
+	if truncErr != nil {
+		logger.Error("Error cleaning baseconf.json:", err)
+	}
+
+	// TODO: Clean the written temp baseconf.json in the agent dir after compilation is complete and avoid creation of unnecessary folders such as /agent/output or /teamserver/agent
 	// Add compile types and make payloads save under a specific directory (probably by adding something like payload names)
 	// Clean up compilation and improve error handling and logging
 
