@@ -63,6 +63,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	// Create payload configuration
 	payloadConfig := models.IntoPayloadConfig(payloadRequest)
 	payloadConfig.ConfigID = uuid.New().String()
+	payloadConfig.PayloadID = uuid.New().String()
 	payloadConfig.ListenerConfig = listener.Config
 
 	file, err := json.MarshalIndent(payloadConfig, "", "  ")
@@ -74,9 +75,9 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		logger.Error("Error marshalling payload config to JSON:", err)
 		return
 	}
-
+	baseconfPath := "./agent/Agent/baseconf.json"
 	// Write configuration to a JSON file
-	err = ioutil.WriteFile("./agent/Agent/baseconf.json", file, 0644)
+	err = ioutil.WriteFile(baseconfPath, file, 0644)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
@@ -86,19 +87,25 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
-	// Define paths for Docker container
-	// sourcePath := "C:/Users/MagicMan/Documents/Golang/Meduza/agent"
-	// outputPath := "C:/Users/MagicMan/Downloads/meduza-publish:/app/output"
-
 	// Run Docker container to compile the agent
-	dockerCmd := exec.Command(
-		"dotnet", "publish", "--configuration", "Release", "--self-contained", "true", "-o", "/app/build/agent", "-p:PublishSingleFile=true", "-r", "win-x64", "agent/Agent/Agent.csproj",
-	)
+	// arch := payloadConfig.Arch
+	args := []string{
+		"publish",
+		"--configuration", "Release",
+		"--self-contained", "true",
+		"-o", "/app/build/agent",
+		"-p:PublishSingleFile=true",
+		"-r", "%s" payloadConfig.Arch, //interesting workaround here
+		"agent/Agent/Agent.csproj",
+	}
 
-	dockerCmd.Stdout = os.Stdout
-	dockerCmd.Stderr = os.Stderr
+	// Prepend the dotnet executable
+	cmd := exec.Command("dotnet", args...)
 
-	if err := dockerCmd.Run(); err != nil {
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
 			"message": "Failed to compile the C# agent.",
@@ -118,14 +125,12 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
-	baseconfPath := "./agent/Agent/baseconf.json"
 	truncErr := os.Truncate(baseconfPath, 0)
 	if truncErr != nil {
 		logger.Error("Error cleaning baseconf.json:", err)
 	}
 
-	// TODO: Clean the written temp baseconf.json in the agent dir after compilation is complete and avoid creation of unnecessary folders such as /agent/output or /teamserver/agent
-	// Add compile types and make payloads save under a specific directory (probably by adding something like payload names)
+	// TODO: Code payload DAL to save the payload
 	// Clean up compilation and improve error handling and logging
 
 	ctx.JSON(http.StatusOK, gin.H{

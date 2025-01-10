@@ -2,8 +2,34 @@ package models
 
 import "time"
 
+const (
+	// Windows architectures
+	ArchWinX64   = "win-x64"
+	ArchWinX86   = "win-x86"
+	ArchWinArm64 = "win-arm64"
+
+	// Linux architectures
+	ArchLinuxX64   = "linux-x64"
+	ArchLinuxArm   = "linux-arm"
+	ArchLinuxArm64 = "linux-arm64"
+)
+
+// AllArchs returns a slice of all supported architectures
+func AllArchs() []string {
+	return []string{
+		ArchWinX64,
+		ArchWinX86,
+		ArchWinArm64,
+		ArchLinuxX64,
+		ArchLinuxArm,
+		ArchLinuxArm64,
+	}
+}
+
 type PayloadRequest struct {
+	PayloadName       string    `json:"payload_name"`
 	ListenerID        string    `json:"listener_id"`
+	Arch              string    `json:"arch"`
 	Sleep             int       `json:"sleep"`
 	Jitter            int       `json:"jitter"` // Jitter as a percentage
 	StartDate         time.Time `json:"start_date"`
@@ -14,8 +40,11 @@ type PayloadRequest struct {
 }
 
 type PayloadConfig struct {
+	PayloadID         string    `json:"payload_id"`
+	PayloadName       string    `json:"payload_name"`
 	ConfigID          string    `json:"config_id"`
 	ListenerID        string    `json:"listener_id"`
+	Arch              string    `json:"arch"`
 	ListenerConfig    any       `json:"config"`
 	Sleep             int       `json:"sleep"`
 	Jitter            int       `json:"jitter"` // Jitter as a percentage
@@ -28,6 +57,7 @@ type PayloadConfig struct {
 
 func IntoPayloadConfig(payloadRequest PayloadRequest) PayloadConfig {
 	return PayloadConfig{
+		PayloadName:       payloadRequest.PayloadName,
 		ConfigID:          "",
 		ListenerID:        payloadRequest.ListenerID,
 		ListenerConfig:    nil,
