@@ -29,7 +29,7 @@ services:
       - ./teamserver:/app/teamserver
       - /var/run/docker.sock:/var/run/docker.sock
       - ./agent:/app/agent
-      - ./teamserver/build/agent:/app/build/agent
+      - ./teamserver/build:/app/build
     depends_on:
       - meduza_db
       - meduza_redis

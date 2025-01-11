@@ -93,11 +93,13 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		"publish",
 		"--configuration", "Release",
 		"--self-contained", "true",
-		"-o", "/app/build/agent",
+		"-o", "/app/build/agent-" + payloadConfig.PayloadID,
 		"-p:PublishSingleFile=true",
-		"-r", "%s" payloadConfig.Arch, //interesting workaround here
+		"-r", payloadConfig.Arch, // Properly interpolate the value
 		"agent/Agent/Agent.csproj",
 	}
+
+	logger.Info("Compiling the agent with the following arguments:", args)
 
 	// Prepend the dotnet executable
 	cmd := exec.Command("dotnet", args...)
