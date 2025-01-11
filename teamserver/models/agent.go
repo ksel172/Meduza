@@ -38,6 +38,7 @@ type AgentInfo struct {
 type AgentConfig struct {
 	ConfigID          string    `json:"agent_id"`
 	ListenerID        string    `json:"listener_id"`
+	Arch              string    `json:"architecture"`
 	Sleep             int       `json:"sleep"`
 	Jitter            int       `json:"jitter"` // Jitter as a percentage
 	StartDate         time.Time `json:"start_date"`

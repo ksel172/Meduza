@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -14,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
@@ -80,9 +80,10 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		logger.Error("Error marshalling payload config to JSON:", err)
 		return
 	}
-	baseconfPath := "./agent/Agent/baseconf.json"
+
+	baseconfPath := conf.GetBaseConfPath()
 	// Write configuration to a JSON file
-	err = ioutil.WriteFile(baseconfPath, file, 0644)
+	err = os.WriteFile(baseconfPath, file, 0644)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
@@ -146,9 +147,6 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	if truncErr != nil {
 		logger.Error("Error cleaning baseconf.json:", truncErr)
 	}
-
-	// TODO: Code payload DAL to save the payload
-	// Clean up compilation and improve error handling and logging
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":  s.SUCCESS,
