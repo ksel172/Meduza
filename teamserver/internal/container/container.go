@@ -39,6 +39,7 @@ func NewContainer() (*Container, error) {
 	agentDal := dal.NewAgentDAL(pgsql, schema)
 	checkInDal := dal.NewCheckInDAL(pgsql, schema)
 	listenerDal := dal.NewListenerDAL(pgsql, schema)
+	payloadDal := dal.NewPayloadDAL(pgsql, schema)
 
 	// Check In Controller
 	checkInController := services.NewCheckInController(checkInDal, agentDal)
@@ -55,6 +56,6 @@ func NewContainer() (*Container, error) {
 		AgentController:    handlers.NewAgentController(agentDal),
 		CheckInController:  checkInController,
 		ListenerController: handlers.NewListenersHandler(listenerDal, listenersService),
-		PayloadController:  handlers.NewPayloadHandler(agentDal, listenerDal),
+		PayloadController:  handlers.NewPayloadHandler(agentDal, listenerDal, payloadDal),
 	}, nil
 }

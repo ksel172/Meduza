@@ -77,5 +77,9 @@ func (s *Server) PayloadV1(group *gin.RouterGroup) {
 	payloadsGroup := group.Group("/payloads")
 	{
 		payloadsGroup.POST("/create", s.dependencies.PayloadController.CreatePayload)
+		payloadsGroup.GET("/all", s.dependencies.PayloadController.GetAllPayloads)
+		payloadsGroup.POST("/delete/:id", s.dependencies.PayloadController.DeletePayload)
+		payloadsGroup.GET("/download/:id", s.dependencies.PayloadController.DownloadPayload)
+		payloadsGroup.POST("/delete/all", s.dependencies.PayloadController.DeleteAllPayloads)
 	}
 }

@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,12 +20,14 @@ import (
 type PayloadHandler struct {
 	agentDAL    dal.IAgentDAL
 	listenerDAL dal.IListenerDAL
+	payloadDAL  dal.IPayloadDAL
 }
 
-func NewPayloadHandler(agentDAL dal.IAgentDAL, listenerDAL dal.IListenerDAL) *PayloadHandler {
+func NewPayloadHandler(agentDAL dal.IAgentDAL, listenerDAL dal.IListenerDAL, payloadDAL dal.IPayloadDAL) *PayloadHandler {
 	return &PayloadHandler{
 		agentDAL:    agentDAL,
 		listenerDAL: listenerDAL,
+		payloadDAL:  payloadDAL,
 	}
 }
 
@@ -95,11 +100,11 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		"--self-contained", "true",
 		"-o", "/app/build/agent-" + payloadConfig.PayloadID,
 		"-p:PublishSingleFile=true",
-		"-r", payloadConfig.Arch, // Properly interpolate the value
+		"-r", payloadConfig.Arch, // interesting fix here
 		"agent/Agent/Agent.csproj",
 	}
 
-	logger.Info("Compiling the agent with the following arguments:", args)
+	// logger.Info("Compiling the agent with the following arguments:", args)
 
 	// Prepend the dotnet executable
 	cmd := exec.Command("dotnet", args...)
@@ -110,9 +115,19 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	if err := cmd.Run(); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
-			"message": "Failed to compile the C# agent.",
+			"message": "Failed to compile the payload.",
 		})
 		logger.Error("Error running Docker container to compile agent:", err)
+		return
+	}
+
+	// Save the payload configuration in the database
+	if err := h.payloadDAL.CreatePayload(ctx.Request.Context(), payloadConfig); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to save payload configuration.",
+		})
+		logger.Error("Error saving payload configuration:", err)
 		return
 	}
 
@@ -129,7 +144,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 
 	truncErr := os.Truncate(baseconfPath, 0)
 	if truncErr != nil {
-		logger.Error("Error cleaning baseconf.json:", err)
+		logger.Error("Error cleaning baseconf.json:", truncErr)
 	}
 
 	// TODO: Code payload DAL to save the payload
@@ -142,13 +157,114 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 }
 
 func (h *PayloadHandler) DeletePayload(ctx *gin.Context) {
+	payloadId := ctx.Param("id")
+	filePath := "./teamserver/build/agent-" + payloadId
 
+	logger.Info(filePath)
+	err := h.payloadDAL.DeletePayload(ctx.Request.Context(), payloadId)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to delete payload.",
+		})
+		logger.Error("Error deleting payload:", err)
+		return
+	}
+
+	// Delete the payload folder and all its contents
+	err = os.RemoveAll(filePath)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to delete payload folder.",
+		})
+		logger.Error("Error deleting payload folder:", err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{})
+}
+
+func (h *PayloadHandler) DeleteAllPayloads(ctx *gin.Context) {
+	dirPath := "./teamserver/build"
+	files, err := os.ReadDir(dirPath)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to read payload directory.",
+		})
+		logger.Error("Error reading payload directory:", err)
+		return
+	}
+
+	for _, file := range files {
+		if file.IsDir() && strings.HasPrefix(file.Name(), "agent-") {
+			payloadId := file.Name()
+			filePath := filepath.Join(dirPath, payloadId)
+
+			// Delete the payload directory and all its contents
+			err = os.RemoveAll(filePath)
+			if err != nil {
+				logger.Error("Error deleting payload directory:", err)
+				continue
+			}
+		}
+	}
+
+	// Delete the payloads from the database
+	delErr := h.payloadDAL.DeleteAllPayloads(ctx.Request.Context())
+	if err != nil {
+		logger.Error("Error deleting payloads:", delErr)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"status":  s.SUCCESS,
+		"message": "All payloads deleted successfully.",
+	})
 }
 
 func (h *PayloadHandler) DownloadPayload(ctx *gin.Context) {
+	payloadId := ctx.Param("id")
+	extensions := []string{".exe", ".bin", ".dll", ""} // keeping extensions here for now,
+	// maybe later move them out to somewhere more modifiable like the .env file or at least the payload models
+	var executablePath string
+	found := false
 
+	for _, ext := range extensions {
+		executablePath = fmt.Sprintf("teamserver/build/agent-%s/agent%s", payloadId, ext)
+		if _, err := os.Stat(executablePath); err == nil {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"status":  s.FAILED,
+			"message": "Executable not found.",
+		})
+		logger.Error("Executable not found")
+		return
+	}
+
+	ctx.Header("Content-Description", "File Transfer")
+	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filepath.Base(executablePath)))
+	ctx.Header("Content-Type", "application/octet-stream")
+	ctx.File(executablePath)
 }
 
 func (h *PayloadHandler) GetAllPayloads(ctx *gin.Context) {
 
+	payloads, err := h.payloadDAL.GetAllPayloads(ctx.Request.Context())
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to get payloads.",
+		})
+		logger.Error("Error getting payloads:", err)
+		return
+	}
+	ctx.JSON(http.StatusOK, payloads)
 }
