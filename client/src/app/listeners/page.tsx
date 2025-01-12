@@ -94,12 +94,10 @@ export default function Listeners() {
           <Button className="bg-transparent text-white w-[10em]">Table</Button>
           <Button className="w-[10em]">Add</Button>
       </div>
-      {/* <div className="grid grid-cols-2 items-start justify-items-center min-h-screen p-0 m-0 mt-2"> */}
-      <div className="flex flex-col justify-start justify-items-start	items-start gap-10 mt-10">
-        <div className="flex flex-row justify-start justify-items-start	items-start gap-10">
-          <Card className="mx-auto max-w-sm border-none">
-            <CardContent>
-                <div className="space-y-4">
+      <div className="max-w-[calc(100vw-var(--sidebar-width)-3em)] grid grid-cols-2 gap-0 items-start justify-items-end p-0 mb-0 mt-0 border-solid border-2 pt-5 rounded">
+        <Card className="mx-auto max-w-sm border-none mb-4">
+          <CardContent>
+              <div className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="email">Name</Label>
                     <Input id="email" type="email" placeholder="CIA Listener" required />
@@ -118,165 +116,165 @@ export default function Listeners() {
                     <Label htmlFor="email">Connection Port</Label>
                     <Input id="email" type="email" placeholder="8080" required />
                 </div>
-                </div>
-            </CardContent>
-          </Card>
-
-          <Card className="mx-auto max-w-sm border-none">
-            <CardContent>
-                <div className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="email">Rotation Type</Label>
-                    {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Rotation Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectItem value="apple">Round Robin</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                </div>
-                <div className="flex flex-row justify-center items-center gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-[240px] justify-start text-left font-normal",
-                          !date && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon />
-                        {date ? format(date, "P") : <span>From</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-[240px] justify-start text-left font-normal",
-                          !date && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon />
-                        {date ? format(date, "P") : <span>Until</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-2 flex flex-col">
-                    <Label htmlFor="email">Kill Date</Label>
-                    <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "justify-start text-left font-normal",
-                          !date && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon />
-                        {date ? format(date, "PPPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <div className="flex flex-row justify-start justify-items-start	items-start gap-10 w-[100%]">
-          <Card className="mx-auto max-w-sm border-none w-[100%]">
-            <CardContent className="flex flex-col gap-5">
-              <div className="flex items-center space-x-2">
-                <Switch id="airplane-mode" />
-                <Label htmlFor="enable-proxy">Enable Proxy</Label>
               </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mx-auto max-w-sm border-none mb-4">
+          <CardContent>
+              <div className="space-y-4">
               <div className="space-y-2">
-                  <Label htmlFor="email">Enable Proxy</Label>
+                  <Label htmlFor="email">Rotation Type</Label>
                   {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
                   <Select>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select Proxy Type" />
+                      <SelectValue placeholder="Select Rotation Type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectItem value="apple">RIO (Experimental)</SelectItem>
+                        <SelectItem value="apple">Round Robin</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="mx-auto max-w-sm border-none w-[100%]">
-            <CardContent className="flex flex-col gap-5">
-              <div className="flex items-center space-x-2">
-                <Switch id="airplane-mode" />
-                <Label htmlFor="enable-proxy">Enable Secure Connection</Label>
+              <div className="flex flex-row justify-center items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-[240px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon />
+                      {date ? format(date, "P") : <span>From</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-[240px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon />
+                      {date ? format(date, "P") : <span>Until</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-              <div className="space-y-2">
-                  <Label htmlFor="email">Certificate File</Label>
-                  {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="cert.cer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="apple">Cert</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-2 flex flex-col">
+                  <Label htmlFor="email">Kill Date</Label>
+                  <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon />
+                      {date ? format(date, "PPPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
+              </div>
+          </CardContent>
+        </Card>
 
-              <div>
-                <Label htmlFor="email">Key File</Label>
+        <span className="border-solid border-0 border-b rounded-none h-[1px] w-[100%]" />
+        <span className="border-solid border-0 border-b rounded-none h-[1px] w-[100%]" />
+
+        <Card className="mx-auto max-w-sm border-none w-[100%] mt-4">
+          <CardContent className="flex flex-col gap-5">
+            <div className="flex items-center space-x-2">
+              <Switch id="airplane-mode" />
+              <Label htmlFor="enable-proxy">Enable Proxy</Label>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="email">Enable Proxy</Label>
                 {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
                 <Select>
                   <SelectTrigger>
-                    <SelectValue placeholder="key.pem" />
+                    <SelectValue placeholder="Select Proxy Type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="apple">Key</SelectItem>
+                      <SelectItem value="apple">RIO (Experimental)</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mx-auto max-w-sm border-none w-[100%] mt-4 p-0">
+          <CardContent className="flex flex-col gap-5">
+            <div className="flex items-center space-x-2">
+              <Switch id="airplane-mode" />
+              <Label htmlFor="enable-proxy">Enable Secure Connection</Label>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="email">Certificate File</Label>
+                {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="cert.cer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="apple">Cert</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="email">Key File</Label>
+              {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="key.pem" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="apple">Key</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
 
