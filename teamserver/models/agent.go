@@ -29,7 +29,7 @@ type Agent struct {
 type AgentInfo struct {
 	AgentID    string `json:"agent_id"`
 	HostName   string `json:"host_name"`
-	IPAddress  string `json:"ip_addr"`
+	IPAddress  string `json:"ip_address"`
 	Username   string `json:"username"`
 	SystemInfo string `json:"system_info"`
 	OSInfo     string `json:"os_info"`

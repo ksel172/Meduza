@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,31 +25,45 @@ func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL) *C
 }
 
 func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
-
-	// Decode the received JSON into a C2Request
-	// NewC2Request sets agentStatus as uninitialized if that is not provided by the agent in the JSON
 	var c2request models.C2Request
 	if err := ctx.ShouldBindJSON(&c2request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// Validate if the received C2Request is valid
+
 	if !c2request.Valid() {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
+	logger.Info("Received check-in request from agent:", c2request.Message)
+	// Parse the message as AgentInfo
+	var agentInfo models.AgentInfo
+	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
+		return
+	}
+	logger.Info("Received check-in request from agent:", agentInfo)
 
-	logger.Info("Received check-in request from agent:", c2request.AgentID)
-	// Convert C2Request into Agent model
-	agent := c2request.IntoNewAgent()
+	// Check if the agent already exists
+	if _, err := cc.agentDAL.GetAgent(agentInfo.AgentID); err == nil {
+		ctx.JSON(http.StatusConflict, gin.H{"error": "agent already exists"})
+		return
+	}
 
-	// Create agent in the redis db
-	if err := cc.checkInDAL.CreateAgent(ctx.Request.Context(), agent); err != nil {
+	// Create agent in the database
+	newAgent := c2request.IntoNewAgent()
+	if err := cc.checkInDAL.CreateAgent(ctx.Request.Context(), newAgent); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{"agent": agent})
+	// Create agent info in the database
+	if err := cc.agentDAL.CreateAgentInfo(ctx.Request.Context(), agentInfo); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{"agent": newAgent})
 }
 
 // GetTasks Will be called by the agents to get their tasks/commands
