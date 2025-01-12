@@ -8,6 +8,7 @@ import (
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
+	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 type ICheckInController interface {
@@ -35,7 +36,7 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
-	logger.Info("Received check-in request from agent:", c2request.Message)
+	logger.Info("Received check-in request from agent:", c2request.AgentID)
 	// Parse the message as AgentInfo
 	var agentInfo models.AgentInfo
 	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
@@ -52,6 +53,8 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 
 	// Create agent in the database
 	newAgent := c2request.IntoNewAgent()
+	newAgent.Name = utils.RandomString(6)
+
 	if err := cc.checkInDAL.CreateAgent(ctx.Request.Context(), newAgent); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
