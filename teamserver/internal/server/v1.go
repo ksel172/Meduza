@@ -41,6 +41,12 @@ func (s *Server) AgentsV1(group *gin.RouterGroup) {
 		agentsGroup.POST("/tasks", s.dependencies.AgentController.CreateAgentTask)
 		agentsGroup.DELETE(fmt.Sprintf(":%s/tasks", models.ParamAgentID), s.dependencies.AgentController.DeleteAgentTasks)
 		agentsGroup.DELETE(fmt.Sprintf(":%s/tasks/:%s", models.ParamAgentID, models.ParamTaskID), s.dependencies.AgentController.DeleteAgentTask)
+
+		// Agent config API
+		agentsGroup.POST("/config", s.dependencies.AgentController.CreateAgentConfig)
+		agentsGroup.PUT("/config/:id", s.dependencies.AgentController.UpdateAgentConfig)
+		agentsGroup.GET("/config/:id", s.dependencies.AgentController.GetAgentConfig)
+		agentsGroup.DELETE("/config/:id", s.dependencies.AgentController.DeleteAgentConfig)
 	}
 }
 
@@ -64,5 +70,16 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 		listenersGroup.DELETE("/:id", s.dependencies.ListenerController.DeleteListener)
 		listenersGroup.POST("/:id/start", s.dependencies.ListenerController.StartListener)
 		listenersGroup.POST("/:id/stop", s.dependencies.ListenerController.StopListener)
+	}
+}
+func (s *Server) PayloadV1(group *gin.RouterGroup) {
+
+	payloadsGroup := group.Group("/payloads")
+	{
+		payloadsGroup.POST("/create", s.dependencies.PayloadController.CreatePayload)
+		payloadsGroup.GET("/all", s.dependencies.PayloadController.GetAllPayloads)
+		payloadsGroup.POST("/delete/:id", s.dependencies.PayloadController.DeletePayload)
+		payloadsGroup.GET("/download/:id", s.dependencies.PayloadController.DownloadPayload)
+		payloadsGroup.POST("/delete/all", s.dependencies.PayloadController.DeleteAllPayloads)
 	}
 }

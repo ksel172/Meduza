@@ -19,6 +19,10 @@ type IAgentDAL interface {
 	GetAgentTasks(ctx context.Context, agentID string) ([]models.AgentTask, error)
 	DeleteAgentTask(ctx context.Context, agentID string, taskID string) error
 	DeleteAgentTasks(ctx context.Context, agentID string) error
+	CreateAgentConfig(ctx context.Context, agentConfig models.AgentConfig) error
+	GetAgentConfig(ctx context.Context, agentID string) (models.AgentConfig, error)
+	UpdateAgentConfig(ctx context.Context, agentID string, agentConfig models.AgentConfig) error
+	DeleteAgentConfig(ctx context.Context, agentID string) error
 }
 
 type AgentDAL struct {
@@ -42,7 +46,7 @@ func (dal *AgentDAL) GetAgent(agentID string) (models.Agent, error) {
 	logger.Debug(layer, "Querying for agentID: "+agentID)
 	var agent models.Agent
 	if err := dal.db.QueryRow(query, agentID).Scan(
-		&agent.ID, &agent.Name, &agent.Note, &agent.Status,
+		&agent.AgentID, &agent.Name, &agent.Note, &agent.Status,
 		&agent.FirstCallback, &agent.LastCallback, &agent.ModifiedAt,
 	); err != nil {
 		if err == sql.ErrNoRows {
@@ -71,9 +75,9 @@ func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgentRe
 
 	var updatedAgent models.Agent
 	if err = tx.QueryRowContext(ctx, agentQuery,
-		agent.Name, agent.Note, agent.Status, agent.ModifiedAt, agent.ID,
+		agent.Name, agent.Note, agent.Status, agent.ModifiedAt, agent.AgentID,
 	).Scan(
-		&updatedAgent.ID,
+		&updatedAgent.AgentID,
 		&updatedAgent.Name,
 		&updatedAgent.Note,
 		&updatedAgent.Status,
@@ -127,7 +131,7 @@ func (dal *AgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask)
 
 	logger.Debug(layer, "Creating agent task: "+task.ID)
 	_, err := dal.db.ExecContext(ctx, query,
-		task.ID, task.AgentID, task.Type, task.Status, task.Module,
+		task.TaskID, task.AgentID, task.Type, task.Status, task.Module,
 		task.Command, task.Created)
 	if err != nil {
 		logger.Error(layer, fmt.Sprintf("failed to create agent task: %v", err))
@@ -155,7 +159,7 @@ func (dal *AgentDAL) GetAgentTasks(ctx context.Context, agentID string) ([]model
 	for rows.Next() {
 		var task models.AgentTask
 		err := rows.Scan(
-			&task.ID, &task.AgentID, &task.Type, &task.Status,
+			&task.TaskID, &task.AgentID, &task.Type, &task.Status,
 			&task.Module, &task.Command, &task.Created,
 			&task.Started, &task.Finished)
 		if err != nil {
@@ -200,6 +204,65 @@ func (dal *AgentDAL) DeleteAgentTasks(ctx context.Context, agentID string) error
 	if err != nil {
 		logger.Error(layer, fmt.Sprintf("failed to delete agent tasks: %v", err))
 		return fmt.Errorf("failed to delete agent tasks: %w", err)
+	}
+	return nil
+}
+
+func (dal *AgentDAL) CreateAgentConfig(ctx context.Context, agentConfig models.AgentConfig) error {
+	query := fmt.Sprintf(`
+		INSERT INTO %s.agent_config (config_id, listener_id, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query,
+		agentConfig.ConfigID, agentConfig.ListenerID,
+		agentConfig.Sleep, agentConfig.Jitter, agentConfig.StartDate,
+		agentConfig.KillDate, agentConfig.WorkingHoursStart, agentConfig.WorkingHoursEnd)
+	if err != nil {
+		return fmt.Errorf("failed to create agent config: %w", err)
+	}
+	return nil
+}
+
+func (dal *AgentDAL) GetAgentConfig(ctx context.Context, agentID string) (models.AgentConfig, error) {
+	query := fmt.Sprintf(`
+		SELECT *
+		FROM %s.agent_config
+		WHERE agent_id = $1`, dal.schema)
+
+	var agentConfig models.AgentConfig
+	err := dal.db.QueryRowContext(ctx, query, agentID).Scan(
+		&agentConfig.ConfigID, &agentConfig.ListenerID, &agentConfig.Sleep,
+		&agentConfig.Jitter, &agentConfig.StartDate, &agentConfig.KillDate,
+		&agentConfig.WorkingHoursStart, &agentConfig.WorkingHoursEnd)
+	if err != nil {
+		return models.AgentConfig{}, fmt.Errorf("failed to get agent config: %w", err)
+	}
+	return agentConfig, nil
+}
+
+func (dal *AgentDAL) UpdateAgentConfig(ctx context.Context, agentID string, agentConfig models.AgentConfig) error {
+	query := fmt.Sprintf(`
+        UPDATE %s.agent_config
+        SET config_id = $1, listener_id = $2, sleep = $3, jitter = $4, start_date = $5, kill_date = $6,
+            working_hours_start = $7, working_hours_end = $8
+        WHERE agent_id = $9`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query, agentConfig.ConfigID, agentConfig.ListenerID, agentConfig.Sleep, agentConfig.Jitter,
+		agentConfig.StartDate, agentConfig.KillDate, agentConfig.WorkingHoursStart, agentConfig.WorkingHoursEnd, agentID)
+	if err != nil {
+		return fmt.Errorf("failed to update agent config: %w", err)
+	}
+	return nil
+}
+
+func (dal *AgentDAL) DeleteAgentConfig(ctx context.Context, agentID string) error {
+	query := fmt.Sprintf(`
+        DELETE FROM %s.agent_config
+        WHERE id = $1`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query, agentID)
+	if err != nil {
+		return fmt.Errorf("failed to delete agent config: %w", err)
 	}
 	return nil
 }

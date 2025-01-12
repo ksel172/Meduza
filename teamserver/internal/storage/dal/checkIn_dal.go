@@ -35,7 +35,7 @@ func (dal *CheckInDAL) CreateAgent(ctx context.Context, agent models.Agent) erro
         INSERT INTO %s.agents (id, name, note, status, first_callback, last_callback, modified_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7)`, dal.schema)
 
-	_, err = tx.Exec(agentQuery, agent.ID, agent.Name, agent.Note, agent.Status,
+	_, err = tx.Exec(agentQuery, agent.AgentID, agent.Name, agent.Note, agent.Status,
 		agent.FirstCallback, agent.LastCallback, agent.ModifiedAt)
 	if err != nil {
 		logger.Error(layer, fmt.Sprintf("failed to insert agent in database: %v", err))

@@ -28,9 +28,9 @@
 
     public class AgentTask
     {
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
-        public string AgentId { get; set; }
+        public string AgentId { get; set; } = string.Empty;
 
         public AgentTaskType Type { get; set; } = AgentTaskType.AgentCommand;
 

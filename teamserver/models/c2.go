@@ -35,7 +35,7 @@ func (r C2Request) Valid() bool {
 // Converts a C2Request into a new Agent for registration
 func (r C2Request) IntoNewAgent() Agent {
 	return Agent{
-		ID:            r.AgentID, // uuid generated at agent computer, sent with initial checkin request
+		AgentID:       r.AgentID, // uuid generated at agent computer, sent with initial checkin request
 		Status:        r.AgentStatus,
 		FirstCallback: time.Now(),
 		ModifiedAt:    time.Now(),
