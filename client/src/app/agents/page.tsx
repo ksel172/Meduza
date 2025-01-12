@@ -27,6 +27,9 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Combobox } from "@/components/util/items/combobox";
 
+import { TableCell } from "@/components/ui/table";
+import { Ellipsis } from "lucide-react";
+
 const comboboxOptions = [
   {
     value: "dead",
@@ -39,6 +42,54 @@ const comboboxOptions = [
 ]
 
 export default function Home() {
+
+  const shells = [
+    {
+      name: "Tim Cooks Laptop",
+      shellStatus: "Alive",
+      compileType: "x64-win",
+      targetIp: "10.10.14.12",
+    },
+    {
+      name: "NSA's Systems",
+      shellStatus: "Dead",
+      compileType: "x64-win",
+      targetIp: "10.10.14.13",
+    },
+    {
+      name: "CIA Backdoor",
+      shellStatus: "Alive",
+      compileType: "x64-win",
+      targetIp: "10.10.14.14",
+    },
+    {
+      name: "Another Backdoor",
+      shellStatus: "Alive",
+      compileType: "x64-win",
+      targetIp: "10.10.14.15",
+    },
+  ]
+
+  const agentHeaders = ["Name", "Status", "Compile Type", "Target"];
+
+  const renderRow = (shell: any) => (
+    <>
+      <TableCell>{shell.name}</TableCell>
+      <TableCell
+        className={`font-medium ${
+          shell.shellStatus === "Dead" ? "text-red-600" : "text-green-400"
+        }`}
+      >
+        {shell.shellStatus}
+      </TableCell>
+      <TableCell>{shell.compileType}</TableCell>
+      <TableCell>{shell.targetIp}</TableCell>
+      <TableCell className="text-right m-0 p-0">
+        <Ellipsis />
+      </TableCell>
+    </>
+  );
+
   return (
     <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] flex flex-col gap-4 justify-items-center min-h-screen pb-4 p-0 m-6">
       <div className="flex flex-row gap-2 w-[100%]">
@@ -47,7 +98,7 @@ export default function Home() {
       </div>
       <Card className="w-[calc(95vw-var(--sidebar-width))]">
         <CardContent className="m-0 p-0">
-          <TableComponent />
+           <TableComponent headers={agentHeaders} data={shells} renderRow={renderRow} />
         </CardContent>
       </Card>
       <div className="flex flex-row w-[calc(95vw-var(--sidebar-width))] justify-between">
