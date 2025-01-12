@@ -20,6 +20,10 @@ type IAgentDAL interface {
 	GetAgentConfig(ctx context.Context, agentID string) (models.AgentConfig, error)
 	UpdateAgentConfig(ctx context.Context, agentID string, agentConfig models.AgentConfig) error
 	DeleteAgentConfig(ctx context.Context, agentID string) error
+	CreateAgentInfo(ctx context.Context, agent models.AgentInfo) error
+	UpdateAgentInfo(ctx context.Context, agent models.AgentInfo) error
+	GetAgentInfo(ctx context.Context, agentID string) (models.AgentInfo, error)
+	DeleteAgentInfo(ctx context.Context, agentID string) error
 }
 
 type AgentDAL struct {
@@ -244,6 +248,58 @@ func (dal *AgentDAL) DeleteAgentConfig(ctx context.Context, agentID string) erro
 	_, err := dal.db.ExecContext(ctx, query, agentID)
 	if err != nil {
 		return fmt.Errorf("failed to delete agent config: %w", err)
+	}
+	return nil
+}
+
+func (dal *AgentDAL) CreateAgentInfo(ctx context.Context, agent models.AgentInfo) error {
+	query := fmt.Sprintf(`
+        INSERT INTO %s.agent_info (agent_id, host_name, ip_address, user_name, system_info, os_info)
+        VALUES ($1, $2, $3, $4, $5, $6)`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query, agent.AgentID, agent.HostName, agent.IPAddress, agent.Username, agent.SystemInfo, agent.OSInfo)
+	if err != nil {
+		return fmt.Errorf("failed to set agent info: %w", err)
+	}
+	return nil
+}
+
+func (dal *AgentDAL) UpdateAgentInfo(ctx context.Context, agent models.AgentInfo) error {
+	query := fmt.Sprintf(`
+        UPDATE %s.agent_info
+        SET host_name = $1, ip_address = $2, user_name = $3, system_info = $4, os_info = $5
+        WHERE agent_id = $6`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query, agent.HostName, agent.IPAddress, agent.Username, agent.SystemInfo, agent.OSInfo, agent.AgentID)
+	if err != nil {
+		return fmt.Errorf("failed to update agent info: %w", err)
+	}
+	return nil
+}
+
+func (dal *AgentDAL) GetAgentInfo(ctx context.Context, agentID string) (models.AgentInfo, error) {
+	query := fmt.Sprintf(`
+        SELECT agent_id, host_name, ip_address, user_name, system_info, os_info
+        FROM %s.agent_info
+        WHERE agent_id = $1`, dal.schema)
+
+	var agentInfo models.AgentInfo
+	err := dal.db.QueryRowContext(ctx, query, agentID).Scan(
+		&agentInfo.AgentID, &agentInfo.HostName, &agentInfo.IPAddress, &agentInfo.Username, &agentInfo.SystemInfo, &agentInfo.OSInfo)
+	if err != nil {
+		return models.AgentInfo{}, fmt.Errorf("failed to get agent info: %w", err)
+	}
+	return agentInfo, nil
+}
+
+func (dal *AgentDAL) DeleteAgentInfo(ctx context.Context, agentID string) error {
+	query := fmt.Sprintf(`
+        DELETE FROM %s.agent_info
+        WHERE agent_id = $1`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query, agentID)
+	if err != nil {
+		return fmt.Errorf("failed to delete agent info: %w", err)
 	}
 	return nil
 }

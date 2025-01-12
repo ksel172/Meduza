@@ -226,3 +226,56 @@ func (ac *AgentController) DeleteAgentConfig(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{})
 }
+
+func (ac *AgentController) CreateAgentInfo(ctx *gin.Context) {
+	var agentInfo models.AgentInfo
+	if err := ctx.ShouldBindJSON(&agentInfo); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := ac.dal.CreateAgentInfo(ctx, agentInfo); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"status": "agent info created"})
+}
+
+func (ac *AgentController) UpdateAgentInfo(ctx *gin.Context) {
+	var agentInfo models.AgentInfo
+	if err := ctx.ShouldBindJSON(&agentInfo); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := ac.dal.UpdateAgentInfo(ctx, agentInfo); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"status": "agent info updated"})
+}
+
+func (ac *AgentController) GetAgentInfo(ctx *gin.Context) {
+	agentID := ctx.Param("agentID")
+
+	agentInfo, err := ac.dal.GetAgentInfo(ctx, agentID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, agentInfo)
+}
+
+func (ac *AgentController) DeleteAgentInfo(ctx *gin.Context) {
+	agentID := ctx.Param("agentID")
+
+	if err := ac.dal.DeleteAgentInfo(ctx, agentID); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"status": "agent info deleted"})
+}

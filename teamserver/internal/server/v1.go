@@ -47,19 +47,14 @@ func (s *Server) AgentsV1(group *gin.RouterGroup) {
 		agentsGroup.PUT("/config/:id", s.dependencies.AgentController.UpdateAgentConfig)
 		agentsGroup.GET("/config/:id", s.dependencies.AgentController.GetAgentConfig)
 		agentsGroup.DELETE("/config/:id", s.dependencies.AgentController.DeleteAgentConfig)
+
+		// Agent info API
+		agentsGroup.POST("/info", s.dependencies.AgentController.CreateAgentInfo)
+		agentsGroup.PUT("/info/:id", s.dependencies.AgentController.UpdateAgentInfo)
+		agentsGroup.GET("/info/:id", s.dependencies.AgentController.GetAgentInfo)
+		agentsGroup.DELETE("/info/:id", s.dependencies.AgentController.DeleteAgentInfo)
 	}
 }
-
-/*
-func (s *Server) CheckInV1(group *gin.RouterGroup) {
-
-		checkinGroup := group.Group("/checkin")
-		{
-			checkinGroup.POST("/", s.dependencies.CheckInController.CreateAgent)
-			checkinGroup.GET("/", s.dependencies.CheckInController.GetTasks)
-		}
-	}
-*/
 func (s *Server) ListenersV1(group *gin.RouterGroup) {
 
 	listenersGroup := group.Group("/listeners")
