@@ -98,7 +98,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	args := []string{
 		"publish",
 		"--configuration", "Release",
-		"--self-contained", "true",
+		"--self-contained", payloadRequest.SelfContained,
 		"-o", "/app/build/agent-" + payloadConfig.PayloadID,
 		"-p:PublishSingleFile=true",
 		"-r", payloadConfig.Arch, // interesting fix here
