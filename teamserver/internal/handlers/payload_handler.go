@@ -101,6 +101,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		"--self-contained", payloadRequest.SelfContained,
 		"-o", "/app/build/agent-" + payloadConfig.PayloadID,
 		"-p:PublishSingleFile=true",
+		"-p:DefineConstants=TYPE_" + listener.Type, // Specify comm type to cut out pieces of the code
 		"-r", payloadConfig.Arch, // interesting fix here
 		"agent/Agent/Agent.csproj",
 	}

