@@ -143,10 +143,12 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
-	truncErr := os.Truncate(baseconfPath, 0)
-	if truncErr != nil {
-		logger.Error("Error cleaning baseconf.json:", truncErr)
-	}
+	defer func() {
+		truncErr := os.Truncate(baseconfPath, 0)
+		if truncErr != nil {
+			logger.Error("Error cleaning baseconf.json:", truncErr)
+		}
+	}()
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":  s.SUCCESS,

@@ -45,12 +45,6 @@ type AgentConfig struct {
 	KillDate          time.Time `json:"kill_date"`
 	WorkingHoursStart int       `json:"working_hours_start"`
 	WorkingHoursEnd   int       `json:"working_hours_end"`
-	//CommunicationType   string    `json:"communication_type"`
-	//CommunicationConfig any `json:"communication_config"`
-	//CallbackURLs    []string          `json:"callback_urls"`
-	//RotationType    string            `json:"rotation_type"`
-	//RotationRetries int               `json:"rotation_retries"`
-	//Headers         map[string]string `json:"headers"` // Custom headers
 }
 
 // AgentTask represents the information of a task sent to an Agent
