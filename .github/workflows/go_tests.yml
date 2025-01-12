@@ -31,6 +31,8 @@ jobs:
     - name: Run handler tests
       working-directory: ./teamserver
       run: go test -v ./tests/handlers/... || true
+      env:
+        ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
       
     - name: Build application
       working-directory: ./teamserver
