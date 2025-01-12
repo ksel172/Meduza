@@ -30,7 +30,7 @@ func (dal *CheckInDAL) CreateAgent(ctx context.Context, agent models.Agent) erro
 	defer tx.Rollback()
 
 	// Insert agent
-	logger.Debug(layer, "Creating agent: "+agent.ID)
+	logger.Debug(layer, "Creating agent: "+agent.AgentID)
 	agentQuery := fmt.Sprintf(`
         INSERT INTO %s.agents (id, name, note, status, first_callback, last_callback, modified_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7)`, dal.schema)

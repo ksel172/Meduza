@@ -66,7 +66,7 @@ func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgentRe
 	}
 	defer tx.Rollback()
 
-	logger.Debug(layer, "Updating agent: "+agent.ID)
+	logger.Debug(layer, "Updating agent: "+agent.AgentID)
 	agentQuery := fmt.Sprintf(`
         UPDATE %s.agents
         SET name = $1, note = $2, status = $3, modified_at = $4
@@ -129,7 +129,7 @@ func (dal *AgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask)
         INSERT INTO %s.agent_tasks (id, agent_id, type, status, module, command, created_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7)`, dal.schema)
 
-	logger.Debug(layer, "Creating agent task: "+task.ID)
+	logger.Debug(layer, "Creating agent task: "+task.TaskID)
 	_, err := dal.db.ExecContext(ctx, query,
 		task.TaskID, task.AgentID, task.Type, task.Status, task.Module,
 		task.Command, task.Created)
