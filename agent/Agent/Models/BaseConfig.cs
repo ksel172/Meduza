@@ -4,13 +4,6 @@ using System.Text.Json.Serialization;
 
 namespace Agent.Models
 {
-    public enum CallbackRotationType
-    {
-        Fallback,
-        Sequential,
-        RoundRobin,
-        Random
-    }
 
     public class BaseConfig
     {
@@ -50,7 +43,7 @@ namespace Agent.Models
             public List<Header> Headers { get; set; }
 
             [JsonPropertyName("host_rotation")]
-            public CallbackRotationType HostRotation { get; set; }
+            public string HostRotation { get; set; }
 
             [JsonPropertyName("proxy_settings")]
             public ProxySettings ProxySettings { get; set; }

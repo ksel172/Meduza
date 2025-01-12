@@ -16,7 +16,7 @@ import (
 	If server is initialized in the listeners package, there will be a circular import
 */
 
-var listenerRoute = "/" // Changed to "/" from "/check-in"
+var listenerRoute = "checkin" // Changed to "/checkin" from "/check-in"
 var status = utils.Status
 
 // NewHTTPListenerController initializes a new HTTP listener controller.
@@ -51,6 +51,15 @@ func NewHTTPListenerController(
 	// Handle the listener routes
 	mux.Handle("GET", listenerRoute, checkInController.GetTasks)
 	mux.Handle("POST", listenerRoute, checkInController.CreateAgent)
+
+	/*
+		// Add health check endpoint
+		mux.GET("/health", func(ctx *gin.Context) {
+			ctx.JSON(http.StatusOK, gin.H{
+				"status": "alive",
+			})
+		})
+	*/
 
 	return &http_listener.HTTPListenerController{
 		Name:      name,

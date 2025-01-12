@@ -10,9 +10,10 @@ import (
 // Valid agent statuses: ["uninitialized", "inactive", "active"]
 type C2Request struct {
 	AgentID     string `json:"agent_id"`
+	ConfigID    string `json:"config_id"`
 	AgentStatus string `json:"agent_status"`
 	Message     string `json:"message"`
-	Hmac        string `json:"hmac"`
+	// Hmac        string `json:"hmac"`
 }
 
 // Initialize a new C2Request with status uninitialized, for use when creating a new agent
@@ -36,6 +37,7 @@ func (r C2Request) Valid() bool {
 func (r C2Request) IntoNewAgent() Agent {
 	return Agent{
 		AgentID:       r.AgentID, // uuid generated at agent computer, sent with initial checkin request
+		ConfigID:      r.ConfigID,
 		Status:        r.AgentStatus,
 		FirstCallback: time.Now(),
 		ModifiedAt:    time.Now(),

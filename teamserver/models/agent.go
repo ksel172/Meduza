@@ -14,15 +14,15 @@ const (
 
 // Contains all information required for controlling an agent.
 type Agent struct {
-	AgentID       string      `json:"agent_id"`
-	Name          string      `json:"name"`
-	Note          string      `json:"note"`
-	Status        string      `json:"status"`
-	Config        AgentConfig `json:"config"`
-	Info          AgentInfo   `json:"agent_info"`
-	FirstCallback time.Time   `json:"first_callback"`
-	LastCallback  time.Time   `json:"last_callback"`
-	ModifiedAt    time.Time   `json:"modified_at"`
+	AgentID       string    `json:"agent_id"`
+	Name          string    `json:"name"`
+	Note          string    `json:"note"`
+	Status        string    `json:"status"`
+	ConfigID      string    `json:"config_id"`
+	Info          AgentInfo `json:"agent_info"`
+	FirstCallback time.Time `json:"first_callback"`
+	LastCallback  time.Time `json:"last_callback"`
+	ModifiedAt    time.Time `json:"modified_at"`
 }
 
 // AgentInfo contains information about the agent computer

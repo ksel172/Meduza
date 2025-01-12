@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
 type ICheckInController interface {
@@ -26,18 +27,18 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 
 	// Decode the received JSON into a C2Request
 	// NewC2Request sets agentStatus as uninitialized if that is not provided by the agent in the JSON
-	c2request := models.NewC2Request()
+	var c2request models.C2Request
 	if err := ctx.ShouldBindJSON(&c2request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
 	// Validate if the received C2Request is valid
 	if !c2request.Valid() {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
+	logger.Info("Received check-in request from agent:", c2request.AgentID)
 	// Convert C2Request into Agent model
 	agent := c2request.IntoNewAgent()
 
