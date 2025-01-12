@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -304,4 +307,65 @@ func (h *ListenerHandler) StopListener(ctx *gin.Context) {
 		"message": "listener stopped",
 		"status":  s.SUCCESS,
 	})
+}
+
+func (h *ListenerHandler) AutoStart(ctx context.Context) error {
+	// Fetch active listeners
+	activeListeners, err := h.dal.GetActiveListeners(ctx)
+	if err != nil {
+		logger.Error("Error fetching active listeners...", err)
+		return err
+	}
+
+	totalActiveListeners := len(activeListeners)
+
+	if totalActiveListeners == 0 {
+		logger.Info("No active listeners found to start.")
+		return nil
+	}
+
+	logger.Info("Found", totalActiveListeners, "listeners to start.")
+
+	var wg sync.WaitGroup
+	errChan := make(chan error, totalActiveListeners)
+
+	if h.service == nil {
+		return fmt.Errorf("Listener service is nil")
+	}
+
+	for _, listener := range activeListeners {
+		wg.Add(1)
+		go func(listener models.Listener) {
+			defer wg.Done()
+
+			id := listener.ID.String()
+			logger.Info("Starting listener:", id)
+
+			if err := h.service.Start(listener); err != nil {
+				logger.Error("Error starting listener", id, err)
+				errChan <- fmt.Errorf("Failed to start listener %s: %w", id, err)
+			} else {
+				logger.Info("Listener started successfully:", id)
+			}
+		}(listener)
+	}
+
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	var errors []string
+	for err := range errChan {
+		if err != nil {
+			errors = append(errors, err.Error())
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("AutoStart encountered errors:\n%s", strings.Join(errors, "\n"))
+	}
+
+	logger.Info("All listeners started successfully.")
+	return nil
 }

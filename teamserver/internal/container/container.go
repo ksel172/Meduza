@@ -19,6 +19,8 @@ type Container struct {
 	AgentController    *handlers.AgentController
 	CheckInController  *services.CheckInController // handler is not directly accessible by the C2 server
 	ListenerController *handlers.ListenerHandler
+	ListenerSevice     *services.ListenersService // for autostart
+	ListenerDal        *dal.ListenerDAL
 }
 
 func NewContainer() (*Container, error) {
@@ -43,7 +45,13 @@ func NewContainer() (*Container, error) {
 	checkInController := services.NewCheckInController(checkInDal, agentDal)
 
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 15, 30*24*60*60)
-	listenersService := services.NewListenerService(checkInController)
+	ListenersService := services.NewListenerService(checkInController)
+
+	//Type assertion error fix
+	autoStart, ok := listenerDal.(*dal.ListenerDAL)
+	if !ok {
+		logger.Warn("Unable to type assetion ListenerDAL")
+	}
 
 	return &Container{
 		UserController:     handlers.NewUserController(userDal),
@@ -53,6 +61,8 @@ func NewContainer() (*Container, error) {
 		AdminController:    handlers.NewAdminController(adminDal),
 		AgentController:    handlers.NewAgentController(agentDal),
 		CheckInController:  checkInController,
-		ListenerController: handlers.NewListenersHandler(listenerDal, listenersService),
+		ListenerController: handlers.NewListenersHandler(listenerDal, ListenersService),
+		ListenerSevice:     ListenersService,
+		ListenerDal:        autoStart,
 	}, nil
 }

@@ -21,6 +21,7 @@ type IListenerDal interface {
 	GetAllListeners(context.Context) ([]models.Listener, error)
 	DeleteListener(context.Context, string) error
 	UpdateListener(context.Context, string, map[string]any) error
+	GetActiveListeners(context.Context) ([]models.Listener, error)
 }
 
 type ListenerDAL struct {
@@ -166,4 +167,40 @@ func (dal *ListenerDAL) UpdateListener(ctx context.Context, lid string, updates 
 
 	logger.Debug("Rows Affected:", rowsAffected)
 	return nil
+}
+
+func (dal *ListenerDAL) GetActiveListeners(ctx context.Context) ([]models.Listener, error) {
+	query := `
+    SELECT id, type, name, status, description, config, logging_enabled, logging, created_at, updated_at, started_at, stopped_at 
+    FROM listeners 
+    WHERE status = $1 
+    ORDER BY created_at DESC`
+	rows, err := dal.db.QueryContext(ctx, query, 1) // Pass the `status=1` parameter
+	if err != nil {
+		logger.Error("Failed to get listeners\n", err)
+		return nil, fmt.Errorf("failed to get listeners")
+	}
+	defer rows.Close()
+	var lists []models.Listener
+	for rows.Next() {
+		var listener models.Listener
+		var rawConfig json.RawMessage
+		var rawLogging json.RawMessage
+		if err := rows.Scan(&listener.ID, &listener.Type, &listener.Name, &listener.Status, &listener.Description, &rawConfig, &listener.LoggingEnabled, &rawLogging, &listener.CreatedAt, &listener.UpdatedAt, &listener.StartedAt, &listener.StoppedAt); err != nil {
+			logger.Error("Failed to get the listener\n", err)
+			return nil, fmt.Errorf("failed to get listener")
+		}
+
+		if err := json.Unmarshal(rawConfig, &listener.Config); err != nil {
+			logger.Error("Failed to unmarshal config\n", err)
+			return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+		}
+
+		if err := json.Unmarshal(rawLogging, &listener.Logging); err != nil {
+			logger.Error("Failed to unmarshal logging\n", err)
+			return nil, fmt.Errorf("failed to unmarshal logging: %w", err)
+		}
+		lists = append(lists, listener)
+	}
+	return lists, nil
 }
