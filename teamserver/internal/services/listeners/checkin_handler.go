@@ -43,8 +43,6 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
 		return
 	}
-	logger.Info("Received check-in request from agent:", agentInfo)
-
 	// Check if the agent already exists
 	if _, err := cc.agentDAL.GetAgent(agentInfo.AgentID); err == nil {
 		ctx.JSON(http.StatusConflict, gin.H{"error": "agent already exists"})
