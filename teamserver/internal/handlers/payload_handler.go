@@ -180,7 +180,10 @@ func (h *PayloadHandler) DeletePayload(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{
+		"status":  s.SUCCESS,
+		"message": "Payload deleted successfully.",
+	})
 }
 
 func (h *PayloadHandler) DeleteAllPayloads(ctx *gin.Context) {
