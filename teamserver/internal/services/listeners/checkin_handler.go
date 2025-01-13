@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
@@ -45,6 +46,7 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 	}
 	// Check if the agent already exists
 	if _, err := cc.agentDAL.GetAgent(agentInfo.AgentID); err == nil {
+		logger.Info("Agent already exists:", c2request.AgentID)
 		ctx.JSON(http.StatusConflict, gin.H{"error": "agent already exists"})
 		return
 	}
@@ -67,8 +69,6 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, gin.H{"agent": newAgent})
 }
 
-// GetTasks Will be called by the agents to get their tasks/commands
-// The agent will send its ID in the query params,
 // need to protect by authentication at some points, because currently anyone requesting
 // the tasks will get them, however, only the agent should be able to.
 func (cc *CheckInController) GetTasks(ctx *gin.Context) {
@@ -84,6 +84,13 @@ func (cc *CheckInController) GetTasks(ctx *gin.Context) {
 	tasks, err := cc.agentDAL.GetAgentTasks(ctx, agentID)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Update the agent's last callback time
+	lastCallback := time.Now().Format(time.RFC3339)
+	if err := cc.agentDAL.UpdateAgentLastCallback(ctx.Request.Context(), agentID, lastCallback); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

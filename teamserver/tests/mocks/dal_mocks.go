@@ -86,6 +86,11 @@ func (m *MockAgentDAL) DeleteAgentInfo(ctx context.Context, agentID string) erro
 	return args.Error(0)
 }
 
+func (m *MockAgentDAL) UpdateAgentLastCallback(ctx context.Context, agentID string, lastCallback string) error {
+	args := m.Called(agentID, lastCallback)
+	return args.Error(0)
+}
+
 type MockCheckInDal struct {
 	mock.Mock
 }
@@ -93,6 +98,11 @@ type MockCheckInDal struct {
 func (m *MockCheckInDal) CreateAgent(ctx context.Context, agent models.Agent) error {
 	args := m.Called(agent)
 	return args.Error(0)
+}
+
+func (m *MockCheckInDal) GetAgent(ctx context.Context, agentID string) (models.Agent, error) {
+	args := m.Called(agentID)
+	return args.Get(0).(models.Agent), args.Error(1)
 }
 
 type MockUserDAL struct {

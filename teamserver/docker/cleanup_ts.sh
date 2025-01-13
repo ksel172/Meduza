@@ -10,4 +10,4 @@ if [ -d "$DIR_PATH" ]; then
   echo "All payloads deleted successfully."
 else
   echo "Directory $DIR_PATH does not exist."
-fi
+fiW

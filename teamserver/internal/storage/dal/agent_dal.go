@@ -24,6 +24,7 @@ type IAgentDAL interface {
 	UpdateAgentInfo(ctx context.Context, agent models.AgentInfo) error
 	GetAgentInfo(ctx context.Context, agentID string) (models.AgentInfo, error)
 	DeleteAgentInfo(ctx context.Context, agentID string) error
+	UpdateAgentLastCallback(ctx context.Context, agentID string, lastCallback string) error
 }
 
 type AgentDAL struct {
@@ -300,6 +301,19 @@ func (dal *AgentDAL) DeleteAgentInfo(ctx context.Context, agentID string) error 
 	_, err := dal.db.ExecContext(ctx, query, agentID)
 	if err != nil {
 		return fmt.Errorf("failed to delete agent info: %w", err)
+	}
+	return nil
+}
+
+func (dal *AgentDAL) UpdateAgentLastCallback(ctx context.Context, agentID string, lastCallback string) error {
+	query := fmt.Sprintf(`
+		UPDATE %s.agents
+		SET last_callback = $1
+		WHERE id = $2`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query, lastCallback, agentID)
+	if err != nil {
+		return fmt.Errorf("failed to update last callback: %w", err)
 	}
 	return nil
 }
