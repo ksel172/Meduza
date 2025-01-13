@@ -8,7 +8,7 @@ import (
 
 // C2Request represents any request sent to a C2 server by an Agent.
 // Valid agent statuses: ["uninitialized", "inactive", "active"]
-type C2Request struct {
+type RegisterC2Request struct {
 	AgentID     string `json:"agent_id"`
 	ConfigID    string `json:"config_id"`
 	AgentStatus string `json:"agent_status"`
@@ -16,13 +16,19 @@ type C2Request struct {
 	// Hmac        string `json:"hmac"`
 }
 
+type CheckinC2Request struct {
+	Reason  string `json:"reason"`
+	AgentID string `json:"agent_id"`
+	Message string `json:"message"`
+}
+
 // Initialize a new C2Request with status uninitialized, for use when creating a new agent
-func NewC2Request() C2Request {
-	return C2Request{AgentStatus: "uninitialized"} // Default to uninitialized, if not provided
+func NewC2Request() RegisterC2Request {
+	return RegisterC2Request{AgentStatus: "uninitialized"} // Default to uninitialized, if not provided
 }
 
 // Validates if the C2Request contains valid data
-func (r C2Request) Valid() bool {
+func (r RegisterC2Request) Valid() bool {
 
 	// Validate AgentID is uuid
 	if _, err := uuid.Parse(r.AgentID); err != nil {
@@ -34,7 +40,7 @@ func (r C2Request) Valid() bool {
 }
 
 // Converts a C2Request into a new Agent for registration
-func (r C2Request) IntoNewAgent() Agent {
+func (r RegisterC2Request) IntoNewAgent() Agent {
 	return Agent{
 		AgentID:       r.AgentID, // uuid generated at agent computer, sent with initial checkin request
 		ConfigID:      r.ConfigID,

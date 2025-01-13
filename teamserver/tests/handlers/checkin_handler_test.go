@@ -29,7 +29,7 @@ func TestCreateAgent(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		c2Request      models.C2Request
+		c2Request      models.RegisterC2Request
 		mockError      error
 		reachDAL       bool
 		expectedStatus int
@@ -123,7 +123,7 @@ func TestGetTasks(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: models.ParamAgentID, Value: tt.agentID}}
 
-			handler.GetTasks(c)
+			handler.Checkin(c)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			mockCheckInDal.AssertExpectations(t)

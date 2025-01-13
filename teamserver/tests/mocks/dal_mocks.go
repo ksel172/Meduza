@@ -91,6 +91,11 @@ func (m *MockAgentDAL) UpdateAgentLastCallback(ctx context.Context, agentID stri
 	return args.Error(0)
 }
 
+func (m *MockAgentDAL) UpdateAgentTask(ctx context.Context, task models.AgentTask) error {
+	args := m.Called(task)
+	return args.Error(0)
+}
+
 type MockCheckInDal struct {
 	mock.Mock
 }

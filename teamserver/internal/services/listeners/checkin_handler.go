@@ -14,7 +14,7 @@ import (
 
 type ICheckInController interface {
 	CreateAgent(ctx *gin.Context)
-	GetTasks(ctx *gin.Context)
+	Checkin(ctx *gin.Context)
 }
 
 type CheckInController struct {
@@ -27,7 +27,7 @@ func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL) *C
 }
 
 func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
-	var c2request models.C2Request
+	var c2request models.RegisterC2Request
 	if err := ctx.ShouldBindJSON(&c2request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -71,28 +71,45 @@ func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
 
 // need to protect by authentication at some points, because currently anyone requesting
 // the tasks will get them, however, only the agent should be able to.
-func (cc *CheckInController) GetTasks(ctx *gin.Context) {
+func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
-	// Get the agent ID from the query params
-	agentID := ctx.Param(models.ParamAgentID)
-	if agentID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
+	var c2request models.CheckinC2Request
+	if err := ctx.ShouldBindJSON(&c2request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Get the tasks for the agent
-	tasks, err := cc.agentDAL.GetAgentTasks(ctx, agentID)
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		return
-	}
+	if c2request.Reason == "task" {
 
-	// Update the agent's last callback time
-	lastCallback := time.Now().Format(time.RFC3339)
-	if err := cc.agentDAL.UpdateAgentLastCallback(ctx.Request.Context(), agentID, lastCallback); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+		tasks, err := cc.agentDAL.GetAgentTasks(ctx, c2request.AgentID)
+		if err != nil {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
 
-	ctx.JSON(http.StatusOK, tasks)
+		// Update the agent's last callback time
+		lastCallback := time.Now().Format(time.RFC3339)
+		if err := cc.agentDAL.UpdateAgentLastCallback(ctx.Request.Context(), c2request.AgentID, lastCallback); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, tasks)
+
+	} else if c2request.Reason == "response" {
+
+		var agentTask models.AgentTask
+		if jsonErr := json.Unmarshal([]byte(c2request.Message), &agentTask); jsonErr != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
+			return
+		}
+
+		updateErr := cc.agentDAL.UpdateAgentTask(ctx.Request.Context(), agentTask)
+		if updateErr != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": updateErr.Error()})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, "successfully updated")
+	}
 }
