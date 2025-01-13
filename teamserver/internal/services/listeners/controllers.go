@@ -16,8 +16,7 @@ import (
 	If server is initialized in the listeners package, there will be a circular import
 */
 
-var registerRoute = "register"
-var checkinRoute = "checkin" // Changed to "/checkin" from "/check-in"
+var checkinRoute = "/" // Changed to "/" from "/checkin"
 var status = utils.Status
 
 // NewHTTPListenerController initializes a new HTTP listener controller.
@@ -50,7 +49,6 @@ func NewHTTPListenerController(
 	})
 
 	// Handle the listener routes
-	mux.Handle("POST", registerRoute, checkInController.CreateAgent)
 	mux.Handle("POST", checkinRoute, checkInController.Checkin)
 
 	// Add health check endpoint

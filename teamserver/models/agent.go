@@ -63,7 +63,6 @@ type AgentTask struct {
 
 // AgentCommand represents the information of a command sent to an Agent
 type AgentCommand struct {
-	CommandID  string    `json:"command_id"`
 	AgentID    string    `json:"agent_id"`
 	Name       string    `json:"name"`
 	Started    time.Time `json:"started"`

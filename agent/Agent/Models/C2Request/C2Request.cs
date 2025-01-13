@@ -2,8 +2,11 @@
 
 namespace Agent.Models.C2Request
 {
-    public class RegisterC2Request
+    public class C2Request
     {
+        [JsonPropertyName("reason")]
+        public string Reason { get; set; } = string.Empty;
+
         [JsonPropertyName("agent_id")]
         public string AgentId { get; set; } = string.Empty;
 
@@ -17,17 +20,5 @@ namespace Agent.Models.C2Request
         public string Message { get; set; } = string.Empty;
 
         // public string Hmac { get; set; } = string.Empty;
-    }
-
-    public class CheckinC2Request
-    {
-        [JsonPropertyName("agent_id")]
-        public string AgentId { get; set; } = string.Empty;
-
-        [JsonPropertyName("reason")]
-        public string Reason { get; set; } = string.Empty;
-
-        [JsonPropertyName("message")]
-        public string Message { get; set; } = string.Empty;
     }
 }

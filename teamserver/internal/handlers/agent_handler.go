@@ -246,7 +246,7 @@ func (ac *AgentController) CreateAgentInfo(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, agentInfo)
+	ctx.JSON(http.StatusCreated, agentInfo)
 }
 
 func (ac *AgentController) UpdateAgentInfo(ctx *gin.Context) {

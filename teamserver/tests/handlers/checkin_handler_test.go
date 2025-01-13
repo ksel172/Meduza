@@ -29,7 +29,7 @@ func TestCreateAgent(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		c2Request      models.RegisterC2Request
+		c2Request      models.C2Request
 		mockError      error
 		reachDAL       bool
 		expectedStatus int
@@ -69,7 +69,7 @@ func TestCreateAgent(t *testing.T) {
 			body, _ := json.Marshal(tt.c2Request)
 			c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
 
-			handler.CreateAgent(c)
+			handler.Checkin(c)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			mockCheckInDal.AssertExpectations(t)
