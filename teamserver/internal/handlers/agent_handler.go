@@ -79,7 +79,7 @@ func (ac *AgentController) DeleteAgent(ctx *gin.Context) {
 func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 
 	// Get the agentID from the query params
-	agentID := ctx.Param(models.ParamAgentID)
+	agentID := ctx.Param("id")
 	if agentID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
@@ -94,6 +94,7 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 
 	// Convert into AgentTask model with default fields, uuid generation,...
 	agentTask := agentTaskRequest.IntoAgentTask()
+	agentTask.AgentID = agentID
 
 	// Create the task for the agent in the db
 	if err := ac.dal.CreateAgentTask(ctx, agentTask); err != nil {

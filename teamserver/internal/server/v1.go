@@ -38,12 +38,12 @@ func (s *Server) AgentsV1(group *gin.RouterGroup) {
 
 		// Agent Tasks API
 		agentsGroup.GET("/tasks", s.dependencies.AgentController.GetAgentTasks)
-		agentsGroup.POST("/tasks", s.dependencies.AgentController.CreateAgentTask)
+		agentsGroup.POST("/tasks/:id", s.dependencies.AgentController.CreateAgentTask)
 		agentsGroup.DELETE(fmt.Sprintf(":%s/tasks", models.ParamAgentID), s.dependencies.AgentController.DeleteAgentTasks)
 		agentsGroup.DELETE(fmt.Sprintf(":%s/tasks/:%s", models.ParamAgentID, models.ParamTaskID), s.dependencies.AgentController.DeleteAgentTask)
 
 		// Agent config API
-		agentsGroup.POST("/config", s.dependencies.AgentController.CreateAgentConfig)
+		agentsGroup.POST("/config/:id", s.dependencies.AgentController.CreateAgentConfig)
 		agentsGroup.PUT("/config/:id", s.dependencies.AgentController.UpdateAgentConfig)
 		agentsGroup.GET("/config/:id", s.dependencies.AgentController.GetAgentConfig)
 		agentsGroup.DELETE("/config/:id", s.dependencies.AgentController.DeleteAgentConfig)

@@ -50,15 +50,15 @@ type AgentConfig struct {
 
 // AgentTask represents the information of a task sent to an Agent
 type AgentTask struct {
-	AgentID  string    `json:"agent_id"`
-	TaskID   string    `json:"task_id"`
-	Type     string    `json:"type"`
-	Status   string    `json:"status"`
-	Module   string    `json:"module"`
-	Command  string    `json:"command"`
-	Created  time.Time `json:"created"`
-	Started  time.Time `json:"started"`
-	Finished time.Time `json:"finished"`
+	AgentID  string          `json:"agent_id"`
+	TaskID   string          `json:"task_id"`
+	Type     AgentTaskType   `json:"type"`
+	Status   AgentTaskStatus `json:"status"`
+	Module   string          `json:"module"`
+	Command  AgentCommand    `json:"command"`
+	Created  time.Time       `json:"created"`
+	Started  time.Time       `json:"started"`
+	Finished time.Time       `json:"finished"`
 }
 
 // AgentCommand represents the information of a command sent to an Agent
@@ -71,3 +71,31 @@ type AgentCommand struct {
 	Parameters []string  `json:"parameters"`
 	Output     string    `json:"output"`
 }
+
+type AgentTaskType string
+
+const (
+	LoadAssembly     AgentTaskType = "LoadAssembly"
+	UnloadAssembly   AgentTaskType = "UnloadAssembly"
+	AgentCommandType AgentTaskType = "AgentCommand"
+	ShellCommand     AgentTaskType = "ShellCommand"
+	HelpCommand      AgentTaskType = "HelpCommand"
+	SetDelay         AgentTaskType = "SetDelay"
+	SetJitter        AgentTaskType = "SetJitter"
+	GetTasks         AgentTaskType = "GetTasks"
+	KillTasks        AgentTaskType = "KillTasks"
+	Exit             AgentTaskType = "Exit"
+	Unknown          AgentTaskType = "Unknown"
+)
+
+type AgentTaskStatus string
+
+const (
+	Uninitialized AgentTaskStatus = "Uninitialized"
+	Queued        AgentTaskStatus = "Queued"
+	Sent          AgentTaskStatus = "Sent"
+	Running       AgentTaskStatus = "Running"
+	Complete      AgentTaskStatus = "Complete"
+	Failed        AgentTaskStatus = "Failed"
+	Aborted       AgentTaskStatus = "Aborted"
+)

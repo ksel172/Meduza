@@ -11,7 +11,7 @@ type UpdateAgentRequest struct {
 	AgentID    string                   `json:"agent_id"`
 	Name       string                   `json:"name"`
 	Note       string                   `json:"note"`
-	Status     string                   `json:"status"`
+	Status     AgentTaskStatus          `json:"status"`
 	Config     UpdateAgentConfigRequest `json:"config"`
 	ModifiedAt time.Time                `json:"modified_at"`
 }
@@ -24,6 +24,15 @@ type UpdateAgentConfigRequest struct {
 	KillDate          time.Time `json:"kill_date"`
 	WorkingHoursStart int       `json:"working_hours_start"`
 	WorkingHoursEnd   int       `json:"working_hours_end"`
+}
+
+// AgentTask request
+type AgentTaskRequest struct {
+	// AgentID string          `json:"agent_id"`
+	Type    AgentTaskType   `json:"type"`
+	Status  AgentTaskStatus `json:"status"`
+	Module  string          `json:"module"`
+	Command AgentCommand    `json:"command"`
 }
 
 // Conversion from UpdateAgentConfigRequest to AgentConfig
@@ -39,14 +48,6 @@ func (uacr UpdateAgentConfigRequest) IntoAgentConfig(agentConfig AgentConfig) Ag
 	return agentConfig
 }
 
-// AgentTask request
-type AgentTaskRequest struct {
-	Type    string `json:"type"`
-	Status  string `json:"status"`
-	Module  string `json:"module"`
-	Command string `json:"command"`
-}
-
 // Initializes an AgentTask
 func NewAgentTaskRequest() AgentTaskRequest {
 	return AgentTaskRequest{}
@@ -55,7 +56,8 @@ func NewAgentTaskRequest() AgentTaskRequest {
 // Returns an AgentTask model from an AgentTaskRequest
 func (agr AgentTaskRequest) IntoAgentTask() AgentTask {
 	return AgentTask{
-		AgentID: uuid.New().String(),
+		TaskID:  uuid.New().String(),
+		AgentID: "",
 		Type:    agr.Type,
 		Status:  agr.Status,
 		Module:  agr.Module,

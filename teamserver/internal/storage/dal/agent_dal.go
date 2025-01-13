@@ -3,6 +3,7 @@ package dal
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -120,13 +121,19 @@ func (dal *AgentDAL) DeleteAgent(ctx context.Context, agentID string) error {
 }
 
 func (dal *AgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask) error {
+	// Convert task.Command to JSON
+	commandJSON, err := json.Marshal(task.Command)
+	if err != nil {
+		return fmt.Errorf("failed to marshal command to JSON: %w", err)
+	}
+
 	query := fmt.Sprintf(`
-        INSERT INTO %s.agent_tasks (id, agent_id, type, status, module, command, created_at)
+        INSERT INTO %s.agent_task (task_id, agent_id, type, status, module, command, created_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7)`, dal.schema)
 
-	_, err := dal.db.ExecContext(ctx, query,
+	_, err = dal.db.ExecContext(ctx, query,
 		task.TaskID, task.AgentID, task.Type, task.Status, task.Module,
-		task.Command, task.Created)
+		commandJSON, task.Created)
 	if err != nil {
 		return fmt.Errorf("failed to create agent task: %w", err)
 	}
@@ -135,9 +142,9 @@ func (dal *AgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask)
 
 func (dal *AgentDAL) GetAgentTasks(ctx context.Context, agentID string) ([]models.AgentTask, error) {
 	query := fmt.Sprintf(`
-        SELECT id, agent_id, type, status, module, command, 
+        SELECT task_id, agent_id, type, status, module, command, 
                created_at, started_at, finished_at
-        FROM %s.agent_tasks 
+        FROM %s.agent_task 
         WHERE agent_id = $1 
         ORDER BY created_at DESC`, dal.schema)
 
@@ -150,22 +157,34 @@ func (dal *AgentDAL) GetAgentTasks(ctx context.Context, agentID string) ([]model
 	var tasks []models.AgentTask
 	for rows.Next() {
 		var task models.AgentTask
-		err := rows.Scan(
-			&task.TaskID, &task.AgentID, &task.Type, &task.Status,
-			&task.Module, &task.Command, &task.Created,
-			&task.Started, &task.Finished)
+		var commandJSON []byte
+
+		err := rows.Scan(&task.TaskID, &task.AgentID, &task.Type, &task.Status, &task.Module,
+			&commandJSON, &task.Created, &task.Started, &task.Finished)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan task row: %w", err)
+			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
+
+		// Convert JSON to task.Command
+		err = json.Unmarshal(commandJSON, &task.Command)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal command from JSON: %w", err)
+		}
+
 		tasks = append(tasks, task)
 	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
 	return tasks, nil
 }
 
 func (dal *AgentDAL) DeleteAgentTask(ctx context.Context, agentID, taskID string) error {
 	query := fmt.Sprintf(`
-        DELETE FROM %s.agent_tasks 
-        WHERE agent_id = $1 AND id = $2`, dal.schema)
+        DELETE FROM %s.agent_task 
+        WHERE agent_id = $1 AND task_id = $2`, dal.schema)
 
 	result, err := dal.db.ExecContext(ctx, query, agentID, taskID)
 	if err != nil {
@@ -184,7 +203,7 @@ func (dal *AgentDAL) DeleteAgentTask(ctx context.Context, agentID, taskID string
 
 func (dal *AgentDAL) DeleteAgentTasks(ctx context.Context, agentID string) error {
 	query := fmt.Sprintf(`
-        DELETE FROM %s.agent_tasks 
+        DELETE FROM %s.agent_task 
         WHERE agent_id = $1`, dal.schema)
 
 	_, err := dal.db.ExecContext(ctx, query, agentID)
