@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -140,7 +139,6 @@ func adminCount() {
 }
 
 func validateToken(reqToken string) error {
-
 	reqTokenSplit := strings.Split(reqToken, " ")
 	if len(reqTokenSplit) != 2 {
 		return fmt.Errorf("invalid token")
@@ -152,7 +150,6 @@ func validateToken(reqToken string) error {
 		return fmt.Errorf("error loading admin secret, empty")
 	}
 
-	log.Println(envToken, "     DAUDHAWUHDAWUHDAWUD     ", reqToken)
 	if reqToken != envToken {
 		return fmt.Errorf("invalid or expired token")
 	}
