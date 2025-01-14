@@ -78,6 +78,7 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 			return
 		}
 
+		logger.Info("Successfully updated agent task:", agentTask.TaskID)
 		ctx.JSON(http.StatusOK, "successfully updated")
 	} else if c2request.Reason == "register" {
 

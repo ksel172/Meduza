@@ -17,6 +17,30 @@ type C2Request struct {
 	// Hmac        string `json:"hmac"`
 }
 
+type C2RequestReason string
+
+const (
+	TaskReason     C2RequestReason = "task"
+	ResponseReason C2RequestReason = "response"
+	RegisterReason C2RequestReason = "register"
+	UnknownReason  C2RequestReason = "unknown"
+)
+
+// IsValid checks if the reason is one of the defined constants
+func (r C2RequestReason) IsValid() bool {
+	switch r {
+	case TaskReason, ResponseReason, RegisterReason:
+		return true
+	default:
+		return false
+	}
+}
+
+// String returns the string representation of the reason
+func (r C2RequestReason) String() string {
+	return string(r)
+}
+
 // Initialize a new C2Request with status uninitialized, for use when creating a new agent
 func NewC2Request() C2Request {
 	return C2Request{AgentStatus: "uninitialized"} // Default to uninitialized, if not provided

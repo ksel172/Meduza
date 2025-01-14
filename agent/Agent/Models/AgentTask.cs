@@ -1,4 +1,6 @@
-﻿namespace Agent.Models
+﻿using System.Text.Json.Serialization;
+
+namespace Agent.Models
 {
     public enum AgentTaskType
     {
@@ -28,22 +30,31 @@
 
     public class AgentTask
     {
+        [JsonPropertyName("task_id")]
         public string Id { get; set; } = string.Empty;
 
+        [JsonPropertyName("agent_id")]
         public string AgentId { get; set; } = string.Empty;
 
-        public AgentTaskType Type { get; set; } = AgentTaskType.AgentCommand;
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = "AgentCommand";
 
-        public AgentTaskStatus Status { get; set; } = AgentTaskStatus.Uninitialized;
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = "Uninitialized";
 
+        [JsonPropertyName("module")]
         public string? Module { get; set; } = string.Empty;
 
+        [JsonPropertyName("command")]
         public AgentCommand Command { get; set; } = new AgentCommand();
 
+        [JsonPropertyName("created")]
         public DateTime TaskCreated { get; set; } = DateTime.MinValue;
 
+        [JsonPropertyName("started")]
         public DateTime TaskStarted { get; set; } = DateTime.MinValue;
 
+        [JsonPropertyName("finished")]
         public DateTime TaskCompleted { get; set; } = DateTime.MinValue;
 
         public bool IsCancellationTokenSourceSet { get; set; } = false;
