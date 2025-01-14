@@ -143,7 +143,7 @@ func (dal *AgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask)
         VALUES ($1, $2, $3, $4, $5, $6, $7)`, dal.schema)
 
 	logger.Debug(layer, "Creating agent task: "+task.TaskID)
-	_, err := dal.db.ExecContext(ctx, query,
+	_, err = dal.db.ExecContext(ctx, query,
 		task.TaskID, task.AgentID, task.Type, task.Status, task.Module,
 		commandJSON, task.Created)
 	if err != nil {
