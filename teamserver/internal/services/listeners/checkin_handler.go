@@ -59,82 +59,90 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 	}
 
 	if c2request.Reason == models.Task {
-		tasks, err := cc.agentDAL.GetAgentTasks(ctx, c2request.AgentID)
-		if err != nil {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-			return
-		}
-		// Update the agent's last callback time
-		lastCallback := time.Now().Format(time.RFC3339)
-		if err := cc.agentDAL.UpdateAgentLastCallback(ctx.Request.Context(), c2request.AgentID, lastCallback); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		tasksJSON, err := json.Marshal(tasks)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to marshal tasks to JSON"})
-			return
-		}
-
-		var c2response models.C2Request
-
-		c2response.AgentID = c2request.AgentID
-		c2response.Reason = models.Task
-		c2response.Message = string(tasksJSON)
-		ctx.JSON(http.StatusOK, c2response)
-
+		cc.handleTaskRequest(ctx, c2request)
 	} else if c2request.Reason == models.Response {
-
-		var agentTask models.AgentTask
-		if jsonErr := json.Unmarshal([]byte(c2request.Message), &agentTask); jsonErr != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
-			return
-		}
-
-		updateErr := cc.agentDAL.UpdateAgentTask(ctx.Request.Context(), agentTask)
-		if updateErr != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": updateErr.Error()})
-			return
-		}
-
-		logger.Info("Successfully updated agent task:", agentTask.TaskID)
-		ctx.JSON(http.StatusOK, "successfully updated")
+		cc.handleResponseRequest(ctx, c2request)
 	} else if c2request.Reason == models.Register {
-
-		logger.Info("Received check-in request from agent:", c2request.AgentID)
-		// Parse the message as AgentInfo
-		var agentInfo models.AgentInfo
-		if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
-			return
-		}
-		// Check if the agent already exists
-		if _, err := cc.agentDAL.GetAgent(agentInfo.AgentID); err == nil {
-			logger.Info("Agent already exists:", c2request.AgentID)
-			ctx.JSON(http.StatusConflict, gin.H{"error": "agent already exists"})
-			return
-		}
-
-		// Create agent in the database
-		newAgent := c2request.IntoNewAgent()
-		newAgent.Name = utils.RandomString(6)
-
-		if err := cc.checkInDAL.CreateAgent(ctx.Request.Context(), newAgent); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		// Create agent info in the database
-		if err := cc.agentDAL.CreateAgentInfo(ctx.Request.Context(), agentInfo); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		ctx.JSON(http.StatusCreated, gin.H{"agent": newAgent})
+		cc.handleRegisterRequest(ctx, c2request)
 	}
 }
 
+func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request models.C2Request) {
+	tasks, err := cc.agentDAL.GetAgentTasks(ctx, c2request.AgentID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	// Update the agent's last callback time
+	lastCallback := time.Now().Format(time.RFC3339)
+	if err := cc.agentDAL.UpdateAgentLastCallback(ctx.Request.Context(), c2request.AgentID, lastCallback); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	tasksJSON, err := json.Marshal(tasks)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to marshal tasks to JSON"})
+		return
+	}
+
+	var c2response models.C2Request
+
+	c2response.AgentID = c2request.AgentID
+	c2response.Reason = models.Task
+	c2response.Message = string(tasksJSON)
+	ctx.JSON(http.StatusOK, c2response)
+}
+
+func (cc *CheckInController) handleResponseRequest(ctx *gin.Context, c2request models.C2Request) {
+	var agentTask models.AgentTask
+	if jsonErr := json.Unmarshal([]byte(c2request.Message), &agentTask); jsonErr != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
+		return
+	}
+
+	updateErr := cc.agentDAL.UpdateAgentTask(ctx.Request.Context(), agentTask)
+	if updateErr != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": updateErr.Error()})
+		return
+	}
+
+	logger.Info("Successfully updated agent task:", agentTask.TaskID)
+	ctx.JSON(http.StatusOK, "successfully updated")
+}
+
+func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request models.C2Request) {
+	logger.Info("Received check-in request from agent:", c2request.AgentID)
+	// Parse the message as AgentInfo
+	var agentInfo models.AgentInfo
+	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
+		return
+	}
+	// Check if the agent already exists
+	if _, err := cc.agentDAL.GetAgent(agentInfo.AgentID); err == nil {
+		logger.Info("Agent already exists:", c2request.AgentID)
+		ctx.JSON(http.StatusConflict, gin.H{"error": "agent already exists"})
+		return
+	}
+
+	// Create agent in the database
+	newAgent := c2request.IntoNewAgent()
+	newAgent.Name = utils.RandomString(6)
+
+	if err := cc.checkInDAL.CreateAgent(ctx.Request.Context(), newAgent); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create agent info in the database
+	if err := cc.agentDAL.CreateAgentInfo(ctx.Request.Context(), agentInfo); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{"agent": newAgent})
+}
 func (cc *CheckInController) handleEncryptionKeyRequest(ctx *gin.Context, c2request models.C2Request) {
 	// Generate an AES key for this session to comunicate with the agent
 	key, err := utils.GenerateAES256Key()
