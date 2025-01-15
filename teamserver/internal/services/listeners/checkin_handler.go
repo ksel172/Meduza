@@ -1,16 +1,19 @@
 package services
 
 import (
+	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
+	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 type ICheckInController interface {
-	CreateAgent(ctx *gin.Context)
-	GetTasks(ctx *gin.Context)
+	Checkin(ctx *gin.Context)
 }
 
 type CheckInController struct {
@@ -22,53 +25,89 @@ func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL) *C
 	return &CheckInController{checkInDAL: checkInDAL, agentDAL: agentDAL}
 }
 
-func (cc *CheckInController) CreateAgent(ctx *gin.Context) {
+// need to protect by authentication at some points, because currently anyone requesting
+// the tasks will get them, however, only the agent should be able to.
+func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
-	// Decode the received JSON into a C2Request
-	// NewC2Request sets agentStatus as uninitialized if that is not provided by the agent in the JSON
-	c2request := models.NewC2Request()
+	var c2request models.C2Request
 	if err := ctx.ShouldBindJSON(&c2request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Validate if the received C2Request is valid
-	if !c2request.Valid() {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-		return
+	if c2request.Reason == models.Task {
+		tasks, err := cc.agentDAL.GetAgentTasks(ctx, c2request.AgentID)
+		if err != nil {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		// Update the agent's last callback time
+		lastCallback := time.Now().Format(time.RFC3339)
+		if err := cc.agentDAL.UpdateAgentLastCallback(ctx.Request.Context(), c2request.AgentID, lastCallback); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		tasksJSON, err := json.Marshal(tasks)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to marshal tasks to JSON"})
+			return
+		}
+
+		var c2response models.C2Request
+
+		c2response.AgentID = c2request.AgentID
+		c2response.Reason = models.Task
+		c2response.Message = string(tasksJSON)
+		ctx.JSON(http.StatusOK, c2response)
+
+	} else if c2request.Reason == models.Response {
+
+		var agentTask models.AgentTask
+		if jsonErr := json.Unmarshal([]byte(c2request.Message), &agentTask); jsonErr != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
+			return
+		}
+
+		updateErr := cc.agentDAL.UpdateAgentTask(ctx.Request.Context(), agentTask)
+		if updateErr != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": updateErr.Error()})
+			return
+		}
+
+		logger.Info("Successfully updated agent task:", agentTask.TaskID)
+		ctx.JSON(http.StatusOK, "successfully updated")
+	} else if c2request.Reason == models.Register {
+
+		logger.Info("Received check-in request from agent:", c2request.AgentID)
+		// Parse the message as AgentInfo
+		var agentInfo models.AgentInfo
+		if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
+			return
+		}
+		// Check if the agent already exists
+		if _, err := cc.agentDAL.GetAgent(agentInfo.AgentID); err == nil {
+			logger.Info("Agent already exists:", c2request.AgentID)
+			ctx.JSON(http.StatusConflict, gin.H{"error": "agent already exists"})
+			return
+		}
+
+		// Create agent in the database
+		newAgent := c2request.IntoNewAgent()
+		newAgent.Name = utils.RandomString(6)
+
+		if err := cc.checkInDAL.CreateAgent(ctx.Request.Context(), newAgent); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Create agent info in the database
+		if err := cc.agentDAL.CreateAgentInfo(ctx.Request.Context(), agentInfo); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx.JSON(http.StatusCreated, gin.H{"agent": newAgent})
 	}
-
-	// Convert C2Request into Agent model
-	agent := c2request.IntoNewAgent()
-
-	// Create agent in the redis db
-	if err := cc.checkInDAL.CreateAgent(ctx.Request.Context(), agent); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	ctx.JSON(http.StatusCreated, gin.H{"agent": agent})
-}
-
-// GetTasks Will be called by the agents to get their tasks/commands
-// The agent will send its ID in the query params,
-// need to protect by authentication at some points, because currently anyone requesting
-// the tasks will get them, however, only the agent should be able to.
-func (cc *CheckInController) GetTasks(ctx *gin.Context) {
-
-	// Get the agent ID from the query params
-	agentID := ctx.Param(models.ParamAgentID)
-	if agentID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id is required"})
-		return
-	}
-
-	// Get the tasks for the agent
-	tasks, err := cc.agentDAL.GetAgentTasks(ctx, agentID)
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, tasks)
 }

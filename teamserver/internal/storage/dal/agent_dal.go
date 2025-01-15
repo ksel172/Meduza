@@ -3,6 +3,7 @@ package dal
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -16,6 +17,7 @@ type IAgentDAL interface {
 	UpdateAgent(ctx context.Context, agent models.UpdateAgentRequest) (models.Agent, error)
 	DeleteAgent(ctx context.Context, agentID string) error
 	CreateAgentTask(ctx context.Context, task models.AgentTask) error
+	UpdateAgentTask(ctx context.Context, task models.AgentTask) error
 	GetAgentTasks(ctx context.Context, agentID string) ([]models.AgentTask, error)
 	DeleteAgentTask(ctx context.Context, agentID string, taskID string) error
 	DeleteAgentTasks(ctx context.Context, agentID string) error
@@ -23,6 +25,11 @@ type IAgentDAL interface {
 	GetAgentConfig(ctx context.Context, agentID string) (models.AgentConfig, error)
 	UpdateAgentConfig(ctx context.Context, agentID string, agentConfig models.AgentConfig) error
 	DeleteAgentConfig(ctx context.Context, agentID string) error
+	CreateAgentInfo(ctx context.Context, agent models.AgentInfo) error
+	UpdateAgentInfo(ctx context.Context, agent models.AgentInfo) error
+	GetAgentInfo(ctx context.Context, agentID string) (models.AgentInfo, error)
+	DeleteAgentInfo(ctx context.Context, agentID string) error
+	UpdateAgentLastCallback(ctx context.Context, agentID string, lastCallback string) error
 }
 
 type AgentDAL struct {
@@ -71,7 +78,7 @@ func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgentRe
         UPDATE %s.agents
         SET name = $1, note = $2, status = $3, modified_at = $4
         WHERE id = $5
-		RETURNING id, name, note, status, first_callback, last_callback, modified_at`, dal.schema)
+        RETURNING id, name, note, status, first_callback, last_callback, modified_at`, dal.schema)
 
 	var updatedAgent models.Agent
 	if err = tx.QueryRowContext(ctx, agentQuery,
@@ -125,14 +132,20 @@ func (dal *AgentDAL) DeleteAgent(ctx context.Context, agentID string) error {
 }
 
 func (dal *AgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask) error {
+	// Convert task.Command to JSON
+	commandJSON, err := json.Marshal(task.Command)
+	if err != nil {
+		return fmt.Errorf("failed to marshal command to JSON: %w", err)
+	}
+
 	query := fmt.Sprintf(`
-        INSERT INTO %s.agent_tasks (id, agent_id, type, status, module, command, created_at)
+        INSERT INTO %s.agent_task (task_id, agent_id, type, status, module, command, created_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7)`, dal.schema)
 
 	logger.Debug(layer, "Creating agent task: "+task.TaskID)
-	_, err := dal.db.ExecContext(ctx, query,
+	_, err = dal.db.ExecContext(ctx, query,
 		task.TaskID, task.AgentID, task.Type, task.Status, task.Module,
-		task.Command, task.Created)
+		commandJSON, task.Created)
 	if err != nil {
 		logger.Error(layer, fmt.Sprintf("failed to create agent task: %v", err))
 		return fmt.Errorf("failed to create agent task: %w", err)
@@ -140,11 +153,30 @@ func (dal *AgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask)
 	return nil
 }
 
+func (dal *AgentDAL) UpdateAgentTask(ctx context.Context, task models.AgentTask) error {
+	// Convert task.Command to JSON
+	commandJSON, err := json.Marshal(task.Command)
+	if err != nil {
+		return fmt.Errorf("failed to marshal command to JSON: %w", err)
+	}
+
+	query := fmt.Sprintf(`
+        UPDATE %s.agent_task
+        SET type = $1, status = $2, module = $3, command = $4, started_at = $5, finished_at = $6
+        WHERE task_id = $7 AND agent_id = $8`, dal.schema)
+
+	_, err = dal.db.ExecContext(ctx, query,
+		task.Type, task.Status, task.Module, commandJSON, task.Started, task.Finished,
+		task.TaskID, task.AgentID)
+	if err != nil {
+		return fmt.Errorf("failed to update agent task: %w", err)
+	}
+	return nil
+}
+
 func (dal *AgentDAL) GetAgentTasks(ctx context.Context, agentID string) ([]models.AgentTask, error) {
 	query := fmt.Sprintf(`
-        SELECT id, agent_id, type, status, module, command, 
-               created_at, started_at, finished_at
-        FROM %s.agent_tasks 
+        SELECT * FROM %s.agent_task 
         WHERE agent_id = $1 
         ORDER BY created_at DESC`, dal.schema)
 
@@ -158,23 +190,63 @@ func (dal *AgentDAL) GetAgentTasks(ctx context.Context, agentID string) ([]model
 	var tasks []models.AgentTask
 	for rows.Next() {
 		var task models.AgentTask
+		var commandJSON []byte
+
+		// Nullable fields
+		var nullableModule sql.NullString
+		var nullableStarted sql.NullTime
+		var nullableFinished sql.NullTime
+
 		err := rows.Scan(
-			&task.TaskID, &task.AgentID, &task.Type, &task.Status,
-			&task.Module, &task.Command, &task.Created,
-			&task.Started, &task.Finished)
+			&task.TaskID,
+			&task.AgentID,
+			&task.Type,
+			&task.Status,
+			&nullableModule,
+			&commandJSON,
+			&task.Created,
+			&nullableStarted,
+			&nullableFinished,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		// Handle nullable fields
+		task.Module = nullableModule.String
+		if !nullableModule.Valid {
+			task.Module = "" // Default value if null
+		}
+
+		if nullableStarted.Valid {
+			task.Started = nullableStarted.Time
+		}
+
+		if nullableFinished.Valid {
+			task.Finished = nullableFinished.Time
+		}
+
+		// Convert JSON to task.Command
+		err = json.Unmarshal(commandJSON, &task.Command)
 		if err != nil {
 			logger.Error(layer, fmt.Sprintf("failed to scan task row: %v", err))
 			return nil, fmt.Errorf("failed to scan task row: %w", err)
 		}
+
 		tasks = append(tasks, task)
 	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
 	return tasks, nil
 }
 
 func (dal *AgentDAL) DeleteAgentTask(ctx context.Context, agentID, taskID string) error {
 	query := fmt.Sprintf(`
-        DELETE FROM %s.agent_tasks 
-        WHERE agent_id = $1 AND id = $2`, dal.schema)
+        DELETE FROM %s.agent_task 
+        WHERE agent_id = $1 AND task_id = $2`, dal.schema)
 
 	logger.Debug(layer, "Deleting agent task: "+taskID)
 	result, err := dal.db.ExecContext(ctx, query, agentID, taskID)
@@ -196,7 +268,7 @@ func (dal *AgentDAL) DeleteAgentTask(ctx context.Context, agentID, taskID string
 
 func (dal *AgentDAL) DeleteAgentTasks(ctx context.Context, agentID string) error {
 	query := fmt.Sprintf(`
-        DELETE FROM %s.agent_tasks 
+        DELETE FROM %s.agent_task 
         WHERE agent_id = $1`, dal.schema)
 
 	logger.Debug(layer, "Deleting agent tasks for agent: "+agentID)
@@ -210,8 +282,8 @@ func (dal *AgentDAL) DeleteAgentTasks(ctx context.Context, agentID string) error
 
 func (dal *AgentDAL) CreateAgentConfig(ctx context.Context, agentConfig models.AgentConfig) error {
 	query := fmt.Sprintf(`
-		INSERT INTO %s.agent_config (config_id, listener_id, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
+        INSERT INTO %s.agent_config (config_id, listener_id, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
 
 	_, err := dal.db.ExecContext(ctx, query,
 		agentConfig.ConfigID, agentConfig.ListenerID,
@@ -225,9 +297,9 @@ func (dal *AgentDAL) CreateAgentConfig(ctx context.Context, agentConfig models.A
 
 func (dal *AgentDAL) GetAgentConfig(ctx context.Context, agentID string) (models.AgentConfig, error) {
 	query := fmt.Sprintf(`
-		SELECT *
-		FROM %s.agent_config
-		WHERE agent_id = $1`, dal.schema)
+        SELECT *
+        FROM %s.agent_config
+        WHERE agent_id = $1`, dal.schema)
 
 	var agentConfig models.AgentConfig
 	err := dal.db.QueryRowContext(ctx, query, agentID).Scan(
@@ -263,6 +335,71 @@ func (dal *AgentDAL) DeleteAgentConfig(ctx context.Context, agentID string) erro
 	_, err := dal.db.ExecContext(ctx, query, agentID)
 	if err != nil {
 		return fmt.Errorf("failed to delete agent config: %w", err)
+	}
+	return nil
+}
+
+func (dal *AgentDAL) CreateAgentInfo(ctx context.Context, agent models.AgentInfo) error {
+	query := fmt.Sprintf(`
+        INSERT INTO %s.agent_info (agent_id, host_name, ip_address, user_name, system_info, os_info)
+        VALUES ($1, $2, $3, $4, $5, $6)`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query, agent.AgentID, agent.HostName, agent.IPAddress, agent.Username, agent.SystemInfo, agent.OSInfo)
+	if err != nil {
+		return fmt.Errorf("failed to set agent info: %w", err)
+	}
+	return nil
+}
+
+func (dal *AgentDAL) UpdateAgentInfo(ctx context.Context, agent models.AgentInfo) error {
+	query := fmt.Sprintf(`
+        UPDATE %s.agent_info
+        SET host_name = $1, ip_address = $2, user_name = $3, system_info = $4, os_info = $5
+        WHERE agent_id = $6`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query, agent.HostName, agent.IPAddress, agent.Username, agent.SystemInfo, agent.OSInfo, agent.AgentID)
+	if err != nil {
+		return fmt.Errorf("failed to update agent info: %w", err)
+	}
+	return nil
+}
+
+func (dal *AgentDAL) GetAgentInfo(ctx context.Context, agentID string) (models.AgentInfo, error) {
+	query := fmt.Sprintf(`
+        SELECT agent_id, host_name, ip_address, user_name, system_info, os_info
+        FROM %s.agent_info
+        WHERE agent_id = $1`, dal.schema)
+
+	var agentInfo models.AgentInfo
+	err := dal.db.QueryRowContext(ctx, query, agentID).Scan(
+		&agentInfo.AgentID, &agentInfo.HostName, &agentInfo.IPAddress, &agentInfo.Username, &agentInfo.SystemInfo, &agentInfo.OSInfo)
+	if err != nil {
+		return models.AgentInfo{}, fmt.Errorf("failed to get agent info: %w", err)
+	}
+	return agentInfo, nil
+}
+
+func (dal *AgentDAL) DeleteAgentInfo(ctx context.Context, agentID string) error {
+	query := fmt.Sprintf(`
+        DELETE FROM %s.agent_info
+        WHERE agent_id = $1`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query, agentID)
+	if err != nil {
+		return fmt.Errorf("failed to delete agent info: %w", err)
+	}
+	return nil
+}
+
+func (dal *AgentDAL) UpdateAgentLastCallback(ctx context.Context, agentID string, lastCallback string) error {
+	query := fmt.Sprintf(`
+        UPDATE %s.agents
+        SET last_callback = $1
+        WHERE id = $2`, dal.schema)
+
+	_, err := dal.db.ExecContext(ctx, query, lastCallback, agentID)
+	if err != nil {
+		return fmt.Errorf("failed to update last callback: %w", err)
 	}
 	return nil
 }

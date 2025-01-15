@@ -28,17 +28,6 @@ func NewPayloadDAL(db *sql.DB, schema string) *PayloadDAL {
 	}
 }
 
-const (
-	insertPayloadQuery = `
-        INSERT INTO %s.payloads (payload_id, payload_name, config_id, listener_id, arch, listener_config, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
-	selectAllPayloadsQuery = `
-        SELECT payload_id, payload_name, config_id, listener_id, arch, listener_config, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end
-        FROM %s.payloads`
-	deletePayloadQuery     = "DELETE FROM %s.payloads WHERE payload_id = $1"
-	deleteAllPayloadsQuery = "DELETE FROM %s.payloads"
-)
-
 func (dal *PayloadDAL) CreatePayload(ctx context.Context, config models.PayloadConfig) error {
 	tx, err := dal.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -51,7 +40,8 @@ func (dal *PayloadDAL) CreatePayload(ctx context.Context, config models.PayloadC
 		return fmt.Errorf("failed to marshal listener config to JSON: %w", err)
 	}
 
-	query := fmt.Sprintf(insertPayloadQuery, dal.schema)
+	query := fmt.Sprintf(`INSERT INTO %s.payloads (payload_id, payload_name, config_id, listener_id, arch, listener_config, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, dal.schema)
 	_, err = tx.ExecContext(ctx, query, config.PayloadID, config.PayloadName, config.ConfigID, config.ListenerID, config.Arch, listenerConfigJSON, config.Sleep, config.Jitter, config.StartDate, config.KillDate, config.WorkingHoursStart, config.WorkingHoursEnd)
 	if err != nil {
 		return fmt.Errorf("failed to insert payload: %w", err)
@@ -61,7 +51,8 @@ func (dal *PayloadDAL) CreatePayload(ctx context.Context, config models.PayloadC
 }
 
 func (dal *PayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error) {
-	query := fmt.Sprintf(selectAllPayloadsQuery, dal.schema)
+	query := fmt.Sprintf(`SELECT payload_id, payload_name, config_id, listener_id, arch, listener_config, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end
+        FROM %s.payloads`, dal.schema)
 
 	rows, err := dal.db.QueryContext(ctx, query)
 	if err != nil {
@@ -87,7 +78,7 @@ func (dal *PayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConf
 }
 
 func (dal *PayloadDAL) DeletePayload(ctx context.Context, payloadID string) error {
-	query := fmt.Sprintf(deletePayloadQuery, dal.schema)
+	query := fmt.Sprintf(`DELETE FROM %s.payloads WHERE payload_id = $1`, dal.schema)
 	_, err := dal.db.ExecContext(ctx, query, payloadID)
 	if err != nil {
 		return fmt.Errorf("failed to delete payload: %w", err)
@@ -96,7 +87,7 @@ func (dal *PayloadDAL) DeletePayload(ctx context.Context, payloadID string) erro
 }
 
 func (dal *PayloadDAL) DeleteAllPayloads(ctx context.Context) error {
-	query := fmt.Sprintf(deleteAllPayloadsQuery, dal.schema)
+	query := fmt.Sprintf(`DELETE FROM %s.payloads`, dal.schema)
 	_, err := dal.db.ExecContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to delete all payloads: %w", err)

@@ -69,7 +69,7 @@ func TestCreateAgent(t *testing.T) {
 			body, _ := json.Marshal(tt.c2Request)
 			c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
 
-			handler.CreateAgent(c)
+			handler.Checkin(c)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			mockCheckInDal.AssertExpectations(t)
@@ -123,7 +123,7 @@ func TestGetTasks(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: models.ParamAgentID, Value: tt.agentID}}
 
-			handler.GetTasks(c)
+			handler.Checkin(c)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			mockCheckInDal.AssertExpectations(t)

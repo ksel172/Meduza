@@ -29,7 +29,7 @@ func (ac *AgentController) GetAgent(ctx *gin.Context) {
 
 	agent, err := ac.dal.GetAgent(agentID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, fmt.Sprintf("Agent %s not found: %s", agentID, err.Error()))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -37,22 +37,17 @@ func (ac *AgentController) GetAgent(ctx *gin.Context) {
 }
 
 func (ac *AgentController) UpdateAgent(ctx *gin.Context) {
-
-	// Get the JSON for the fields that can be updated in the agent
-	// This prevents unintended modifications by the client manipulating the request JSON
 	var agentUpdateRequest models.UpdateAgentRequest
 	if err := ctx.ShouldBindJSON(&agentUpdateRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Update modified at
 	agentUpdateRequest.ModifiedAt = time.Now()
 
-	// Provide the updated agent to the data layer
 	updatedAgent, err := ac.dal.UpdateAgent(ctx, agentUpdateRequest)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent update failed: %s", err.Error()))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -67,37 +62,58 @@ func (ac *AgentController) DeleteAgent(ctx *gin.Context) {
 	}
 
 	if err := ac.dal.DeleteAgent(ctx, agentID); err != nil {
-		ctx.JSON(http.StatusNotFound, fmt.Sprintf("Agent not found: %s", err.Error()))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Agent deleted successfully"})
 }
 
 /* Agent Task API */
 
 func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
-
-	// Get the agentID from the query params
-	agentID := ctx.Param(models.ParamAgentID)
+	agentID := ctx.Param("id")
 	if agentID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
 	}
 
-	// Create agentTaskRequest model
 	var agentTaskRequest models.AgentTaskRequest
 	if err := ctx.ShouldBindJSON(&agentTaskRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Convert into AgentTask model with default fields, uuid generation,...
 	agentTask := agentTaskRequest.IntoAgentTask()
+	agentTask.AgentID = agentID
 
-	// Create the task for the agent in the db
 	if err := ac.dal.CreateAgentTask(ctx, agentTask); err != nil {
 		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent task creation failed: %s", err.Error()))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, agentTask)
+}
+
+func (ac *AgentController) UpdateAgentTask(ctx *gin.Context) {
+	agentID := ctx.Param("id")
+	taskID := ctx.Param("task_id")
+	if agentID == "" || taskID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id and task_id are required"})
+		return
+	}
+
+	var agentTask models.AgentTask
+	if err := ctx.ShouldBindJSON(&agentTask); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	agentTask.AgentID = agentID
+	agentTask.TaskID = taskID
+
+	if err := ac.dal.UpdateAgentTask(ctx, agentTask); err != nil {
+		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent task update failed: %s", err.Error()))
 		return
 	}
 
@@ -113,14 +129,13 @@ func (ac *AgentController) GetAgentTasks(ctx *gin.Context) {
 
 	tasks, err := ac.dal.GetAgentTasks(ctx, agentID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent task list failed: %s", err.Error()))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, tasks)
 }
 
-// DeleteAgentTasks Deletes all tasks for a single agent
 func (ac *AgentController) DeleteAgentTasks(ctx *gin.Context) {
 	agentID := ctx.Param(models.ParamAgentID)
 	if agentID == "" {
@@ -129,100 +144,153 @@ func (ac *AgentController) DeleteAgentTasks(ctx *gin.Context) {
 	}
 
 	if err := ac.dal.DeleteAgentTasks(ctx, agentID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent task list failed: %s", err.Error()))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Agent tasks deleted successfully"})
 }
 
-// DeleteAgentTask Delete a single task
 func (ac *AgentController) DeleteAgentTask(ctx *gin.Context) {
-	agentId := ctx.Param(models.ParamAgentID)
-	if agentId == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
+	agentID := ctx.Param("id")
+	taskID := ctx.Param("task_id")
+	if agentID == "" || taskID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id and task_id are required"})
 		return
 	}
 
-	taskID := ctx.Param(models.ParamTaskID)
-	if taskID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamTaskID)})
+	if err := ac.dal.DeleteAgentTask(ctx, agentID, taskID); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := ac.dal.DeleteAgentTask(ctx, agentId, taskID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent task delete failed: %s", err.Error()))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Agent '%s' task '%s' deleted", agentId, taskID)})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Agent task deleted successfully"})
 }
 
 func (ac *AgentController) CreateAgentConfig(ctx *gin.Context) {
-	var config models.AgentConfig
-
-	if err := ctx.ShouldBindJSON(&config); err != nil {
+	var agentConfig models.AgentConfig
+	if err := ctx.ShouldBindJSON(&agentConfig); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := ac.dal.CreateAgentConfig(ctx, config); err != nil {
+	if err := ac.dal.CreateAgentConfig(ctx, agentConfig); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	ctx.JSON(http.StatusOK, agentConfig)
 }
 
 func (ac *AgentController) GetAgentConfig(ctx *gin.Context) {
-	var agentID = ctx.Param(models.ParamAgentID)
-
+	agentID := ctx.Param(models.ParamAgentID)
 	if agentID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
 	}
 
-	config, err := ac.dal.GetAgentConfig(ctx, agentID)
-
+	agentConfig, err := ac.dal.GetAgentConfig(ctx, agentID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, config)
+	ctx.JSON(http.StatusOK, agentConfig)
 }
 
 func (ac *AgentController) UpdateAgentConfig(ctx *gin.Context) {
-	agentId := ctx.Param(models.ParamAgentID)
-	var agentConfig models.AgentConfig
+	agentID := ctx.Param(models.ParamAgentID)
+	if agentID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
+		return
+	}
 
+	var agentConfig models.AgentConfig
 	if err := ctx.ShouldBindJSON(&agentConfig); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if agentId == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
-		return
-	}
 
-	if err := ac.dal.UpdateAgentConfig(ctx, agentId, agentConfig); err != nil {
+	if err := ac.dal.UpdateAgentConfig(ctx, agentID, agentConfig); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, agentConfig)
 }
 
 func (ac *AgentController) DeleteAgentConfig(ctx *gin.Context) {
-	agentId := ctx.Param(models.ParamAgentID)
-
-	if agentId == "" {
+	agentID := ctx.Param(models.ParamAgentID)
+	if agentID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
 	}
 
-	if err := ac.dal.DeleteAgentConfig(ctx, agentId); err != nil {
+	if err := ac.dal.DeleteAgentConfig(ctx, agentID); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Agent config deleted successfully"})
+}
+
+func (ac *AgentController) CreateAgentInfo(ctx *gin.Context) {
+	var agentInfo models.AgentInfo
+	if err := ctx.ShouldBindJSON(&agentInfo); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := ac.dal.CreateAgentInfo(ctx, agentInfo); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, agentInfo)
+}
+
+func (ac *AgentController) UpdateAgentInfo(ctx *gin.Context) {
+	var agentInfo models.AgentInfo
+	if err := ctx.ShouldBindJSON(&agentInfo); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := ac.dal.UpdateAgentInfo(ctx, agentInfo); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, agentInfo)
+}
+
+func (ac *AgentController) GetAgentInfo(ctx *gin.Context) {
+	agentID := ctx.Param(models.ParamAgentID)
+	if agentID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
+		return
+	}
+
+	agentInfo, err := ac.dal.GetAgentInfo(ctx, agentID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, agentInfo)
+}
+
+func (ac *AgentController) DeleteAgentInfo(ctx *gin.Context) {
+	agentID := ctx.Param(models.ParamAgentID)
+	if agentID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
+		return
+	}
+
+	if err := ac.dal.DeleteAgentInfo(ctx, agentID); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Agent info deleted successfully"})
 }

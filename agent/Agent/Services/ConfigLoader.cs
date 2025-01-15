@@ -1,15 +1,17 @@
 ﻿using Agent.Models;
+using System;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 
 public class ConfigLoader
 {
-    public static AgentConfig LoadEmbeddedConfig()
+    public static BaseConfig LoadEmbeddedConfig()
     {
         // Get the current assembly
         var assembly = Assembly.GetExecutingAssembly();
 
-        // Find the resource name (typically namespace.filename)
         string[] resourceNames = assembly.GetManifestResourceNames();
         string configResourceName = resourceNames.FirstOrDefault(r =>
             r.EndsWith("baseconf.json", StringComparison.OrdinalIgnoreCase))
@@ -23,21 +25,15 @@ public class ConfigLoader
         using var reader = new StreamReader(stream);
         string jsonContent = reader.ReadToEnd();
 
-        // Create custom deserialization options
         var options = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
             ReadCommentHandling = JsonCommentHandling.Skip
         };
 
-        // Deserialize the nested configuration
-        var rootConfig = JsonSerializer.Deserialize<RootConfig>(jsonContent, options)
-            ?? throw new InvalidOperationException("Failed to deserialize configuration");
+        var baseConfig = JsonSerializer.Deserialize<BaseConfig>(jsonContent, options)
+            ?? throw new InvalidOperationException("Failed to deserialize BaseConfig");
 
-        return rootConfig.AgentConfig;
-    }
-    private class RootConfig
-    {
-        public AgentConfig AgentConfig { get; set; } = new AgentConfig();
+        return baseConfig;
     }
 }

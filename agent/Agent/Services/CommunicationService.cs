@@ -6,13 +6,13 @@ namespace Agent.Services
 {
     internal class CommunicationService
     {
-        internal AgentConfig? AgentConfig { get; set; }
+        internal BaseConfig? BaseConfig { get; set; }
 
         private int lastUrlUsed = -1;
 
-        public CommunicationService(AgentConfig agentConfig)
+        public CommunicationService(BaseConfig baseConfig)
         {
-            AgentConfig = agentConfig;
+            BaseConfig = baseConfig;
         }
 
         internal async Task<string> SimpleGetAsync(string slug)
@@ -53,41 +53,22 @@ namespace Agent.Services
 
         private string GetCallbackUrl()
         {
-            string url = string.Empty;
-            int retries = 0;
-
-            while (retries < AgentConfig!.RotationRetries)
+            switch (BaseConfig!.Config.HostRotation.ToLower())
             {
-                switch (AgentConfig.RotationType)
-                {
-                    case CallbackRotationType.Fallback:
-                        url = AgentConfig.CallbackUrls[0];
-                        break;
-                    case CallbackRotationType.Sequential:
-                        lastUrlUsed = (lastUrlUsed + 1) % AgentConfig.CallbackUrls.Count;
-                        url = AgentConfig.CallbackUrls[lastUrlUsed];
-                        break;
-                    case CallbackRotationType.Random:
-                        var random = new Random();
-                        url = AgentConfig.CallbackUrls[random.Next(0, AgentConfig.CallbackUrls.Count)];
-                        break;
-                    default:
-                        url = "http://127.0.0.1:8080";
-                        break;
-                }
-
-                if (IsUrlAlive(url))
-                {
-                    return url;
-                }
-
-                retries++;
-                Thread.Sleep(AgentConfig.Sleep);
+                // TODO: Add logic for dead urls here
+                case "fallback":
+                    return BaseConfig.Config.Hosts[0];
+                case "sequential":
+                    return BaseConfig.Config.Hosts[lastUrlUsed++];
+                case "random":
+                    var random = new Random();
+                    return BaseConfig.Config.Hosts[random.Next(0, BaseConfig.Config.Hosts.Count - 1)];
+                default:
+                    return "http://127.0.0.1:8080"; // TODO
             }
-
-            return "http://127.0.0.1:8080"; // Fallback URL if all retries fail
         }
 
+        /*
         private bool IsUrlAlive(string url)
         {
             try
@@ -104,6 +85,7 @@ namespace Agent.Services
                 return false;
             }
         }
+        */
     }
 
     #region For use later

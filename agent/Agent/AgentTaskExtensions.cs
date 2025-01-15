@@ -1,7 +1,7 @@
 ﻿using Agent.Models;
 using System.Collections.Concurrent;
 
-namespace Agent
+namespace Meduza.Agent
 {
     internal static class AgentTaskExtensions
     {

@@ -99,8 +99,9 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		"publish",
 		"--configuration", "Release",
 		"--self-contained", payloadRequest.SelfContained,
-		"-o", "/app/build/agent-" + payloadConfig.PayloadID,
+		"-o", "/app/build/payload-" + payloadConfig.PayloadID,
 		"-p:PublishSingleFile=true",
+		"-p:DefineConstants=TYPE_" + listener.Type, // Specify comm type to cut out pieces of the code
 		"-r", payloadConfig.Arch, // interesting fix here
 		"agent/Agent/Agent.csproj",
 	}
@@ -143,10 +144,12 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
-	truncErr := os.Truncate(baseconfPath, 0)
-	if truncErr != nil {
-		logger.Error("Error cleaning baseconf.json:", truncErr)
-	}
+	defer func() {
+		truncErr := os.Truncate(baseconfPath, 0)
+		if truncErr != nil {
+			logger.Error("Error cleaning baseconf.json:", truncErr)
+		}
+	}()
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":  s.SUCCESS,
@@ -156,7 +159,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 
 func (h *PayloadHandler) DeletePayload(ctx *gin.Context) {
 	payloadId := ctx.Param("id")
-	filePath := "./teamserver/build/agent-" + payloadId
+	filePath := "./teamserver/build/payload-" + payloadId
 
 	logger.Info(filePath)
 	err := h.payloadDAL.DeletePayload(ctx.Request.Context(), payloadId)
@@ -199,7 +202,7 @@ func (h *PayloadHandler) DeleteAllPayloads(ctx *gin.Context) {
 	}
 
 	for _, file := range files {
-		if file.IsDir() && strings.HasPrefix(file.Name(), "agent-") {
+		if file.IsDir() && strings.HasPrefix(file.Name(), "payload-") {
 			payloadId := file.Name()
 			filePath := filepath.Join(dirPath, payloadId)
 
@@ -233,7 +236,7 @@ func (h *PayloadHandler) DownloadPayload(ctx *gin.Context) {
 	found := false
 
 	for _, ext := range extensions {
-		executablePath = fmt.Sprintf("teamserver/build/agent-%s/agent%s", payloadId, ext)
+		executablePath = fmt.Sprintf("teamserver/build/payload-%s/agent%s", payloadId, ext)
 		if _, err := os.Stat(executablePath); err == nil {
 			found = true
 			break
