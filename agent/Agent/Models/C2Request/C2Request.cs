@@ -5,7 +5,7 @@ namespace Agent.Models.C2Request
     public class C2Request
     {
         [JsonPropertyName("reason")]
-        public string Reason { get; set; } = string.Empty;
+        public C2RequestReason Reason { get; set; }
 
         [JsonPropertyName("agent_id")]
         public string AgentId { get; set; } = string.Empty;
@@ -14,7 +14,7 @@ namespace Agent.Models.C2Request
         public string ConfigId { get; set; } = string.Empty;
 
         [JsonPropertyName("agent_status")]
-        public string AgentStatus { get; set; } = "uninitialized";
+        public AgentStatus AgentStatus { get; set; } = AgentStatus.Uninitialized;
 
         [JsonPropertyName("message")]
         public string Message { get; set; } = string.Empty;

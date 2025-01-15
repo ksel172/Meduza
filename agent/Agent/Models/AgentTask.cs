@@ -37,10 +37,10 @@ namespace Agent.Models
         public string AgentId { get; set; } = string.Empty;
 
         [JsonPropertyName("type")]
-        public string Type { get; set; } = "AgentCommand";
+        public AgentTaskType Type { get; set; } = AgentTaskType.AgentCommand;
 
         [JsonPropertyName("status")]
-        public string Status { get; set; } = "Uninitialized";
+        public AgentTaskStatus Status { get; set; } = AgentTaskStatus.Uninitialized;
 
         [JsonPropertyName("module")]
         public string? Module { get; set; } = string.Empty;

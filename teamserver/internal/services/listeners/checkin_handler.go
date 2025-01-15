@@ -35,14 +35,12 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 		return
 	}
 
-	if c2request.Reason == "task" {
-
+	if c2request.Reason == models.Task {
 		tasks, err := cc.agentDAL.GetAgentTasks(ctx, c2request.AgentID)
 		if err != nil {
 			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
-
 		// Update the agent's last callback time
 		lastCallback := time.Now().Format(time.RFC3339)
 		if err := cc.agentDAL.UpdateAgentLastCallback(ctx.Request.Context(), c2request.AgentID, lastCallback); err != nil {
@@ -59,12 +57,11 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 		var c2response models.C2Request
 
 		c2response.AgentID = c2request.AgentID
-		c2response.Reason = "task"
+		c2response.Reason = models.Task
 		c2response.Message = string(tasksJSON)
-
 		ctx.JSON(http.StatusOK, c2response)
 
-	} else if c2request.Reason == "response" {
+	} else if c2request.Reason == models.Response {
 
 		var agentTask models.AgentTask
 		if jsonErr := json.Unmarshal([]byte(c2request.Message), &agentTask); jsonErr != nil {
@@ -80,7 +77,7 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
 		logger.Info("Successfully updated agent task:", agentTask.TaskID)
 		ctx.JSON(http.StatusOK, "successfully updated")
-	} else if c2request.Reason == "register" {
+	} else if c2request.Reason == models.Register {
 
 		logger.Info("Received check-in request from agent:", c2request.AgentID)
 		// Parse the message as AgentInfo

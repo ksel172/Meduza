@@ -35,7 +35,7 @@ func TestGetAgent(t *testing.T) {
 			mockAgent: models.Agent{
 				AgentID: "test-agent-id",
 				Name:    "test-agent",
-				Status:  "active",
+				Status:  models.AgentActive,
 			},
 			mockError:      nil,
 			expectedStatus: http.StatusOK,

@@ -14,15 +14,15 @@ const (
 
 // Contains all information required for controlling an agent.
 type Agent struct {
-	AgentID       string    `json:"agent_id"`
-	Name          string    `json:"name"`
-	Note          string    `json:"note"`
-	Status        string    `json:"status"`
-	ConfigID      string    `json:"config_id"`
-	Info          AgentInfo `json:"agent_info"`
-	FirstCallback time.Time `json:"first_callback"`
-	LastCallback  time.Time `json:"last_callback"`
-	ModifiedAt    time.Time `json:"modified_at"`
+	AgentID       string      `json:"agent_id"`
+	Name          string      `json:"name"`
+	Note          string      `json:"note"`
+	Status        AgentStatus `json:"status"`
+	ConfigID      string      `json:"config_id"`
+	Info          AgentInfo   `json:"agent_info"`
+	FirstCallback time.Time   `json:"first_callback"`
+	LastCallback  time.Time   `json:"last_callback"`
+	ModifiedAt    time.Time   `json:"modified_at"`
 }
 
 // AgentInfo contains information about the agent computer
@@ -71,30 +71,44 @@ type AgentCommand struct {
 	Output     string    `json:"output"`
 }
 
-type AgentTaskType string
+type AgentTaskType int
 
 const (
-	LoadAssembly     AgentTaskType = "LoadAssembly"
-	UnloadAssembly   AgentTaskType = "UnloadAssembly"
-	AgentCommandType AgentTaskType = "AgentCommand"
-	ShellCommand     AgentTaskType = "ShellCommand"
-	HelpCommand      AgentTaskType = "HelpCommand"
-	SetDelay         AgentTaskType = "SetDelay"
-	SetJitter        AgentTaskType = "SetJitter"
-	GetTasks         AgentTaskType = "GetTasks"
-	KillTasks        AgentTaskType = "KillTasks"
-	Exit             AgentTaskType = "Exit"
-	Unknown          AgentTaskType = "Unknown"
+	LoadAssembly AgentTaskType = iota
+	UnloadAssembly
+	AgentCommandType
+	ShellCommand
+	HelpCommand
+	SetDelay
+	SetJitter
+	GetTasks
+	KillTasks
+	Exit
+	Unknown
 )
 
-type AgentTaskStatus string
+type AgentTaskStatus int
 
 const (
-	Uninitialized AgentTaskStatus = "Uninitialized"
-	Queued        AgentTaskStatus = "Queued"
-	Sent          AgentTaskStatus = "Sent"
-	Running       AgentTaskStatus = "Running"
-	Complete      AgentTaskStatus = "Complete"
-	Failed        AgentTaskStatus = "Failed"
-	Aborted       AgentTaskStatus = "Aborted"
+	TaskUninitialized AgentTaskStatus = iota
+	TaskQueued
+	TaskSent
+	TaskRunning
+	TaskComplete
+	TaskFailed
+	TaskAborted
+)
+
+type AgentStatus int
+
+const (
+	AgentUninitialized AgentStatus = iota
+	AgentStage0
+	AgentStage1
+	AgentStage2
+	AgentActive
+	AgentLost
+	AgentExited
+	AgentDisconnected
+	AgentHidden
 )
