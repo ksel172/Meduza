@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,20 @@ import (
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
+
+// Simple temporary key registry to store keys in server memory
+type keyRegistry struct {
+	mu       sync.Mutex
+	registry map[string][]byte
+}
+
+func (k *keyRegistry) writeKey(agentID string, key []byte) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.registry[agentID] = key
+}
+
+var KeyRegistry = &keyRegistry{}
 
 type ICheckInController interface {
 	Checkin(ctx *gin.Context)
@@ -22,16 +37,24 @@ type CheckInController struct {
 }
 
 func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL) *CheckInController {
-	return &CheckInController{checkInDAL: checkInDAL, agentDAL: agentDAL}
+	return &CheckInController{
+		checkInDAL: checkInDAL,
+		agentDAL:   agentDAL,
+	}
 }
 
-// need to protect by authentication at some points, because currently anyone requesting
-// the tasks will get them, however, only the agent should be able to.
 func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
 	var c2request models.C2Request
 	if err := ctx.ShouldBindJSON(&c2request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify if the agent has sent authentication token (done in the previous handler)
+	// if yes, server will have to provide the client with the
+	if _, ok := ctx.Get(AuthToken); ok {
+		cc.handleEncryptionKeyRequest(ctx, c2request)
 		return
 	}
 
@@ -110,4 +133,19 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
 		ctx.JSON(http.StatusCreated, gin.H{"agent": newAgent})
 	}
+}
+
+func (cc *CheckInController) handleEncryptionKeyRequest(ctx *gin.Context, c2request models.C2Request) {
+	// Generate an AES key for this session to comunicate with the agent
+	key, err := utils.GenerateAES256Key()
+	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		return
+	}
+
+	// Store the key in the database and associate with the agent
+	// Implement storage method with an expiry period, redis being the most sensible option
+	KeyRegistry.writeKey(c2request.AgentID, key)
+
+	ctx.JSON(http.StatusOK, gin.H{"key": key})
 }

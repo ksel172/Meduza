@@ -25,6 +25,7 @@ func NewHTTPListenerController(
 	name string,
 	config models.HTTPListenerConfig,
 	checkInController ICheckInController,
+	agentAuthController IAgentAuthController,
 ) (*http_listener.HTTPListenerController, error) {
 
 	if err := config.Validate(); err != nil {
@@ -49,7 +50,12 @@ func NewHTTPListenerController(
 	})
 
 	// Handle the listener routes
-	mux.Handle("POST", checkinRoute, checkInController.Checkin)
+	mux.Handle(
+		"POST",
+		checkinRoute,
+		agentAuthController.AuthenticateAgent,
+		checkInController.Checkin,
+	)
 
 	// Add health check endpoint
 	mux.GET("/health", func(ctx *gin.Context) {

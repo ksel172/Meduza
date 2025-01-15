@@ -13,15 +13,17 @@ import (
 )
 
 type ListenersService struct {
-	controller        listeners.ListenerController // controller is used internally to create and manage listeners
-	checkinController *CheckInController
-	registry          *listeners.Registry
+	controller          listeners.ListenerController // controller is used internally to launch and manage listeners
+	checkinController   *CheckInController
+	agentAuthController *AgentAuthController
+	registry            *listeners.Registry
 }
 
-func NewListenerService(CheckInController *CheckInController) *ListenersService {
+func NewListenerService(checkInController *CheckInController, agentAuthController *AgentAuthController) *ListenersService {
 	listenerService := &ListenersService{
-		registry:          listeners.NewRegistry(),
-		checkinController: CheckInController,
+		registry:            listeners.NewRegistry(),
+		checkinController:   checkInController,
+		agentAuthController: agentAuthController,
 	}
 
 	// Create default http controller
@@ -54,7 +56,7 @@ func (s *ListenersService) CreateListenerController(listenerType string, config 
 		}
 
 		// Create HTTP controller and save to controller field
-		controller, err := NewHTTPListenerController(httpConfig.HostHeader, *httpConfig, s.checkinController)
+		controller, err := NewHTTPListenerController(httpConfig.HostHeader, *httpConfig, s.checkinController, s.agentAuthController)
 		if err != nil {
 			return fmt.Errorf("failed to create HTTP listener controller: %v", err)
 		}
@@ -66,7 +68,7 @@ func (s *ListenersService) CreateListenerController(listenerType string, config 
 	}
 }
 
-// Each controller implemenst its own Start function
+// Each controller implements its own Start function
 func (s *ListenersService) Start(listener models.Listener) error {
 	if err := s.controller.Start(); err != nil {
 		return fmt.Errorf("failed to start listener: %v", err)
