@@ -238,7 +238,7 @@ export default function Listeners() {
           </CardContent>
         </Card>
 
-        <Card className="mx-auto max-w-sm border-none w-[100%] mt-4 p-0">
+        <Card className="mx-auto max-w-sm border-none w-[100%] mt-4">
           <CardContent className="flex flex-col gap-5">
             <div className="flex items-center space-x-2">
               <Switch id="airplane-mode" />

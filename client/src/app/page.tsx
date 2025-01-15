@@ -4,6 +4,7 @@ import { TableComponent } from "@/components/util/navbar/table";
 import * as React from "react"
 import ChatRoom from "@/components/util/navbar/chat";
 import ConsoleWidget from "@/components/util/navbar/console";
+import axios from 'axios';
 
 import { Button } from "@/components/ui/button"
 import {
@@ -42,6 +43,38 @@ const comboboxOptions = [
 ]
 
 export default function Home() {
+
+  const axiosInstance = axios.create({
+    baseURL: "http://localhost:2000",
+  })
+
+  const fetchRequest = async () => {
+    try {
+        const url = "/v1/chat";
+        const blogsData = await axiosInstance.get(url);
+    } catch (error) {
+        console.log(error);
+    }
+  };
+
+  const postRequest = async (param: string) => {
+    try{
+        const url = '/v1/post/endpoint';
+        const { data } = await axiosInstance.post(
+            url,
+            // {
+            //   param: param,
+            // },
+            // {
+            //     headers: { authorization: `Bearer ${cookies.jwt}` }
+            // }
+        );
+    }
+    catch(error){
+        console.log(error);
+    }
+  }
+
   return (
     <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] flex flex-col gap-4 justify-items-center min-h-screen pb-4 p-0 m-6 overflow-x-hidden">
       <div className="flex flex-row gap-[3.2vw]">
