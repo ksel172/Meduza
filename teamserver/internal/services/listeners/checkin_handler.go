@@ -45,14 +45,20 @@ func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL) *C
 
 func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
-	var c2request models.C2Request
-	if err := ctx.ShouldBindJSON(&c2request); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	req, ok := ctx.Get("c2request")
+	if !ok {
+		ctx.Status(http.StatusInternalServerError)
+		return
+	}
+
+	c2request, ok := req.(models.C2Request)
+	if !ok {
+		ctx.Status(http.StatusInternalServerError)
 		return
 	}
 
 	// Verify if the agent has sent authentication token (done in the previous handler)
-	// if yes, server will have to provide the client with the
+	// if yes, server will have to provide the client with the key
 	if _, ok := ctx.Get(AuthToken); ok {
 		cc.handleEncryptionKeyRequest(ctx, c2request)
 		return

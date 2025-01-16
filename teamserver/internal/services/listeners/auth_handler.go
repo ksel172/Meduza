@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
+	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 /*
@@ -32,26 +33,27 @@ func NewAgentAuthController(payloadDAL dal.IPayloadDAL) *AgentAuthController {
 }
 
 func (a *AgentAuthController) AuthenticateAgent(ctx *gin.Context) {
-
-	payloadUUID := ctx.GetHeader("Authorization")
-	if payloadUUID == "" {
+	payloadToken := ctx.GetHeader("Authorization")
+	if payloadToken == "" {
 		ctx.Next() // move on to the next handler
 	}
 
-	payloadConfigs, err := a.payloadDAL.GetAllPayloads(ctx.Request.Context())
+	var c2request models.C2Request
+	if err := ctx.ShouldBindJSON(&c2request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	storedPayloadToken, err := a.payloadDAL.GetPayloadToken(ctx.Request.Context(), c2request.ConfigID)
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		ctx.Abort()
 		return
 	}
 
-	for _, pConfig := range payloadConfigs {
-		if pConfig.PayloadID == payloadUUID {
-			ctx.Set(AuthToken, payloadUUID)
-			ctx.Next()
-		}
+	if payloadToken != storedPayloadToken {
+		ctx.Status(http.StatusUnauthorized)
+		ctx.Abort()
 	}
-
-	ctx.Status(http.StatusUnauthorized)
-	ctx.Abort()
+	ctx.Set(AuthToken, payloadToken)
 }
