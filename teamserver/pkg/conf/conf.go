@@ -37,6 +37,8 @@ const (
 	MeduzaJWTTokenEnvVar        = "JWT_TOKEN"
 	BaseConfPathEnvVar          = "BASECONF_PATH"
 	BaseConfPathDefault         = "./agent/Agent/baseconf.json"
+	ModuleUploadPathEnvVar      = "MODULE_UPLOAD_PATH"
+	ModuleUploadPathDefault     = "./teamserver/modules"
 )
 
 func GetMeduzaServerHostname() string {
@@ -104,4 +106,8 @@ func GetMeduzaJWTToken() string {
 
 func GetBaseConfPath() string {
 	return utils.GetEnvString(BaseConfPathEnvVar, BaseConfPathDefault)
+}
+
+func GetModuleUploadPath() string {
+	return utils.GetEnvString(ModuleUploadPathEnvVar, ModuleUploadPathDefault)
 }
