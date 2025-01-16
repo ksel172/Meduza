@@ -251,7 +251,7 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	// Retrieve the listener from the database
-	list, err := h.dal.GetListenerById(c, id)
+	listener, err := h.dal.GetListenerById(c, id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"status":  s.FAILED,
@@ -262,8 +262,8 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 	}
 
 	// Create a new listener controller instance
-	logger.Info("Attempting to create listener of type:", list.Type)
-	if err := h.service.CreateListenerController(list.Type, list.Config); err != nil {
+	logger.Info("Attempting to create listener of type:", listener.Type)
+	if err := h.service.CreateListenerController(listener.Type, listener.Config); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.ERROR,
 			"message": "Failed to create listener controller",
@@ -274,7 +274,7 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 
 	// Start the listener, service handles registry addition
 	logger.Info("Starting listener with ID:", id)
-	if err := h.service.Start(list); err != nil {
+	if err := h.service.Start(listener); err != nil {
 		logger.Error("Failed to start the listener:", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
@@ -283,6 +283,15 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 		return
 	}
 
+	err = h.dal.UpdateListener(c, id, map[string]any{"status": 1})
+	if err != nil {
+		logger.Error("Failed to update listener status:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to update listener status",
+		})
+		return
+	}
 	// Send a success response
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":  s.SUCCESS,
@@ -292,6 +301,7 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 }
 
 func (h *ListenerHandler) StopListener(ctx *gin.Context) {
+	c := ctx.Request.Context()
 	id := ctx.Param("id")
 
 	// Try stopping the listener, service handles possible errors
@@ -299,6 +309,16 @@ func (h *ListenerHandler) StopListener(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"message": "failed to stop listener",
 			"status":  s.FAILED,
+		})
+		return
+	}
+
+	err := h.dal.UpdateListener(c, id, map[string]any{"status": 2})
+	if err != nil {
+		logger.Error("Failed to update listener status:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to update listener status",
 		})
 		return
 	}
