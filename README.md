@@ -88,4 +88,16 @@ which should be modified based on the listener type.
 - The listener can be updated using a `PUT` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>`
 - The listener can be queried individually using a `GET` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>`
 
-- To start a client, navigate to "Meduza/client" and run `npm run dev` | `yarn dev` | `pnpm dev` | `bun dev`. After that navigate to `localhost:3000` to view the client.
+### 6. Starting the Client
+Navigate to `Meduza/client` and run the development server:
+
+`npm run dev`
+# or
+`yarn dev`
+# or
+`pnpm dev`
+# or
+`bun dev`
+
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the client.
