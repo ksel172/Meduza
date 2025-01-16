@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.{TABLE_NAME} (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    author VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    usage TEXT NOT NULL,
+    commands JSONB NOT NULL
+);

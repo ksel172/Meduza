@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,15 +10,19 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
+	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 type ModuleController struct {
+	ModuleDAL *dal.ModuleDAL
 }
 
-func NewModuleController() *ModuleController {
-	return &ModuleController{}
+func NewModuleController(moduleDAL *dal.ModuleDAL) *ModuleController {
+	return &ModuleController{ModuleDAL: moduleDAL}
 }
 
 func (mc *ModuleController) UploadModule(ctx *gin.Context) {
@@ -70,9 +75,45 @@ func (mc *ModuleController) UploadModule(ctx *gin.Context) {
 		return
 	}
 
+	// Load the module config JSON file with the same name as the zip file
+	moduleConfigPath := filepath.Join(modulePath, moduleName+".json")
+	moduleConfig, err := LoadModuleConfig(moduleConfigPath)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, fmt.Sprintf("load module config err: %s", err.Error()))
+		return
+	}
+
+	moduleConfig.Module.Id = uuid.New().String()
+	err = mc.ModuleDAL.CreateModule(ctx.Request.Context(), &moduleConfig.Module)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, fmt.Sprintf("save module to database err: %s", err.Error()))
+		return
+	}
+
 	ctx.String(http.StatusOK, "upload successful")
 }
 
 func (mc *ModuleController) DeleteModule(ctx *gin.Context) {
 
+}
+
+func LoadModuleConfig(filePath string) (*models.ModuleConfig, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	var moduleConfig models.ModuleConfig
+	err = json.Unmarshal(bytes, &moduleConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &moduleConfig, nil
 }
