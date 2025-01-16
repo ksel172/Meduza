@@ -91,13 +91,14 @@ which should be modified based on the listener type.
 ### 6. Starting the Client
 Navigate to `Meduza/client` and run the development server:
 
-`npm run dev`
+```bash
+npm run dev
 # or
-`yarn dev`
+yarn dev
 # or
-`pnpm dev`
+pnpm dev
 # or
-`bun dev`
+bun dev```
 
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the client.
