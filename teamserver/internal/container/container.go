@@ -20,6 +20,7 @@ type Container struct {
 	CheckInController  *services.CheckInController // handler is not directly accessible by the C2 server
 	ListenerController *handlers.ListenerHandler
 	PayloadController  *handlers.PayloadHandler
+	ModuleController   *handlers.ModuleController
 }
 
 func NewContainer() (*Container, error) {
@@ -57,5 +58,6 @@ func NewContainer() (*Container, error) {
 		CheckInController:  checkInController,
 		ListenerController: handlers.NewListenersHandler(listenerDal, listenersService),
 		PayloadController:  handlers.NewPayloadHandler(agentDal, listenerDal, payloadDal),
+		ModuleController:   handlers.NewModuleController(),
 	}, nil
 }

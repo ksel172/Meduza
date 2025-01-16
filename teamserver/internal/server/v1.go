@@ -79,3 +79,12 @@ func (s *Server) PayloadV1(group *gin.RouterGroup) {
 		payloadsGroup.POST("/delete/all", s.dependencies.PayloadController.DeleteAllPayloads)
 	}
 }
+
+func (s *Server) ModuleV1(group *gin.RouterGroup) {
+
+	moduleGroup := group.Group("/modules")
+	{
+		moduleGroup.POST("/upload", s.dependencies.ModuleController.UploadModule)
+		moduleGroup.POST("/delete", s.dependencies.ModuleController.DeleteModule)
+	}
+}
