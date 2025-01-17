@@ -94,7 +94,79 @@ func (mc *ModuleController) UploadModule(ctx *gin.Context) {
 }
 
 func (mc *ModuleController) DeleteModule(ctx *gin.Context) {
+	moduleId := ctx.Param("id")
+	module, err := mc.ModuleDAL.GetModuleById(ctx.Request.Context(), moduleId)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, fmt.Sprintf("get module by id err: %s", err.Error()))
+		return
+	}
+	if module == nil {
+		ctx.String(http.StatusNotFound, "module not found")
+		return
+	}
 
+	moduleUploadPath := conf.GetModuleUploadPath()
+	modulePath := filepath.Join(moduleUploadPath, module.Name)
+
+	err = os.RemoveAll(modulePath)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, fmt.Sprintf("delete module files err: %s", err.Error()))
+		return
+	}
+
+	err = mc.ModuleDAL.DeleteModule(ctx.Request.Context(), moduleId)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, fmt.Sprintf("delete module err: %s", err.Error()))
+		return
+	}
+	ctx.String(http.StatusOK, "delete successful")
+}
+
+func (mc *ModuleController) DeleteAllModules(ctx *gin.Context) {
+	moduleUploadPath := conf.GetModuleUploadPath()
+
+	err := mc.ModuleDAL.DeleteAllModules(ctx.Request.Context())
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, fmt.Sprintf("delete all modules err: %s", err.Error()))
+		return
+	}
+
+	err = os.RemoveAll(moduleUploadPath)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, fmt.Sprintf("delete all module files err: %s", err.Error()))
+		return
+	}
+
+	err = os.MkdirAll(moduleUploadPath, os.ModePerm)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, fmt.Sprintf("recreate module upload path err: %s", err.Error()))
+		return
+	}
+
+	ctx.String(http.StatusOK, "delete all successful")
+}
+
+func (mc *ModuleController) GetAllModules(ctx *gin.Context) {
+	modules, err := mc.ModuleDAL.GetAllModules(ctx.Request.Context())
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, fmt.Sprintf("get all modules err: %s", err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, modules)
+}
+
+func (mc *ModuleController) GetModuleById(ctx *gin.Context) {
+	moduleId := ctx.Param("id")
+	module, err := mc.ModuleDAL.GetModuleById(ctx.Request.Context(), moduleId)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, fmt.Sprintf("get module by id err: %s", err.Error()))
+		return
+	}
+	if module == nil {
+		ctx.String(http.StatusNotFound, "module not found")
+		return
+	}
+	ctx.JSON(http.StatusOK, module)
 }
 
 func LoadModuleConfig(filePath string) (*models.ModuleConfig, error) {

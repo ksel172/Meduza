@@ -86,5 +86,8 @@ func (s *Server) ModuleV1(group *gin.RouterGroup) {
 	{
 		moduleGroup.POST("/upload", s.dependencies.ModuleController.UploadModule)
 		moduleGroup.POST("/delete", s.dependencies.ModuleController.DeleteModule)
+		moduleGroup.POST("/delete/all", s.dependencies.ModuleController.DeleteAllModules)
+		moduleGroup.GET("/all", s.dependencies.ModuleController.GetAllModules)
+		moduleGroup.GET("/:id", s.dependencies.ModuleController.GetModuleById)
 	}
 }
