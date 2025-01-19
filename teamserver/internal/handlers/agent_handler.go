@@ -87,6 +87,10 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 	agentTask := agentTaskRequest.IntoAgentTask()
 	agentTask.AgentID = agentID
 
+	if agentTask.Type == models.HelpCommand {
+		// Placeholder for future help command logic
+	}
+
 	if err := ac.dal.CreateAgentTask(ctx, agentTask); err != nil {
 		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent task creation failed: %s", err.Error()))
 		return

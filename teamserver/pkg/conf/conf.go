@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
@@ -110,4 +111,16 @@ func GetBaseConfPath() string {
 
 func GetModuleUploadPath() string {
 	return utils.GetEnvString(ModuleUploadPathEnvVar, ModuleUploadPathDefault)
+}
+
+func GetProjectRootPath() string {
+	// Get the directory of the currently running file
+	execPath, err := os.Executable()
+	if err != nil {
+		panic("Failed to determine the executable path: " + err.Error())
+	}
+
+	// Resolve the executable path to the root project directory
+	projectRoot := filepath.Dir(filepath.Dir(execPath)) // Assuming the binary is two levels deep in the project
+	return projectRoot
 }
