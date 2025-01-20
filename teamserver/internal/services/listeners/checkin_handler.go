@@ -53,17 +53,10 @@ func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL) *C
 
 func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
-	req, ok := ctx.Get("c2request")
-	if !ok {
-		logger.Error(LogLevel, LogDetail, "c2request not set by previous handler")
-		ctx.Status(http.StatusInternalServerError)
-		return
-	}
-
-	c2request, ok := req.(models.C2Request)
-	if !ok {
-		logger.Error(LogLevel, LogDetail, "c2request is not of expected type")
-		ctx.Status(http.StatusInternalServerError)
+	var c2request models.C2Request
+	if err := ctx.ShouldBindJSON(&c2request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.Abort()
 		return
 	}
 

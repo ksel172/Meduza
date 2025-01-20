@@ -67,5 +67,4 @@ func (a *AgentAuthController) AuthenticateAgent(ctx *gin.Context) {
 	}
 
 	ctx.Set(AuthToken, payloadToken)
-	ctx.Set("c2request", c2request)
 }
