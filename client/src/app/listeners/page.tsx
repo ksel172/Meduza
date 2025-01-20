@@ -90,7 +90,7 @@ export default function Listeners() {
     // </div>
 
     <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] flex flex-col gap-4 justify-items-center min-h-screen pb-4 p-0 m-6">
-      <div className="flex flex-row justify-between p-1 bg-secondary w-[25%] rounded">
+      <div className="flex flex-row justify-between p-1 bg-secondary w-[20em] rounded">
           <Button className="bg-transparent text-white w-[10em]">Table</Button>
           <Button className="w-[10em]">Add</Button>
       </div>

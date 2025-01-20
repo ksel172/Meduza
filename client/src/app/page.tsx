@@ -45,7 +45,7 @@ const comboboxOptions = [
 export default function Home() {
 
   const axiosInstance = axios.create({
-    baseURL: "http://localhost:2000",
+    baseURL: "http://localhost:8080",
   })
 
   const fetchRequest = async () => {
