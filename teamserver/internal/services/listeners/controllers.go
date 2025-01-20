@@ -50,8 +50,7 @@ func NewHTTPListenerController(
 	})
 
 	// Handle the listener routes
-	mux.Handle(
-		"POST",
+	mux.POST(
 		checkinRoute,
 		agentAuthController.AuthenticateAgent,
 		checkInController.Checkin,
@@ -60,7 +59,7 @@ func NewHTTPListenerController(
 	// Add health check endpoint
 	mux.GET("/health", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{
-			"status": "alive",
+			"status": "alive and well",
 		})
 	})
 

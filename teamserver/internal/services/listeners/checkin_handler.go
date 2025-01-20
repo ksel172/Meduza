@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -25,7 +26,14 @@ func (k *keyRegistry) writeKey(agentID string, key []byte) {
 	k.registry[agentID] = key
 }
 
-var KeyRegistry = &keyRegistry{}
+var (
+	KeyRegistry = keyRegistry{
+		mu:       sync.Mutex{},
+		registry: make(map[string][]byte),
+	}
+	LogLevel  = "[Handler] "
+	LogDetail = "[CheckIn] "
+)
 
 type ICheckInController interface {
 	Checkin(ctx *gin.Context)
@@ -47,12 +55,14 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
 	req, ok := ctx.Get("c2request")
 	if !ok {
+		logger.Error(LogLevel, LogDetail, "c2request not set by previous handler")
 		ctx.Status(http.StatusInternalServerError)
 		return
 	}
 
 	c2request, ok := req.(models.C2Request)
 	if !ok {
+		logger.Error(LogLevel, LogDetail, "c2request is not of expected type")
 		ctx.Status(http.StatusInternalServerError)
 		return
 	}
@@ -60,15 +70,19 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 	// Verify if the agent has sent authentication token (done in the previous handler)
 	// if yes, server will have to provide the client with the key
 	if _, ok := ctx.Get(AuthToken); ok {
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling encryption key request for agent %s", c2request.AgentID))
 		cc.handleEncryptionKeyRequest(ctx, c2request)
 		return
 	}
 
 	if c2request.Reason == models.Task {
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling encryption key request for agent %s", c2request.AgentID))
 		cc.handleTaskRequest(ctx, c2request)
 	} else if c2request.Reason == models.Response {
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling encryption key request for agent %s", c2request.AgentID))
 		cc.handleResponseRequest(ctx, c2request)
 	} else if c2request.Reason == models.Register {
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling encryption key request for agent %s", c2request.AgentID))
 		cc.handleRegisterRequest(ctx, c2request)
 	}
 }
@@ -76,18 +90,21 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request models.C2Request) {
 	tasks, err := cc.agentDAL.GetAgentTasks(ctx, c2request.AgentID)
 	if err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to get tasks for agent %s: %v", c2request.AgentID, err))
 		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 	// Update the agent's last callback time
 	lastCallback := time.Now().Format(time.RFC3339)
 	if err := cc.agentDAL.UpdateAgentLastCallback(ctx.Request.Context(), c2request.AgentID, lastCallback); err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to update agent last callback: %v", err))
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	tasksJSON, err := json.Marshal(tasks)
 	if err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to marshal agent task to JSON: %v", err))
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to marshal tasks to JSON"})
 		return
 	}
@@ -102,14 +119,16 @@ func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request model
 
 func (cc *CheckInController) handleResponseRequest(ctx *gin.Context, c2request models.C2Request) {
 	var agentTask models.AgentTask
-	if jsonErr := json.Unmarshal([]byte(c2request.Message), &agentTask); jsonErr != nil {
+	if err := json.Unmarshal([]byte(c2request.Message), &agentTask); err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to unmarshal agent message: %v", err))
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
 		return
 	}
 
-	updateErr := cc.agentDAL.UpdateAgentTask(ctx.Request.Context(), agentTask)
-	if updateErr != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": updateErr.Error()})
+	err := cc.agentDAL.UpdateAgentTask(ctx.Request.Context(), agentTask)
+	if err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to update agent task: %v", err))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -122,12 +141,13 @@ func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request m
 	// Parse the message as AgentInfo
 	var agentInfo models.AgentInfo
 	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to parse agent info from message: %v", err))
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
 		return
 	}
 	// Check if the agent already exists
 	if _, err := cc.agentDAL.GetAgent(agentInfo.AgentID); err == nil {
-		logger.Info("Agent already exists:", c2request.AgentID)
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Agent already exists: %v", err))
 		ctx.JSON(http.StatusConflict, gin.H{"error": "agent already exists"})
 		return
 	}
@@ -137,12 +157,14 @@ func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request m
 	newAgent.Name = utils.RandomString(6)
 
 	if err := cc.checkInDAL.CreateAgent(ctx.Request.Context(), newAgent); err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to create agent: %v", err))
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Create agent info in the database
 	if err := cc.agentDAL.CreateAgentInfo(ctx.Request.Context(), agentInfo); err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to create agent info: %v", err))
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -153,6 +175,7 @@ func (cc *CheckInController) handleEncryptionKeyRequest(ctx *gin.Context, c2requ
 	// Generate an AES key for this session to comunicate with the agent
 	key, err := utils.GenerateAES256Key()
 	if err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to generate AES256 key: %v", err))
 		ctx.Status(http.StatusInternalServerError)
 		return
 	}
