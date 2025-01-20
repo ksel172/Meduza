@@ -1,13 +1,17 @@
 package services
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
@@ -41,6 +45,24 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
+
+		for i, task := range tasks {
+			//if task.Module != "" {
+			moduleDirPath := filepath.Join(conf.GetModuleUploadPath(), task.Module)
+			moduleName := task.Command.Name
+
+			modulePath := filepath.Join(moduleDirPath, moduleName)
+			moduleBytes, err := utils.LoadAssembly(filepath.Join(modulePath, moduleName+".dll"))
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to marshal module config: %s", err.Error())})
+				return
+			}
+
+			task.Module = base64.StdEncoding.EncodeToString(moduleBytes)
+			tasks[i] = task
+			//}
+		}
+
 		// Update the agent's last callback time
 		lastCallback := time.Now().Format(time.RFC3339)
 		if err := cc.agentDAL.UpdateAgentLastCallback(ctx.Request.Context(), c2request.AgentID, lastCallback); err != nil {
