@@ -26,7 +26,10 @@ services:
       JWT_TOKEN: ${JWT_TOKEN}
       ADMIN_SECRET: ${ADMIN_SECRET}
     volumes:
-      - ./teamserver:/app
+      - ./teamserver:/app/teamserver
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./agent:/app/agent
+      - ./teamserver/build:/app/build
     depends_on:
       - meduza_db
       - meduza_redis

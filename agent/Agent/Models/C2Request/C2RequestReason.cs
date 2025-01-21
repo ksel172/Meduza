@@ -3,6 +3,7 @@
     public enum C2RequestReason
     {
         Register,
-        Task
+        Task,
+        Response
     }
 }

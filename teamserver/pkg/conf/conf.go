@@ -35,6 +35,8 @@ const (
 	MeduzaRedisPasswordDefault  = "password"
 	MeduzaAdminSecretKeyEnvVar  = "ADMIN_SECRET"
 	MeduzaJWTTokenEnvVar        = "JWT_TOKEN"
+	BaseConfPathEnvVar          = "BASECONF_PATH"
+	BaseConfPathDefault         = "./agent/Agent/baseconf.json"
 )
 
 func GetMeduzaServerHostname() string {
@@ -98,4 +100,8 @@ func GetMeduzaJWTToken() string {
 	}
 
 	return jwt
+}
+
+func GetBaseConfPath() string {
+	return utils.GetEnvString(BaseConfPathEnvVar, BaseConfPathDefault)
 }

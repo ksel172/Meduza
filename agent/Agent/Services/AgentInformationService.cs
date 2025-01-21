@@ -8,6 +8,7 @@ namespace Agent.Services
 {
     public class AgentInformationService
     {
+        private readonly OperatingSystemInformationService osInfoService = new OperatingSystemInformationService();
         public async Task<AgentInfo> GetAgentInfoAsync()
         {
             return new AgentInfo
@@ -16,6 +17,8 @@ namespace Agent.Services
                 HostName = await GetMachineName(),
                 IpAddress = GetLocalIpAddress(),
                 UserName = await GetName(),
+                SystemInfo = await GetSystemInfo(),
+                OsInfo = osInfoService.GetOsName()
             };
         }
         public async Task<string> GetUUID()

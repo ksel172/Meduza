@@ -46,6 +46,56 @@ func (m *MockAgentDAL) DeleteAgentTasks(ctx context.Context, agentID string) err
 	return args.Error(0)
 }
 
+func (m *MockAgentDAL) CreateAgentConfig(ctx context.Context, agentConfig models.AgentConfig) error {
+	args := m.Called(agentConfig)
+	return args.Error(0)
+}
+
+func (m *MockAgentDAL) GetAgentConfig(ctx context.Context, agentID string) (models.AgentConfig, error) {
+	args := m.Called(agentID)
+	return args.Get(0).(models.AgentConfig), args.Error(1)
+}
+
+func (m *MockAgentDAL) UpdateAgentConfig(ctx context.Context, agentID string, newConfig models.AgentConfig) error {
+	args := m.Called(agentID)
+	return args.Error(0)
+}
+
+func (m *MockAgentDAL) DeleteAgentConfig(ctx context.Context, agentID string) error {
+	args := m.Called(agentID)
+	return args.Error(0)
+}
+
+func (m *MockAgentDAL) CreateAgentInfo(ctx context.Context, agent models.AgentInfo) error {
+	args := m.Called(agent)
+	return args.Error(0)
+}
+
+func (m *MockAgentDAL) UpdateAgentInfo(ctx context.Context, agent models.AgentInfo) error {
+	args := m.Called(agent)
+	return args.Error(0)
+}
+
+func (m *MockAgentDAL) GetAgentInfo(ctx context.Context, agentID string) (models.AgentInfo, error) {
+	args := m.Called(agentID)
+	return args.Get(0).(models.AgentInfo), args.Error(1)
+}
+
+func (m *MockAgentDAL) DeleteAgentInfo(ctx context.Context, agentID string) error {
+	args := m.Called(agentID)
+	return args.Error(0)
+}
+
+func (m *MockAgentDAL) UpdateAgentLastCallback(ctx context.Context, agentID string, lastCallback string) error {
+	args := m.Called(agentID, lastCallback)
+	return args.Error(0)
+}
+
+func (m *MockAgentDAL) UpdateAgentTask(ctx context.Context, task models.AgentTask) error {
+	args := m.Called(task)
+	return args.Error(0)
+}
+
 type MockCheckInDal struct {
 	mock.Mock
 }
@@ -53,6 +103,11 @@ type MockCheckInDal struct {
 func (m *MockCheckInDal) CreateAgent(ctx context.Context, agent models.Agent) error {
 	args := m.Called(agent)
 	return args.Error(0)
+}
+
+func (m *MockCheckInDal) GetAgent(ctx context.Context, agentID string) (models.Agent, error) {
+	args := m.Called(agentID)
+	return args.Get(0).(models.Agent), args.Error(1)
 }
 
 type MockUserDAL struct {

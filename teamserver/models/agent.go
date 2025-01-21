@@ -14,11 +14,11 @@ const (
 
 // Contains all information required for controlling an agent.
 type Agent struct {
-	ID            string      `json:"id"`
+	AgentID       string      `json:"agent_id"`
 	Name          string      `json:"name"`
 	Note          string      `json:"note"`
-	Status        string      `json:"status"`
-	Config        AgentConfig `json:"config"`
+	Status        AgentStatus `json:"status"`
+	ConfigID      string      `json:"config_id"`
 	Info          AgentInfo   `json:"agent_info"`
 	FirstCallback time.Time   `json:"first_callback"`
 	LastCallback  time.Time   `json:"last_callback"`
@@ -27,8 +27,9 @@ type Agent struct {
 
 // AgentInfo contains information about the agent computer
 type AgentInfo struct {
+	AgentID    string `json:"agent_id"`
 	HostName   string `json:"host_name"`
-	IPAddress  string `json:"ip_addr"`
+	IPAddress  string `json:"ip_address"`
 	Username   string `json:"username"`
 	SystemInfo string `json:"system_info"`
 	OSInfo     string `json:"os_info"`
@@ -36,34 +37,33 @@ type AgentInfo struct {
 
 // AgentConfig controls how the agent operates
 type AgentConfig struct {
-	//ID              string            `json:"id"`
-	//CallbackURLs    []string          `json:"callback_urls"`
-	//RotationType    string            `json:"rotation_type"`
-	//RotationRetries int               `json:"rotation_retries"`
-	Sleep        time.Duration `json:"sleep"`
-	Jitter       int           `json:"jitter"` // Jitter as a percentage
-	StartDate    time.Time     `json:"start_date"`
-	KillDate     time.Time     `json:"kill_date"`
-	WorkingHours [2]int        `json:"working_hours"`
-	//Headers         map[string]string `json:"headers"` // Custom headers
+	ConfigID          string    `json:"agent_id"`
+	ListenerID        string    `json:"listener_id"`
+	Arch              string    `json:"architecture"`
+	Sleep             int       `json:"sleep"`
+	Jitter            int       `json:"jitter"` // Jitter as a percentage
+	StartDate         time.Time `json:"start_date"`
+	KillDate          time.Time `json:"kill_date"`
+	WorkingHoursStart int       `json:"working_hours_start"`
+	WorkingHoursEnd   int       `json:"working_hours_end"`
 }
 
 // AgentTask represents the information of a task sent to an Agent
 type AgentTask struct {
-	ID       string    `json:"id"`
-	AgentID  string    `json:"agent_id"`
-	Type     string    `json:"type"`
-	Status   string    `json:"status"`
-	Module   string    `json:"module"`
-	Command  string    `json:"command"`
-	Created  time.Time `json:"created"`
-	Started  time.Time `json:"started"`
-	Finished time.Time `json:"finished"`
+	AgentID  string          `json:"agent_id"`
+	TaskID   string          `json:"task_id"`
+	Type     AgentTaskType   `json:"type"`
+	Status   AgentTaskStatus `json:"status"`
+	Module   string          `json:"module"`
+	Command  AgentCommand    `json:"command"`
+	Created  time.Time       `json:"created"`
+	Started  time.Time       `json:"started"`
+	Finished time.Time       `json:"finished"`
 }
 
 // AgentCommand represents the information of a command sent to an Agent
 type AgentCommand struct {
-	ID         string    `json:"id"`
+	AgentID    string    `json:"agent_id"`
 	Name       string    `json:"name"`
 	Started    time.Time `json:"started"`
 	Completed  time.Time `json:"completed"`
@@ -71,14 +71,44 @@ type AgentCommand struct {
 	Output     string    `json:"output"`
 }
 
-/*
-// RedisID How agent is stored in redis
-func (a Agent) RedisID() string {
-	return "agents:" + a.ID
-}
+type AgentTaskType int
 
-// RedisID How agent task is stored in redis
-func (at *AgentTask) RedisID() string {
-	return "tasks:" + at.AgentID + ":" + at.ID
-}
-*/
+const (
+	LoadAssembly AgentTaskType = iota
+	UnloadAssembly
+	AgentCommandType
+	ShellCommand
+	HelpCommand
+	SetDelay
+	SetJitter
+	GetTasks
+	KillTasks
+	Exit
+	Unknown
+)
+
+type AgentTaskStatus int
+
+const (
+	TaskUninitialized AgentTaskStatus = iota
+	TaskQueued
+	TaskSent
+	TaskRunning
+	TaskComplete
+	TaskFailed
+	TaskAborted
+)
+
+type AgentStatus int
+
+const (
+	AgentUninitialized AgentStatus = iota
+	AgentStage0
+	AgentStage1
+	AgentStage2
+	AgentActive
+	AgentLost
+	AgentExited
+	AgentDisconnected
+	AgentHidden
+)

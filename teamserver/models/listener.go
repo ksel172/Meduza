@@ -91,11 +91,10 @@ type ListenerRequest struct {
 }
 
 type HTTPListenerConfig struct {
-	KillDate         int64            `json:"kill_date"`
 	WorkingHours     string           `json:"working_hours"`
 	Hosts            []string         `json:"hosts"`
 	HostBind         string           `json:"host_bind"`
-	HostRotation     string           `json:"host_rotation"`
+	HostRotation     HostRotationType `json:"host_rotation"`
 	PortBind         string           `json:"port_bind"`
 	PortConn         string           `json:"port_conn"`
 	Secure           bool             `json:"secure"`
@@ -104,11 +103,9 @@ type HTTPListenerConfig struct {
 	Uris             []string         `json:"uris"`
 	Certificate      Certificate      `json:"certificate"`
 	WhitelistEnabled bool             `json:"whitelist_enabled"`
-	Whitelist        []string         `json:"whitelist,omitempty"`
+	Whitelist        []string         `json:"whitelist"`
 	BlacklistEnabled bool             `json:"blacklist_enabled"`
-	Blacklist        []string         `json:"blacklist,omitempty"`
-	ProxySettings    ProxyConfig      `json:"proxy_settings"`
-	ResponseRules    ResponseSettings `json:"response_rules"`
+	ProxySettings    ProxySettings    `json:"proxy_settings"`
 }
 
 // Validate ensures the configuration is valid before use.
@@ -118,6 +115,11 @@ func (config *HTTPListenerConfig) Validate() error {
 	}
 	if config.PortBind == "" {
 		return fmt.Errorf("PortBind is required")
+	}
+	for _, validType := range ValidCallbackRotationTypes {
+		if validType == config.HostRotation {
+			return fmt.Errorf("enter a valid host rotation type digit")
+		}
 	}
 	/*
 		if len(config.Uris) == 0 {
@@ -157,25 +159,38 @@ type Authentication struct {
 	Password string `json:"password,omitempty"`
 }
 
-type Header struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
 type Certificate struct {
 	CertPath string `json:"cert_path"`
 	KeyPath  string `json:"key_path"`
 }
 
-type ProxyConfig struct {
+// ProxySettings represents the configuration for a proxy server.
+type ProxySettings struct {
 	Enabled  bool   `json:"enabled"`
 	Type     string `json:"type"`
-	Host     string `json:"host"`
 	Port     string `json:"port"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-type ResponseSettings struct {
-	Headers []Header `json:"headers"`
+// Header represents a key-value pair used in HTTP headers.
+type Header struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type HostRotationType string
+
+const (
+	Fallback   HostRotationType = "Fallback"
+	Sequential HostRotationType = "Sequential"
+	RoundRobin HostRotationType = "RoundRobin"
+	Random     HostRotationType = "Random"
+)
+
+var ValidCallbackRotationTypes = []HostRotationType{
+	Fallback,
+	Sequential,
+	RoundRobin,
+	Random,
 }

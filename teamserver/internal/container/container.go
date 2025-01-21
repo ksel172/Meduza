@@ -21,6 +21,7 @@ type Container struct {
 	ListenerController *handlers.ListenerHandler
 	ListenerSevice     *services.ListenersService // for autostart
 	ListenerDal        *dal.ListenerDAL
+	PayloadController  *handlers.PayloadHandler
 }
 
 func NewContainer() (*Container, error) {
@@ -40,6 +41,7 @@ func NewContainer() (*Container, error) {
 	agentDal := dal.NewAgentDAL(pgsql, schema)
 	checkInDal := dal.NewCheckInDAL(pgsql, schema)
 	listenerDal := dal.NewListenerDAL(pgsql, schema)
+	payloadDal := dal.NewPayloadDAL(pgsql, schema)
 
 	// Check In Controller
 	checkInController := services.NewCheckInController(checkInDal, agentDal)
@@ -64,5 +66,6 @@ func NewContainer() (*Container, error) {
 		ListenerController: handlers.NewListenersHandler(listenerDal, ListenersService),
 		ListenerSevice:     ListenersService,
 		ListenerDal:        autoStart,
+		PayloadController:  handlers.NewPayloadHandler(agentDal, listenerDal, payloadDal),
 	}, nil
 }

