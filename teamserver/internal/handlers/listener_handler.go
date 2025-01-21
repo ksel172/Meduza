@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,11 +18,11 @@ import (
 )
 
 type ListenerHandler struct {
-	dal     dal.IListenerDAL
+	dal     dal.IListenerDal
 	service *services.ListenersService
 }
 
-func NewListenersHandler(dal dal.IListenerDAL, service *services.ListenersService) *ListenerHandler {
+func NewListenersHandler(dal dal.IListenerDal, service *services.ListenersService) *ListenerHandler {
 	return &ListenerHandler{
 		dal:     dal,
 		service: service,
@@ -32,7 +35,7 @@ func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 	var listener models.Listener
 	if err := ctx.ShouldBindJSON(&listener); err != nil {
 		ctx.JSON(http.StatusConflict, gin.H{
-			"message": "Invalid Request body. Please enter correct input",
+			"message": "Invalid Request body.Please type correct input",
 			"status":  s.ERROR,
 		})
 		logger.Error("Request Body Error while bind the json:\n", err)
@@ -72,7 +75,7 @@ func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 }
 
 func (h *ListenerHandler) GetAllListeners(ctx *gin.Context) {
-	listeners, err := h.dal.GetAllListeners(ctx.Request.Context())
+	lists, err := h.dal.GetAllListeners(ctx.Request.Context())
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
@@ -83,7 +86,7 @@ func (h *ListenerHandler) GetAllListeners(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, gin.H{
 		"status": s.SUCCESS,
-		"data":   listeners,
+		"data":   lists,
 	})
 }
 
@@ -93,7 +96,7 @@ func (h *ListenerHandler) GetListenerById(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"status":  s.FAILED,
-			"message": "Listener does not exist",
+			"message": "Listener Does Not exists",
 		})
 		logger.Error("Error Unable to get the listener", err)
 		return
@@ -248,7 +251,7 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	// Retrieve the listener from the database
-	list, err := h.dal.GetListenerById(c, id)
+	listener, err := h.dal.GetListenerById(c, id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"status":  s.FAILED,
@@ -259,8 +262,8 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 	}
 
 	// Create a new listener controller instance
-	logger.Info("Attempting to create listener of type:", list.Type)
-	if err := h.service.CreateListenerController(list.Type, list.Config); err != nil {
+	logger.Info("Attempting to create listener of type:", listener.Type)
+	if err := h.service.CreateListenerController(listener.Type, listener.Config); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.ERROR,
 			"message": "Failed to create listener controller",
@@ -271,7 +274,7 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 
 	// Start the listener, service handles registry addition
 	logger.Info("Starting listener with ID:", id)
-	if err := h.service.Start(list); err != nil {
+	if err := h.service.Start(listener); err != nil {
 		logger.Error("Failed to start the listener:", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"status":  s.FAILED,
@@ -280,6 +283,15 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 		return
 	}
 
+	err = h.dal.UpdateListener(c, id, map[string]any{"status": 1})
+	if err != nil {
+		logger.Error("Failed to update listener status:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to update listener status",
+		})
+		return
+	}
 	// Send a success response
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":  s.SUCCESS,
@@ -289,6 +301,7 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 }
 
 func (h *ListenerHandler) StopListener(ctx *gin.Context) {
+	c := ctx.Request.Context()
 	id := ctx.Param("id")
 
 	// Try stopping the listener, service handles possible errors
@@ -300,8 +313,87 @@ func (h *ListenerHandler) StopListener(ctx *gin.Context) {
 		return
 	}
 
+	err := h.dal.UpdateListener(c, id, map[string]any{"status": 2})
+	if err != nil {
+		logger.Error("Failed to update listener status:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  s.FAILED,
+			"message": "Failed to update listener status",
+		})
+		return
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "listener stopped",
 		"status":  s.SUCCESS,
 	})
+}
+
+func (h *ListenerHandler) AutoStart(ctx context.Context) error {
+	// Fetch active listeners
+	activeListeners, err := h.dal.GetActiveListeners(ctx)
+	if err != nil {
+		logger.Error("Error fetching active listeners...", err)
+		return err
+	}
+
+	totalActiveListeners := len(activeListeners)
+
+	if totalActiveListeners == 0 {
+		logger.Info("No active listeners found to start.")
+		return nil
+	}
+
+	logger.Info("Found", totalActiveListeners, "listeners to start.")
+
+	var wg sync.WaitGroup
+	errChan := make(chan error, totalActiveListeners)
+
+	if h.service == nil {
+		return fmt.Errorf("Listener service is nil")
+	}
+
+	for _, listener := range activeListeners {
+		wg.Add(1)
+		go func(listener models.Listener) {
+			defer wg.Done()
+
+			id := listener.ID.String()
+			logger.Info("Starting listener:", id)
+
+			// Create listener controller
+			if err := h.service.CreateListenerController(listener.Type, listener.Config); err != nil {
+				logger.Error("Error creating listener controller", id, err)
+				errChan <- fmt.Errorf("Failed to create listener controller %s: %w", id, err)
+				return
+			}
+
+			// Start the listener
+			if err := h.service.Start(listener); err != nil {
+				logger.Error("Error starting listener", id, err)
+				errChan <- fmt.Errorf("Failed to start listener %s: %w", id, err)
+			} else {
+				logger.Info("Listener started successfully:", id)
+			}
+		}(listener)
+	}
+
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	var errors []string
+	for err := range errChan {
+		if err != nil {
+			errors = append(errors, err.Error())
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("AutoStart encountered errors:\n%s", strings.Join(errors, "\n"))
+	}
+
+	logger.Info("All listeners started successfully.")
+	return nil
 }
