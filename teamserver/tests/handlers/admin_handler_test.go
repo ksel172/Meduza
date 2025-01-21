@@ -24,7 +24,7 @@ func TestCreateAdmin(t *testing.T) {
 	handler := handlers.NewAdminController(mockAdminDAL)
 	gin.SetMode(gin.TestMode)
 
-	godotenv.Load("../../.env")
+	godotenv.Load("../.env")
 	adminSecret := conf.GetMeduzaAdminSecret()
 	adminReq := models.ResAdmin{
 		Adminname:    "testAdmin",

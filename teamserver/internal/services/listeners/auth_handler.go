@@ -35,34 +35,35 @@ func NewAgentAuthController(payloadDAL dal.IPayloadDAL) *AgentAuthController {
 }
 
 func (a *AgentAuthController) AuthenticateAgent(ctx *gin.Context) {
+
+	var c2request models.C2Request
+	if err := ctx.ShouldBindJSON(&c2request); err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to bind body with C2Request model: %v", err))
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	ctx.Set("c2request", c2request)
+
 	payloadToken := ctx.GetHeader("Authorization")
 	if payloadToken == "" {
 		logger.Info("Skipping agent authentication")
 		ctx.Next() // move on to the next handler
-	}
-
-	var c2request models.C2Request
-	if err := ctx.ShouldBindJSON(&c2request); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		ctx.Abort()
 		return
 	}
 
 	logger.Info(LogLevel, LogDetail, fmt.Sprintf("Authenticating agent %s", c2request.AgentID))
 	storedPayloadToken, err := a.payloadDAL.GetPayloadToken(ctx.Request.Context(), c2request.ConfigID)
 	if err != nil {
-		errMsg := fmt.Sprintf("Failed authentication: invalid config %s", c2request.ConfigID)
+		errMsg := fmt.Sprintf("Failed authentication: invalid config %s - %s", c2request.ConfigID, storedPayloadToken)
 		logger.Error(LogLevel, LogDetail, errMsg)
-		ctx.Status(http.StatusInternalServerError)
-		ctx.Abort()
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
 	if payloadToken != storedPayloadToken {
 		errMsg := fmt.Sprintf("Failed authentication: provided agent token '%s' by agent %s does not match the token for config %s", payloadToken, c2request.AgentID, c2request.ConfigID)
 		logger.Error(LogLevel, LogDetail, errMsg)
-		ctx.Status(http.StatusUnauthorized)
-		ctx.Abort()
+		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
