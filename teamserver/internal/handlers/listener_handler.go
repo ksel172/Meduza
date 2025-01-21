@@ -18,11 +18,11 @@ import (
 )
 
 type ListenerHandler struct {
-	dal     dal.IListenerDal
+	dal     dal.IListenerDAL
 	service *services.ListenersService
 }
 
-func NewListenersHandler(dal dal.IListenerDal, service *services.ListenersService) *ListenerHandler {
+func NewListenersHandler(dal dal.IListenerDAL, service *services.ListenersService) *ListenerHandler {
 	return &ListenerHandler{
 		dal:     dal,
 		service: service,
