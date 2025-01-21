@@ -361,6 +361,14 @@ func (h *ListenerHandler) AutoStart(ctx context.Context) error {
 			id := listener.ID.String()
 			logger.Info("Starting listener:", id)
 
+			// Create listener controller
+			if err := h.service.CreateListenerController(listener.Type, listener.Config); err != nil {
+				logger.Error("Error creating listener controller", id, err)
+				errChan <- fmt.Errorf("Failed to create listener controller %s: %w", id, err)
+				return
+			}
+
+			// Start the listener
 			if err := h.service.Start(listener); err != nil {
 				logger.Error("Error starting listener", id, err)
 				errChan <- fmt.Errorf("Failed to start listener %s: %w", id, err)

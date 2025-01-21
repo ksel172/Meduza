@@ -38,6 +38,11 @@ func NewServer(dependencies *container.Container) *Server {
 }
 
 func (s *Server) Run() error {
+	// Call AutoStart before starting the server
+	if err := s.AutoStart(); err != nil {
+		return fmt.Errorf("failed to auto-start listeners: %w", err)
+	}
+
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	return s.engine.Run(addr)
 }
