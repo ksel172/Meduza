@@ -24,6 +24,8 @@ type Container struct {
 	AdminController    *handlers.AdminController
 	AgentController    *handlers.AgentController
 	ListenerController *handlers.ListenerHandler
+	ListenerService     *services.ListenersService // for autostart
+	ListenerDal        *dal.ListenerDAL
 	PayloadController  *handlers.PayloadHandler
 	ListenerContainer
 }
@@ -54,6 +56,12 @@ func NewContainer() (*Container, error) {
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 15, 30*24*60*60)
 	listenersService := services.NewListenerService(checkInController, agentAuthController)
 
+	//Type assertion error fix
+	autoStart, ok := listenerDal.(*dal.ListenerDAL)
+	if !ok {
+		logger.Warn("Unable to type assetion ListenerDAL")
+	}
+
 	return &Container{
 		UserController:     handlers.NewUserController(userDal),
 		RedisService:       &redisService,
@@ -61,7 +69,9 @@ func NewContainer() (*Container, error) {
 		JwtService:         jwtService,
 		AdminController:    handlers.NewAdminController(adminDal),
 		AgentController:    handlers.NewAgentController(agentDal),
-		ListenerController: handlers.NewListenersHandler(listenerDal, listenersService),
+		ListenerController: handlers.NewListenersHandler(listenerDal, ListenersService),
+		ListenerService:     ListenersService,
+		ListenerDal:        autoStart,
 		PayloadController:  handlers.NewPayloadHandler(agentDal, listenerDal, payloadDal),
 		ListenerContainer: ListenerContainer{
 			CheckInController:   checkInController,
