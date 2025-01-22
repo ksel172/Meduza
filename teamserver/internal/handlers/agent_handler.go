@@ -152,8 +152,8 @@ func (ac *AgentController) DeleteAgentTasks(ctx *gin.Context) {
 }
 
 func (ac *AgentController) DeleteAgentTask(ctx *gin.Context) {
-	agentID := ctx.Param("id")
-	taskID := ctx.Param("task_id")
+	agentID := ctx.Param(models.ParamAgentID)
+	taskID := ctx.Param(models.ParamTaskID)
 	if agentID == "" || taskID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id and task_id are required"})
 		return

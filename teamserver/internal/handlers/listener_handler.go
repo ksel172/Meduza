@@ -397,3 +397,21 @@ func (h *ListenerHandler) AutoStart(ctx context.Context) error {
 	logger.Info("All listeners started successfully.")
 	return nil
 }
+
+func (h *ListenerHandler) CheckRunningListener(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	_, running := h.service.GetListener(id)
+	if !running {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"message": "listener is not running",
+			"status":  s.FAILED,
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "listener is running",
+		"status":  s.SUCCESS,
+	})
+}

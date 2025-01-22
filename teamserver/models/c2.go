@@ -2,8 +2,6 @@ package models
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // C2Request represents any request sent to a C2 server by an Agent.
@@ -24,13 +22,6 @@ func NewC2Request() C2Request {
 
 // Validates if the C2Request contains valid data
 func (r C2Request) Valid() bool {
-
-	// Validate AgentID is uuid
-	if _, err := uuid.Parse(r.AgentID); err != nil {
-		return false
-	}
-
-	// Validate other fields are one of the valid values
 	return (r.AgentStatus == AgentUninitialized || r.AgentStatus == AgentActive || r.AgentStatus == AgentExited)
 }
 

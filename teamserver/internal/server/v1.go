@@ -66,6 +66,7 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 		listenersGroup.DELETE("/:id", s.dependencies.ListenerController.DeleteListener)
 		listenersGroup.POST("/:id/start", s.dependencies.ListenerController.StartListener)
 		listenersGroup.POST("/:id/stop", s.dependencies.ListenerController.StopListener)
+		listenersGroup.GET("/:id/status", s.dependencies.ListenerController.CheckRunningListener)
 	}
 }
 func (s *Server) PayloadV1(group *gin.RouterGroup) {

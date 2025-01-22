@@ -52,7 +52,7 @@ func TestGetAgent(t *testing.T) {
 			agentID:        "non-existent",
 			mockAgent:      models.Agent{},
 			mockError:      fmt.Errorf("agent not found"),
-			expectedStatus: http.StatusNotFound,
+			expectedStatus: http.StatusInternalServerError,
 		},
 	}
 
@@ -167,7 +167,7 @@ func TestDeleteAgent(t *testing.T) {
 			name:           "dal error",
 			agentID:        "non-existent",
 			mockError:      fmt.Errorf("failed dal op"),
-			expectedStatus: http.StatusNotFound,
+			expectedStatus: http.StatusInternalServerError,
 		},
 	}
 

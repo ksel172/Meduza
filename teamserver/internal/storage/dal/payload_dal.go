@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/ksel172/Meduza/teamserver/models"
 )
@@ -14,6 +15,7 @@ type IPayloadDAL interface {
 	GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error)
 	DeletePayload(ctx context.Context, payloadID string) error
 	DeleteAllPayloads(ctx context.Context) error
+	GetPayloadToken(ctx context.Context, configID string) (string, error)
 }
 
 type PayloadDAL struct {
@@ -93,4 +95,25 @@ func (dal *PayloadDAL) DeleteAllPayloads(ctx context.Context) error {
 		return fmt.Errorf("failed to delete all payloads: %w", err)
 	}
 	return nil
+}
+
+func (dal *PayloadDAL) GetPayloadToken(ctx context.Context, configID string) (string, error) {
+	query := fmt.Sprintf(`
+		SELECT payload_token
+		FROM %s.payloads
+		WHERE config_id = $1`,
+		dal.schema)
+	stmt, err := dal.db.PrepareContext(ctx, query)
+	if err != nil {
+		log.Printf("Failed to prepare statement: %v", err)
+		return "", fmt.Errorf("failed to prepare statement: %w", err)
+	}
+
+	var payloadToken string
+	if err := stmt.QueryRowContext(ctx, configID).Scan(&payloadToken); err != nil {
+		log.Printf("Failed to scan payload token: %v", err)
+		return "", fmt.Errorf("failed to scan payload token: %w", err)
+	}
+
+	return payloadToken, nil
 }
