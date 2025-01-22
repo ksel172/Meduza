@@ -24,7 +24,7 @@ type Container struct {
 	AdminController    *handlers.AdminController
 	AgentController    *handlers.AgentController
 	ListenerController *handlers.ListenerHandler
-	ListenerService     *services.ListenersService // for autostart
+	ListenerService    *services.ListenersService // for autostart
 	ListenerDal        *dal.ListenerDAL
 	PayloadController  *handlers.PayloadHandler
 	ListenerContainer
@@ -69,8 +69,8 @@ func NewContainer() (*Container, error) {
 		JwtService:         jwtService,
 		AdminController:    handlers.NewAdminController(adminDal),
 		AgentController:    handlers.NewAgentController(agentDal),
-		ListenerController: handlers.NewListenersHandler(listenerDal, ListenersService),
-		ListenerService:     ListenersService,
+		ListenerController: handlers.NewListenersHandler(listenerDal, listenersService),
+		ListenerService:    listenersService,
 		ListenerDal:        autoStart,
 		PayloadController:  handlers.NewPayloadHandler(agentDal, listenerDal, payloadDal),
 		ListenerContainer: ListenerContainer{
