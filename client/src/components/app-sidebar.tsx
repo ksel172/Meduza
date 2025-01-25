@@ -135,7 +135,7 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
 
-  if (pathname === "/signin"){
+  if (pathname === "/signin" || pathname === "/register"){
     return (<></>)
   } else{
     return (

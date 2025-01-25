@@ -33,6 +33,7 @@ export function LoginForm({
   const [userToken, setUserToken] = useState(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [retypedPassword, setRetypedPassword] = useState("");
 
   const { toast } = useToast()
 
@@ -41,6 +42,10 @@ export function LoginForm({
   };
   const handlePasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(event.target.value);
+  };
+
+  const handleRetypedPasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRetypedPassword(event.target.value);
   };
 
   const signinRequest = async (username: string, password: string) => {
@@ -76,6 +81,39 @@ export function LoginForm({
     }
   }
 
+  const registerRequest = async (username: string, password: string) => {
+    try{
+        const url = '/auth/login';
+        const { data } = await axiosInstance.post(
+            url,
+            {
+              "username": username,
+              "password": password
+            }
+        );
+        setUserToken(data.Key.token);
+        console.log(data.Key.token);
+        console.log(data.Key.refresh_token);
+
+        toast({
+          title: "Authentication Successful!",
+          description: "You have successfully signed into your Meduza Team Server.",
+          action: (
+            <ToastAction altText="undo">Undo</ToastAction>
+          ),
+        })
+    }
+    catch(error){
+        toast({
+          title: "Error With Registration!",
+          description: "You have either entered mismatching passwords or the server is down. Please try again later.",
+          action: (
+            <ToastAction altText="undo">Undo</ToastAction>
+          ),
+        })
+    }
+  }
+
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -84,7 +122,7 @@ export function LoginForm({
           <form className="p-6 md:p-8">
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
-                <h1 className="text-2xl font-bold">Welcome back</h1>
+                <h1 className="text-2xl font-bold">{type === "signin" ? "Welcome back" : "Register account"}</h1>
                 <p className="text-balance text-muted-foreground">
                   {/* Login to your Acme Inc account */}
                   {type === "signin" ? "Login to your Meduza Team Server" : "Register an Account for Meduza"}
@@ -120,6 +158,29 @@ export function LoginForm({
                   required
                 />
               </div>
+              {type === "register" ?
+                <div className="grid gap-2">
+                  <div className="flex items-center">
+                    <Label htmlFor="password">Re-Type Password</Label>
+                    <a
+                      href="#"
+                      className="ml-auto text-sm underline-offset-2 hover:underline"
+                    >
+                    </a>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={retypedPassword}
+                    onChange={handleRetypedPasswordChange}
+                    required
+                  />
+                </div>
+
+                :
+
+                <></>
+              }
               <Button
                 type="submit"
                 className="w-full"
@@ -134,17 +195,18 @@ export function LoginForm({
               </Button>
               <div className="text-center text-sm">
                 {type === "signin" ? "Don't have an account? " : "Have an account? "}
-                <a href="#" className="underline underline-offset-4">
+                <a href={type === "signin" ? "register" : "signin"} className="underline underline-offset-4">
                   {type === "signin" ? "Register" : "Log in"}
                 </a>
               </div>
             </div>
           </form>
-          <div className="relative hidden bg-muted md:block">
+          <div className="relative hidden md:flex md:flex-row md:items-center md:justify-center p-0 m-0">
             <img
-              src="/placeholder.svg"
+              src="/meduza.png"
               alt="Image"
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+              // className="absolute inset-0 h-[50%] w-[50%] object-cover "
+              className="block overflow-visible h-[55%] w-[55%] object-cover"
             />
           </div>
         </CardContent>
