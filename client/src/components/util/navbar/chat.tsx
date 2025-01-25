@@ -15,57 +15,38 @@ export default function ChatRoom() {
   const [searchTerm, setSearchTerm] = useState("")
 
   return (
-    <div className="flex flex-col h-[100%]">
-    <div className="flex-1 flex flex-col">
-        <div className="flex-col overflow-y-auto p-1 grid gap-4">
-            <div className="flex items-start gap-4">
-                <Avatar className="w-8 h-8 border">
-                    <AvatarImage src="/placeholder-user.jpg" alt="John Doe" />
-                    <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-                <div className="bg-muted p-3 rounded-lg max-w-[80%]">
-                    <p>Hey, did you see the latest update?</p>
-                    <p className="text-xs text-muted-foreground mt-1">3:45 PM</p>
+    <div className="flex flex-col h-[100%] justify-between gap-10 overflow-hidden">
+        <div className="flex-1 flex flex-col">
+            <div className="flex-col overflow-y-auto p-1 grid gap-4">
+                <div className="flex items-start gap-4">
+                    <Avatar className="w-8 h-8 border">
+                        <AvatarImage src="/placeholder-user.jpg" alt="John Doe" />
+                        <AvatarFallback>JD</AvatarFallback>
+                    </Avatar>
+                    <div className="bg-muted p-3 rounded-lg max-w-[80%]">
+                        <p>Hey, did you see the latest update?</p>
+                        <p className="text-xs text-muted-foreground mt-1">3:45 PM</p>
+                    </div>
                 </div>
-            </div>
-            <div className="flex items-start gap-4">
-                <Avatar className="w-8 h-8 border">
-                    <AvatarImage src="/placeholder-user.jpg" alt="John Doe" />
-                    <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-                <div className="bg-muted p-3 rounded-lg max-w-[80%]">
-                    <p>Hey, did you see the latest update?</p>
-                    <p className="text-xs text-muted-foreground mt-1">3:45 PM</p>
+                <div className="flex items-start gap-4">
+                    <Avatar className="w-8 h-8 border">
+                        <AvatarImage src="/placeholder-user.jpg" alt="John Doe" />
+                        <AvatarFallback>JD</AvatarFallback>
+                    </Avatar>
+                    <div className="bg-muted p-3 rounded-lg max-w-[80%]">
+                        <p>Hey, did you see the latest update?</p>
+                        <p className="text-xs text-muted-foreground mt-1">3:45 PM</p>
+                    </div>
                 </div>
-            </div>
-            <div className="flex items-start gap-4 justify-end">
-                <div className="bg-green-900 p-3 rounded-lg max-w-[80%]">
-                    <p>Hey, did you see the latest update?</p>
-                    <p className="text-xs text-muted-foreground mt-1">3:45 PM</p>
-                </div>
-                <Avatar className="w-8 h-8 border">
-                    <AvatarImage src="/placeholder-user.jpg" alt="Jane Doe" />
-                    <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-            </div>
-            <div className="flex items-start gap-4 justify-end">
-                <div className="bg-green-900 p-3 rounded-lg max-w-[80%]">
-                    <p>Hey, did you see the latest update?</p>
-                    <p className="text-xs text-muted-foreground mt-1">3:45 PM</p>
-                </div>
-                <Avatar className="w-8 h-8 border">
-                    <AvatarImage src="/placeholder-user.jpg" alt="Jane Doe" />
-                    <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-            </div>
-            <div className="flex items-start gap-4">
-                <Avatar className="w-8 h-8 border">
-                    <AvatarImage src="/placeholder-user.jpg" alt="John Doe" />
-                    <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-                <div className="bg-muted p-3 rounded-lg max-w-[80%]">
-                    <p>Hey, did you see the latest update?</p>
-                    <p className="text-xs text-muted-foreground mt-1">3:45 PM</p>
+                <div className="flex items-start gap-4 justify-end">
+                    <div className="bg-green-900 p-3 rounded-lg max-w-[80%]">
+                        <p>Hey, did you see the latest update?</p>
+                        <p className="text-xs text-muted-foreground mt-1">3:45 PM</p>
+                    </div>
+                    <Avatar className="w-8 h-8 border">
+                        <AvatarImage src="/placeholder-user.jpg" alt="Jane Doe" />
+                        <AvatarFallback>JD</AvatarFallback>
+                    </Avatar>
                 </div>
             </div>
         </div>
@@ -79,7 +60,6 @@ export default function ChatRoom() {
                 <SendIcon className="w-5 h-5" />
             </Button>
         </div>
-    </div>
     </div>
   )
 }
