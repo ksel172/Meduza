@@ -40,7 +40,7 @@ public class ModuleLoadContext : AssemblyLoadContext
         return LoadFromStream(new MemoryStream(AssemblyBytes));
     }
 
-    private void LoadDependencies()
+    public void LoadDependencies()
     {
         if (DependencyBytes != null)
         {

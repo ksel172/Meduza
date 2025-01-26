@@ -6,7 +6,7 @@ namespace Agent.Core
 {
     internal static class ModuleUnloader
     {
-        internal static void Unload(CustomModuleLoadContext context, IModule module)
+        internal static void Unload(ModuleLoadContext context, IModule module)
         {
             // Cleanup module commands
             if (module.Commands != null)
@@ -27,7 +27,7 @@ namespace Agent.Core
             GC.WaitForPendingFinalizers();
         }
 
-        internal static bool IsModuleLoaded(CustomModuleLoadContext context)
+        internal static bool IsModuleLoaded(ModuleLoadContext context)
         {
             return !context.IsCollectible;
         }
