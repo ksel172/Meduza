@@ -10,6 +10,11 @@ type Module struct {
 	Commands    []Command `json:"commands"`
 }
 
+type ModuleBytes struct {
+	ModuleBytes     []byte            `json:"module_bytes"`
+	DependencyBytes map[string][]byte `json:"dependency_bytes"`
+}
+
 type Command struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`

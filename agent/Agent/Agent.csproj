@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Agent.ModuleBase\Agent.ModuleBase.csproj" />
+    <PackageReference Include="Meduza.Agent.ModuleBase" Version="1.0.1" />
   </ItemGroup>
 
 </Project>

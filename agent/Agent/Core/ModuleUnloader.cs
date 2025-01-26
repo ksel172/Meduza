@@ -1,4 +1,4 @@
-﻿using Agent.ModuleBase;
+﻿using Meduza.Agent.ModuleBase;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -6,7 +6,7 @@ namespace Agent.Core
 {
     internal static class ModuleUnloader
     {
-        internal static void Unload(ModuleLoadContext context, IModule module)
+        internal static void Unload(CustomModuleLoadContext context, IModule module)
         {
             // Cleanup module commands
             if (module.Commands != null)
@@ -27,7 +27,7 @@ namespace Agent.Core
             GC.WaitForPendingFinalizers();
         }
 
-        internal static bool IsModuleLoaded(ModuleLoadContext context)
+        internal static bool IsModuleLoaded(CustomModuleLoadContext context)
         {
             return !context.IsCollectible;
         }

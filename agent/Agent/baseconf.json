@@ -1,0 +1,48 @@
+{
+  "payload_id": "71ab06f2-e92e-47ed-b57b-ef3e8b37c966",
+  "payload_name": "newPayload",
+  "config_id": "356191ce-08fa-4d20-9966-3aacb0267e46",
+  "listener_id": "746f0992-2a38-4e92-8101-09e57d6962b0",
+  "architecture": "win-x64",
+  "config": {
+    "blacklist_enabled": false,
+    "certificate": {
+      "cert_path": "",
+      "key_path": ""
+    },
+    "headers": [
+      {
+        "key": "X-Custom-Header",
+        "value": "CustomValue"
+      }
+    ],
+    "host_bind": "0.0.0.0",
+    "host_header": "meduza.com",
+    "host_rotation": "fallback",
+    "hosts": [
+      "http://localhost:8009"
+    ],
+    "port_bind": "8009",
+    "port_conn": "8009",
+    "proxy_settings": {
+      "enabled": false,
+      "password": "",
+      "port": "",
+      "type": "",
+      "username": ""
+    },
+    "secure": false,
+    "whitelist": [
+      "192.168.1.1",
+      "192.168.1.2"
+    ],
+    "whitelist_enabled": false,
+    "working_hours": "9-5"
+  },
+  "sleep": 5,
+  "jitter": 5,
+  "start_date": "2025-01-15T08:00:00Z",
+  "kill_date": "2025-02-15T08:00:00Z",
+  "working_hours_start": 9,
+  "working_hours_end": 17
+}
