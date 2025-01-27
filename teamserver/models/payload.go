@@ -20,6 +20,7 @@ type PayloadConfig struct {
 	PayloadName       string    `json:"payload_name"`
 	ConfigID          string    `json:"config_id"`
 	ListenerID        string    `json:"listener_id"`
+	Token             string    `json:"token"`
 	Arch              string    `json:"architecture"`
 	ListenerConfig    any       `json:"config"`
 	Sleep             int       `json:"sleep"`

@@ -69,6 +69,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	payloadConfig := models.IntoPayloadConfig(payloadRequest)
 	payloadConfig.ConfigID = uuid.New().String()
 	payloadConfig.PayloadID = uuid.New().String()
+	payloadConfig.Token = uuid.New().String() // used for agent authentication
 	payloadConfig.ListenerConfig = listener.Config
 
 	file, err := json.MarshalIndent(payloadConfig, "", "  ")

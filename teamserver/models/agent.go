@@ -37,7 +37,7 @@ type AgentInfo struct {
 
 // AgentConfig controls how the agent operates
 type AgentConfig struct {
-	ConfigID          string    `json:"agent_id"`
+	ConfigID          string    `json:"config_id"`
 	ListenerID        string    `json:"listener_id"`
 	Arch              string    `json:"architecture"`
 	Sleep             int       `json:"sleep"`
