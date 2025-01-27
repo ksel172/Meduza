@@ -3,52 +3,32 @@ using System.Runtime.Loader;
 
 public class ModuleLoadContext : AssemblyLoadContext
 {
-    public byte[]? AssemblyBytes { get; set; }
-    public Dictionary<string, byte[]>? DependencyBytes { get; set; }
+    private readonly Dictionary<string, byte[]> dependencyBytes;
+    private readonly byte[] moduleBytes;
 
-    public ModuleLoadContext() : base(isCollectible: true)
+    public ModuleLoadContext(byte[] moduleBytes, Dictionary<string, byte[]> dependencyBytes)
+        : base(isCollectible: true)
     {
-        Resolving += ResolveAssembly;
+        this.moduleBytes = moduleBytes;
+        this.dependencyBytes = dependencyBytes;
+
+        this.Resolving += ModuleLoadContext_Resolving;
     }
 
-    private Assembly? ResolveAssembly(AssemblyLoadContext context, AssemblyName assemblyName)
+    private Assembly ModuleLoadContext_Resolving(AssemblyLoadContext context, AssemblyName name)
     {
-        if (DependencyBytes != null && assemblyName.Name != null)
+        Console.WriteLine($"Resolving {name.Name}");
+        if (dependencyBytes.TryGetValue(name.Name + ".dll", out byte[] assemblyBytes))
         {
-            if (DependencyBytes.TryGetValue(assemblyName.Name, out var dependencyBytes))
-            {
-                return LoadFromStream(new MemoryStream(dependencyBytes));
-            }
+            using var stream = new MemoryStream(assemblyBytes);
+            return LoadFromStream(stream);
         }
         return null;
     }
 
-    protected override Assembly? Load(AssemblyName assemblyName)
+    public Assembly LoadMainModule()
     {
-        return null; // Let the custom resolver handle assembly loading
-    }
-
-    public Assembly LoadFromMemory()
-    {
-        if (AssemblyBytes == null)
-        {
-            throw new InvalidOperationException("No module assembly provided.");
-        }
-
-        LoadDependencies();
-        return LoadFromStream(new MemoryStream(AssemblyBytes));
-    }
-
-    public void LoadDependencies()
-    {
-        if (DependencyBytes != null)
-        {
-            foreach (var dependency in DependencyBytes)
-            {
-                // Load each dependency into the context from memory
-                var dependencyStream = new MemoryStream(dependency.Value);
-                LoadFromStream(dependencyStream);
-            }
-        }
+        using var stream = new MemoryStream(moduleBytes);
+        return LoadFromStream(stream);
     }
 }

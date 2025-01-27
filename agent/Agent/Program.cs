@@ -12,6 +12,8 @@ using Meduza.Agent;
 using Agent.Core.Utils.MessageTransformer;
 using Agent.Core.Utils.Encoding;
 using System.Runtime.Loader;
+using System.Xml.Linq;
+using System.Threading.Tasks;
 
 // #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
@@ -97,7 +99,7 @@ while (true)
 
                     if (task.TaskCompleted > DateTime.MinValue) continue;
 
-                    Console.WriteLine(JsonSerializer.Serialize(task));
+                    //Console.WriteLine(JsonSerializer.Serialize(task));
 
                     if (!string.IsNullOrWhiteSpace(task.Module) && task.Status is not AgentTaskStatus.Running)
                     {
@@ -116,48 +118,31 @@ while (true)
                                 continue;
                             }
 
+                            var loadContext = new ModuleLoadContext(
+                                moduleBytes.ModuleBytes,
+                                moduleBytes.DependencyBytes ?? new Dictionary<string, byte[]>());
 
-                            // Create a custom load context with dependencies
-                            var loadContext = new ModuleLoadContext
+                            Assembly assembly = loadContext.LoadMainModule();
+
+                            // Load the module and its commands
+                            var module = ModuleLoader.LoadModule(assembly);
+
+                            foreach (var moduleCommand in module.Commands)
                             {
-                                AssemblyBytes = moduleBytes.ModuleBytes,
-                                DependencyBytes = moduleBytes.DependencyBytes
-                            };
-                            Assembly assembly = loadContext.LoadFromMemory();
-                            Console.WriteLine($"Loaded assembly: {assembly.FullName}");
-
-                            // You can now use Reflection to interact with the loaded assembly
-                            var types = assembly.GetTypes();
-                            foreach (var type in types)
-                            {
-                                Console.WriteLine($"Type found: {type.FullName}");
-                            }
-
-                            // Load the main module assembly
-                            using (var stream = new MemoryStream(moduleBytes.ModuleBytes))
-                            {
-                                //var loadedAssembly = loadContext.LoadFromStream(stream);
-
-                                // Load the module and its commands
-                                var module = ModuleLoader.Load(moduleBytes);
-
-                                foreach (var moduleCommand in module.Commands)
+                                try
                                 {
-                                    try
+                                    task.Command.Output = ExecuteCommand(
+                                        moduleCommand,
+                                        task.Command.Parameters,
+                                        task.IsCancellationTokenSourceSet
+                                    );
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"Command execution error: {ex.Message}");
+                                    while (commandOutputQueue.TryDequeue(out var commandOutputResult))
                                     {
-                                        task.Command.Output = ExecuteCommand(
-                                            moduleCommand,
-                                            task.Command.Parameters,
-                                            task.IsCancellationTokenSourceSet
-                                        );
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Console.WriteLine($"Command execution error: {ex.Message}");
-                                        while (commandOutputQueue.TryDequeue(out var commandOutputResult))
-                                        {
-                                            task.Command.Output += commandOutputResult;
-                                        }
+                                        task.Command.Output += commandOutputResult;
                                     }
                                 }
                             }
@@ -166,7 +151,7 @@ while (true)
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Module loading error: {ex.Message}");
+                            Debug.WriteLine($"Module loading error: {ex.Message}");
                             task.Command.Output = $"Error loading module: {ex.Message}";
                         }
                     }
@@ -326,7 +311,10 @@ string ExecuteCommand(ICommand command, string[]? parameters, bool IsCancellatio
                         catch (Exception) { currentRead = string.Empty; }
                     }
                 }
-                output += currentRead;
+                while (commandOutputQueue.TryDequeue(out var commandOutputResult))
+                {
+                    output += commandOutputResult;
+                }
             }
         }
         invokeThread.Join();
