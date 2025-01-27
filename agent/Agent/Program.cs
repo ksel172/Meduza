@@ -11,7 +11,7 @@ using System.Reflection;
 using Meduza.Agent;
 using Agent.Core.Utils.MessageTransformer;
 using Agent.Core.Utils.Encoding;
-
+using System.Runtime.Loader;
 
 // #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
@@ -115,6 +115,7 @@ while (true)
                                 Console.WriteLine("Failed to deserialize module bytes.");
                                 continue;
                             }
+
 
                             // Create a custom load context with dependencies
                             var loadContext = new ModuleLoadContext

@@ -1,5 +1,4 @@
-﻿
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.Loader;
 
 public class ModuleLoadContext : AssemblyLoadContext
