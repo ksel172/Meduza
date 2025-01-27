@@ -67,8 +67,6 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 				return
 			}
 
-			logger.Info("Got files: ", files)
-
 			for _, file := range files {
 				if file.Name() != moduleName+".dll" && strings.HasSuffix(file.Name(), ".dll") {
 					depBytes, err := utils.LoadAssembly(filepath.Join(loadingModulePath, file.Name()))
@@ -127,7 +125,6 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 			return
 		}
 
-		logger.Info("Successfully updated agent task:", agentTask.TaskID)
 		ctx.JSON(http.StatusOK, "successfully updated")
 	} else if c2request.Reason == models.Register {
 
