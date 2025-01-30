@@ -71,13 +71,11 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
 	// Verify if the agent has sent authentication token (done in the previous handler)
 	// if yes, server will have to provide the client with the key
-	/*
-		if _, ok := ctx.Get(AuthToken); ok {
-			logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling encryption key request for agent %s", c2request.AgentID))
-			cc.handleEncryptionKeyRequest(ctx, c2request)
-			return
-		}
-	*/
+	if _, ok := ctx.Get(AuthToken); ok {
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling encryption key request for agent %s", c2request.AgentID))
+		cc.handleEncryptionKeyRequest(ctx, c2request)
+		return
+	}
 	if c2request.Reason == models.Task {
 		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling task request for agent %s", c2request.AgentID))
 		cc.handleTaskRequest(ctx, c2request)
