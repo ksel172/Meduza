@@ -1,10 +1,9 @@
 package main
 
 import (
-	"github.com/ksel172/Meduza/teamserver/pkg/logger"
-
 	"github.com/ksel172/Meduza/teamserver/internal/container"
 	"github.com/ksel172/Meduza/teamserver/internal/server"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
 func main() {
@@ -23,4 +22,5 @@ func main() {
 	if err := teamserver.Run(); err != nil {
 		logger.Panic("Failed to Start Teamserver. Terminating...", err)
 	}
+
 }

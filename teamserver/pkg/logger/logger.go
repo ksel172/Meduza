@@ -106,7 +106,7 @@ func (logger *Logger) Fatal(args ...interface{}) {
 	if logger.showTime {
 		logger.log.SetPrefix("[" + colors.Green(time.Now().Format("15:04:05")) + "] [" + colors.BoldRed("FATA") + "] ")
 	} else {
-		logger.log.SetPrefix("[" + colors.BoldRed("FATA") + "] ")
+		logger.log.SetPrefix("[" + colors.BoldRed("FATAL") + "] ")
 	}
 	logger.log.Println(args...)
 	os.Exit(1)
