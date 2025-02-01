@@ -25,7 +25,13 @@ func (tc *TeamController) CreateTeam(ctx *gin.Context) {
 		return
 	}
 
-	if err := tc.dal.CreateTeam(ctx.Request.Context(), &team); err != nil {
+	creatorID := ctx.GetString("userID")
+	if creatorID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "creatorID is required"})
+		return
+	}
+
+	if err := tc.dal.CreateTeam(ctx.Request.Context(), &team, creatorID); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

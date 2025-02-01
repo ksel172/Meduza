@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 type ITeamDAL interface {
-	CreateTeam(ctx context.Context, team *models.Team) error
+	CreateTeam(ctx context.Context, team *models.Team, creatorID string) error
 	UpdateTeam(ctx context.Context, team *models.Team) error
 	DeleteTeam(ctx context.Context, teamID string) error
 	GetTeams(ctx context.Context) ([]models.Team, error)
@@ -27,7 +28,7 @@ func NewTeamDAL(db *sql.DB, schema string) *TeamDAL {
 	return &TeamDAL{db: db, schema: schema}
 }
 
-func (dal *TeamDAL) CreateTeam(ctx context.Context, team *models.Team) error {
+func (dal *TeamDAL) CreateTeam(ctx context.Context, team *models.Team, creatorID string) error {
 	// Check if a team with the same name already exists
 	var existingTeamID string
 	checkQuery := fmt.Sprintf(`SELECT id FROM %s.teams WHERE name=$1`, dal.schema)
@@ -40,9 +41,20 @@ func (dal *TeamDAL) CreateTeam(ctx context.Context, team *models.Team) error {
 	}
 
 	// Create the new team
-	query := fmt.Sprintf(`INSERT INTO %s.teams(name) VALUES($1)`, dal.schema)
-	_, err = dal.db.ExecContext(ctx, query, team.Name)
-	return err
+	query := fmt.Sprintf(`INSERT INTO %s.teams(name, created_at) VALUES($1, $2) RETURNING id`, dal.schema)
+	err = dal.db.QueryRowContext(ctx, query, team.Name, team.CreatedAt).Scan(&team.ID)
+	if err != nil {
+		return fmt.Errorf("failed to create team: %w", err)
+	}
+
+	// Add the creator as a team member
+	addMemberQuery := fmt.Sprintf(`INSERT INTO %s.team_members(team_id, user_id, added_at) VALUES($1, $2, $3)`, dal.schema)
+	_, err = dal.db.ExecContext(ctx, addMemberQuery, team.ID, creatorID, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to add creator as team member: %w", err)
+	}
+
+	return nil
 }
 
 func (dal *TeamDAL) UpdateTeam(ctx context.Context, team *models.Team) error {
