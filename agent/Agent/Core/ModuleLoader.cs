@@ -1,58 +1,58 @@
-﻿using Agent.ModuleBase;
+﻿using Agent.Core;
+using Meduza.Agent.ModuleBase;
 using System.Reflection;
 
-namespace Agent.Core
+internal static class ModuleLoader
 {
-    internal static class ModuleLoader
+    internal static IModule Load(ModuleBytesModel moduleData)
     {
-        internal static IModule Load(byte[] data)
-        {
-            return LoadModule(Assembly.Load(data));
-        }
+        var loadContext = new ModuleLoadContext(
+            moduleData.ModuleBytes,
+            moduleData.DependencyBytes ?? new Dictionary<string, byte[]>());
 
-        internal static IModule LoadModule(Assembly assembly)
+        Assembly assembly = loadContext.LoadMainModule();
+        return LoadModule(assembly);
+    }
+
+    public static IModule LoadModule(Assembly assembly)
+    {
+        foreach (Type type in assembly.GetTypes())
         {
-            foreach (Type type in assembly.GetTypes())
+            if (typeof(IModule).IsAssignableFrom(type))
             {
-                if (typeof(IModule).IsAssignableFrom(type))
+                if (Activator.CreateInstance(type) is IModule result)
                 {
-                    if (Activator.CreateInstance(type) is IModule result)
-                    {
-                        result.Commands = LoadCommands(assembly).ToList();
-                        return result;
-                    }
+                    result.Commands = LoadCommands(assembly).ToList();
+                    return result;
                 }
             }
+        }
+        string availableTypes = string.Join(",", assembly.GetTypes().Select(t => t.FullName));
+        throw new ApplicationException(
+            $"Can't find any type which implements IModule in {assembly}.\n" +
+            $"Available types: {availableTypes}");
+    }
 
+    public static IEnumerable<ICommand> LoadCommands(Assembly assembly)
+    {
+        var count = 0;
+        foreach (Type type in assembly.GetTypes())
+        {
+            if (typeof(ICommand).IsAssignableFrom(type))
+            {
+                if (Activator.CreateInstance(type) is ICommand result)
+                {
+                    count++;
+                    yield return result;
+                }
+            }
+        }
+        if (count == 0)
+        {
             string availableTypes = string.Join(",", assembly.GetTypes().Select(t => t.FullName));
             throw new ApplicationException(
-                $"Can't find any type which implements IModule in {assembly} from {assembly.Location}.\n" +
+                $"Can't find any type which implements ICommand in {assembly}.\n" +
                 $"Available types: {availableTypes}");
-        }
-
-        private static IEnumerable<ICommand> LoadCommands(Assembly assembly)
-        {
-            var count = 0;
-
-            foreach (Type type in assembly.GetTypes())
-            {
-                if (typeof(ICommand).IsAssignableFrom(type))
-                {
-                    if (Activator.CreateInstance(type) is ICommand result)
-                    {
-                        count++;
-                        yield return result;
-                    }
-                }
-            }
-
-            if (count == 0)
-            {
-                string availableTypes = string.Join(",", assembly.GetTypes().Select(t => t.FullName));
-                throw new ApplicationException(
-                    $"Can't find any type which implements ICommand in {assembly} from {assembly.Location}.\n" +
-                    $"Available types: {availableTypes}");
-            }
         }
     }
 }

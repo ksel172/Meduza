@@ -94,8 +94,6 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
-	// Run Docker container to compile the agent
-	// arch := payloadConfig.Arch
 	args := []string{
 		"publish",
 		"--configuration", "Release",
@@ -107,9 +105,6 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		"agent/Agent/Agent.csproj",
 	}
 
-	// logger.Info("Compiling the agent with the following arguments:", args)
-
-	// Prepend the dotnet executable
 	cmd := exec.Command("dotnet", args...)
 
 	cmd.Stdout = os.Stdout

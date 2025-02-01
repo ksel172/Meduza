@@ -27,6 +27,7 @@ type Container struct {
 	ListenerService    *services.ListenersService // for autostart
 	ListenerDal        *dal.ListenerDAL
 	PayloadController  *handlers.PayloadHandler
+	ModuleController   *handlers.ModuleController
 	ListenerContainer
 }
 
@@ -46,6 +47,7 @@ func NewContainer() (*Container, error) {
 	checkInDal := dal.NewCheckInDAL(pgsql, schema)
 	listenerDal := dal.NewListenerDAL(pgsql, schema)
 	payloadDal := dal.NewPayloadDAL(pgsql, schema)
+	moduleDal := dal.NewModuleDAL(pgsql, schema)
 
 	// CheckInController is owned by the listener server
 	checkInController := services.NewCheckInController(checkInDal, agentDal)
@@ -73,6 +75,7 @@ func NewContainer() (*Container, error) {
 		ListenerService:    listenersService,
 		ListenerDal:        autoStart,
 		PayloadController:  handlers.NewPayloadHandler(agentDal, listenerDal, payloadDal),
+		ModuleController:   handlers.NewModuleController(moduleDal),
 		ListenerContainer: ListenerContainer{
 			CheckInController:   checkInController,
 			AgentAuthController: agentAuthController,

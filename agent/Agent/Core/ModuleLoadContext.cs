@@ -1,23 +1,34 @@
 ﻿using System.Reflection;
 using System.Runtime.Loader;
 
-namespace Agent.Core
+public class ModuleLoadContext : AssemblyLoadContext
 {
-    public class ModuleLoadContext : AssemblyLoadContext
+    private readonly Dictionary<string, byte[]> dependencyBytes;
+    private readonly byte[] moduleBytes;
+
+    public ModuleLoadContext(byte[] moduleBytes, Dictionary<string, byte[]> dependencyBytes)
+        : base(isCollectible: true)
     {
-        public Stream? AssemblyBytes { get; set; }
+        this.moduleBytes = moduleBytes;
+        this.dependencyBytes = dependencyBytes;
 
-        private AssemblyDependencyResolver resolver;
+        this.Resolving += ModuleLoadContext_Resolving;
+    }
 
-
-        protected override Assembly? Load(AssemblyName assemblyName)
+    private Assembly ModuleLoadContext_Resolving(AssemblyLoadContext context, AssemblyName name)
+    {
+        Console.WriteLine($"Resolving {name.Name}");
+        if (dependencyBytes.TryGetValue(name.Name + ".dll", out byte[] assemblyBytes))
         {
-            if (AssemblyBytes is not null)
-            {
-                return LoadFromStream(AssemblyBytes);
-            }
-
-            return base.Load(assemblyName);
+            using var stream = new MemoryStream(assemblyBytes);
+            return LoadFromStream(stream);
         }
+        return null;
+    }
+
+    public Assembly LoadMainModule()
+    {
+        using var stream = new MemoryStream(moduleBytes);
+        return LoadFromStream(stream);
     }
 }

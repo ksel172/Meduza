@@ -1,15 +1,20 @@
 package services
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
@@ -45,10 +50,7 @@ type CheckInController struct {
 }
 
 func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL) *CheckInController {
-	return &CheckInController{
-		checkInDAL: checkInDAL,
-		agentDAL:   agentDAL,
-	}
+	return &CheckInController{checkInDAL: checkInDAL, agentDAL: agentDAL}
 }
 
 func (cc *CheckInController) Checkin(ctx *gin.Context) {
@@ -74,7 +76,6 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 		cc.handleEncryptionKeyRequest(ctx, c2request)
 		return
 	}
-
 	if c2request.Reason == models.Task {
 		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling task request for agent %s", c2request.AgentID))
 		cc.handleTaskRequest(ctx, c2request)
@@ -90,12 +91,76 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 	}
 }
 
+func (cc *CheckInController) handleEncryptionKeyRequest(ctx *gin.Context, c2request models.C2Request) {
+	// Generate an AES key for this session to communicate with the agent
+	key, err := utils.GenerateAES256Key()
+	if err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to generate AES256 key: %v", err))
+		ctx.Status(http.StatusInternalServerError)
+		return
+	}
+
+	// Store the key in the registry
+	KeyRegistry.writeKey(c2request.AgentID, key)
+
+	ctx.JSON(http.StatusOK, gin.H{"key": key})
+}
+
 func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request models.C2Request) {
 	tasks, err := cc.agentDAL.GetAgentTasks(ctx, c2request.AgentID)
 	if err != nil {
 		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to get tasks for agent %s: %v", c2request.AgentID, err))
 		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
+	}
+
+	for i, task := range tasks {
+		moduleDirPath := filepath.Join(conf.GetModuleUploadPath(), task.Module)
+		moduleName := task.Command.Name
+
+		modulePath := filepath.Join(moduleDirPath, moduleName)
+		mainModuleBytes, err := utils.LoadAssembly(filepath.Join(modulePath, moduleName+".dll"))
+		if err != nil {
+			logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to load main module: %v", err))
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load main module: %s", err.Error())})
+			return
+		}
+
+		loadingModulePath := moduleDirPath + "/" + moduleName + "/"
+		dependencyBytes := make(map[string][]byte)
+		files, err := os.ReadDir(loadingModulePath)
+		if err != nil {
+			logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to read module directory: %v", err))
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to read module directory: %s", err.Error())})
+			return
+		}
+
+		for _, file := range files {
+			if file.Name() != moduleName+".dll" && strings.HasSuffix(file.Name(), ".dll") {
+				depBytes, err := utils.LoadAssembly(filepath.Join(loadingModulePath, file.Name()))
+				if err != nil {
+					logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to load dependency: %v", err))
+					ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load dependency: %s", err.Error())})
+					return
+				}
+				dependencyBytes[file.Name()] = depBytes
+			}
+		}
+
+		moduleBytes := models.ModuleBytes{
+			ModuleBytes:     mainModuleBytes,
+			DependencyBytes: dependencyBytes,
+		}
+
+		moduleBytesJSON, err := json.Marshal(moduleBytes)
+		if err != nil {
+			logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to marshal module bytes: %v", err))
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to marshal module bytes: %s", err.Error())})
+			return
+		}
+
+		task.Module = base64.StdEncoding.EncodeToString(moduleBytesJSON)
+		tasks[i] = task
 	}
 
 	// Update the agent's last callback time
@@ -108,7 +173,7 @@ func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request model
 
 	tasksJSON, err := json.Marshal(tasks)
 	if err != nil {
-		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to marshal agent task to JSON: %v", err))
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to marshal tasks to JSON: %v", err))
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to marshal tasks to JSON"})
 		return
 	}
@@ -135,14 +200,13 @@ func (cc *CheckInController) handleResponseRequest(ctx *gin.Context, c2request m
 		return
 	}
 
-	logger.Info("Successfully updated agent task:", agentTask.TaskID)
+	logger.Info(LogLevel, LogDetail, fmt.Sprintf("Successfully updated agent task: %s", agentTask.TaskID))
 	ctx.JSON(http.StatusOK, "successfully updated")
 }
 
 func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request models.C2Request) {
-	logger.Info("Received check-in request from agent:", c2request.AgentID)
+	logger.Info(LogLevel, LogDetail, fmt.Sprintf("Received check-in request from agent: %s", c2request.AgentID))
 
-	// Parse the message as AgentInfo
 	var agentInfo models.AgentInfo
 	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
 		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to parse agent info from message: %v", err))
@@ -150,14 +214,12 @@ func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request m
 		return
 	}
 
-	// Check if the agent already exists
 	if _, err := cc.agentDAL.GetAgent(agentInfo.AgentID); err == nil {
-		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Agent already exists: %v", err))
+		logger.Info(LogLevel, LogDetail, "Agent already exists:", c2request.AgentID)
 		ctx.JSON(http.StatusConflict, gin.H{"error": "agent already exists"})
 		return
 	}
 
-	// Create agent in the database
 	newAgent := c2request.IntoNewAgent()
 	newAgent.Name = utils.RandomString(6)
 
@@ -167,7 +229,6 @@ func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request m
 		return
 	}
 
-	// Create agent info in the database
 	if err := cc.agentDAL.CreateAgentInfo(ctx.Request.Context(), agentInfo); err != nil {
 		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to create agent info: %v", err))
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -175,20 +236,4 @@ func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request m
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{"agent": newAgent})
-}
-
-func (cc *CheckInController) handleEncryptionKeyRequest(ctx *gin.Context, c2request models.C2Request) {
-	// Generate an AES key for this session to comunicate with the agent
-	key, err := utils.GenerateAES256Key()
-	if err != nil {
-		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to generate AES256 key: %v", err))
-		ctx.Status(http.StatusInternalServerError)
-		return
-	}
-
-	// Store the key in the database and associate with the agent
-	// Implement storage method with an expiry period, redis being the most sensible option
-	KeyRegistry.writeKey(c2request.AgentID, key)
-
-	ctx.JSON(http.StatusOK, gin.H{"key": key})
 }
