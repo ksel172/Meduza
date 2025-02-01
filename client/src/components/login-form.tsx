@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import axios from 'axios';
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
+import { useCookies } from "react-cookie";
 
 interface LoginFormProps extends React.ComponentProps<"div"> {
     type: "signin" | "register" | "forgot";
@@ -35,6 +36,8 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [retypedPassword, setRetypedPassword] = useState("");
 
+  const [cookies, setCookie, removeCookie] = useCookies(["cookie-name"]);
+
   const { toast } = useToast()
 
   const handleUsernameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,8 +62,11 @@ export function LoginForm({
             }
         );
         setUserToken(data.Key.token);
-        console.log(data.Key.token);
-        console.log(data.Key.refresh_token);
+        setCookie("jwt", data.Key.token);
+        setCookie("refresh_token", data.Key.refresh_token);
+        location.pathname = "/";
+        // console.log(data.Key.token);
+        // console.log(data.Key.refresh_token);
 
         toast({
           title: "Authentication Successful!",
@@ -92,8 +98,11 @@ export function LoginForm({
             }
         );
         setUserToken(data.Key.token);
-        console.log(data.Key.token);
-        console.log(data.Key.refresh_token);
+        setCookie("jwt", data.Key.token);
+        setCookie("refresh_token", data.Key.refresh_token);
+        location.pathname = "/";
+        // console.log(data.Key.token);
+        // console.log(data.Key.refresh_token);
 
         toast({
           title: "Authentication Successful!",
