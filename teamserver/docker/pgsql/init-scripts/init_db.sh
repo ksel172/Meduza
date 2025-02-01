@@ -26,7 +26,7 @@ echo "Finished creating schema using PSQL with status code $?"
 
 # Set up Tables
 echo "Creating tables..."
-tables=("users" "listeners" "agents" "agent_config" "agent_info" "agent_task" "agent_command" "payloads" "teams" "team_members")
+tables=("users" "listeners" "agents" "agent_config" "agent_info" "agent_task" "agent_command" "payloads" "modules" "teams" "team_members" )
 
 for t in "${tables[@]}";do
     current_file="$TMP_QUERY_PATH/$t.sql"
