@@ -71,7 +71,7 @@ type AgentCommand struct {
 	Output     string    `json:"output"`
 }
 
-type AgentTaskType int
+type AgentTaskType uint8
 
 const (
 	LoadAssembly AgentTaskType = iota
@@ -87,7 +87,7 @@ const (
 	Unknown
 )
 
-type AgentTaskStatus int
+type AgentTaskStatus uint8
 
 const (
 	TaskUninitialized AgentTaskStatus = iota
@@ -99,7 +99,7 @@ const (
 	TaskAborted
 )
 
-type AgentStatus int
+type AgentStatus uint8
 
 const (
 	AgentUninitialized AgentStatus = iota
