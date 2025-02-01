@@ -24,7 +24,6 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       DLV_PORT: ${DLV_PORT}
       JWT_TOKEN: ${JWT_TOKEN}
-      ADMIN_SECRET: ${ADMIN_SECRET}
       MODULE_UPLOAD_PATH: ${MODULE_UPLOAD_PATH}
     volumes:
       - ./teamserver:/app/teamserver

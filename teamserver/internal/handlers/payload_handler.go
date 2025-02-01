@@ -15,6 +15,7 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
+	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 type PayloadHandler struct {
@@ -38,7 +39,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	if err := ctx.ShouldBindJSON(&payloadRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid request body. Please enter correct input.",
-			"status":  s.ERROR,
+			"status":  utils.Status.ERROR,
 		})
 		logger.Error("Request body error while binding the JSON:", err)
 		return
@@ -47,7 +48,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	// Ensure listenerDAL is initialized
 	if h.listenerDAL == nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Internal server error: listenerDAL is not initialized.",
 		})
 		logger.Error("listenerDAL is nil")
@@ -58,7 +59,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	listener, err := h.listenerDAL.GetListenerById(ctx.Request.Context(), payloadRequest.ListenerID)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Listener does not exist.",
 		})
 		logger.Error("Error retrieving the listener:", err)
@@ -75,7 +76,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	file, err := json.MarshalIndent(payloadConfig, "", "  ")
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Failed to serialize payload config to JSON.",
 		})
 		logger.Error("Error marshalling payload config to JSON:", err)
@@ -87,7 +88,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	err = os.WriteFile(baseconfPath, file, 0644)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Failed to write JSON configuration file.",
 		})
 		logger.Error("Error writing JSON file:", err)
@@ -112,7 +113,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 
 	if err := cmd.Run(); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Failed to compile the payload.",
 		})
 		logger.Error("Error running Docker container to compile agent:", err)
@@ -122,7 +123,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	// Save the payload configuration in the database
 	if err := h.payloadDAL.CreatePayload(ctx.Request.Context(), payloadConfig); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Failed to save payload configuration.",
 		})
 		logger.Error("Error saving payload configuration:", err)
@@ -133,7 +134,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	agentConfig := models.IntoAgentConfig(payloadConfig)
 	if err := h.agentDAL.CreateAgentConfig(ctx.Request.Context(), agentConfig); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Failed to save agent configuration.",
 		})
 		logger.Error("Error saving agent configuration:", err)
@@ -148,7 +149,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	}()
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"status":  s.SUCCESS,
+		"status":  utils.Status.SUCCESS,
 		"message": "Payload created and compiled successfully.",
 	})
 }
@@ -161,7 +162,7 @@ func (h *PayloadHandler) DeletePayload(ctx *gin.Context) {
 	err := h.payloadDAL.DeletePayload(ctx.Request.Context(), payloadId)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Failed to delete payload.",
 		})
 		logger.Error("Error deleting payload:", err)
@@ -172,7 +173,7 @@ func (h *PayloadHandler) DeletePayload(ctx *gin.Context) {
 	err = os.RemoveAll(filePath)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Failed to delete payload folder.",
 		})
 		logger.Error("Error deleting payload folder:", err)
@@ -180,7 +181,7 @@ func (h *PayloadHandler) DeletePayload(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"status":  s.SUCCESS,
+		"status":  utils.Status.SUCCESS,
 		"message": "Payload deleted successfully.",
 	})
 }
@@ -190,7 +191,7 @@ func (h *PayloadHandler) DeleteAllPayloads(ctx *gin.Context) {
 	files, err := os.ReadDir(dirPath)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Failed to read payload directory.",
 		})
 		logger.Error("Error reading payload directory:", err)
@@ -219,7 +220,7 @@ func (h *PayloadHandler) DeleteAllPayloads(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"status":  s.SUCCESS,
+		"status":  utils.Status.SUCCESS,
 		"message": "All payloads deleted successfully.",
 	})
 }
@@ -241,7 +242,7 @@ func (h *PayloadHandler) DownloadPayload(ctx *gin.Context) {
 
 	if !found {
 		ctx.JSON(http.StatusNotFound, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Executable not found.",
 		})
 		logger.Error("Executable not found")
@@ -260,7 +261,7 @@ func (h *PayloadHandler) GetAllPayloads(ctx *gin.Context) {
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  s.FAILED,
+			"status":  utils.Status.FAILED,
 			"message": "Failed to get payloads.",
 		})
 		logger.Error("Error getting payloads:", err)

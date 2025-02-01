@@ -1,6 +1,8 @@
 package container
 
 import (
+	"time"
+
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
 	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
@@ -20,8 +22,8 @@ type Container struct {
 	UserController     *handlers.UserController
 	RedisService       *repos.Service
 	AuthController     *handlers.AuthController
+	TeamController     *handlers.TeamController
 	JwtService         models.JWTServiceProvider
-	AdminController    *handlers.AdminController
 	AgentController    *handlers.AgentController
 	ListenerController *handlers.ListenerHandler
 	ListenerService    *services.ListenersService // for autostart
@@ -42,7 +44,7 @@ func NewContainer() (*Container, error) {
 	logger.Info("Setting Up Data Access Layer")
 	schema := conf.GetMeduzaDbSchema()
 	userDal := dal.NewUsersDAL(pgsql, schema)
-	adminDal := dal.NewAdminsDAL(pgsql, schema)
+	teamDal := dal.NewTeamDAL(pgsql, schema)
 	agentDal := dal.NewAgentDAL(pgsql, schema)
 	checkInDal := dal.NewCheckInDAL(pgsql, schema)
 	listenerDal := dal.NewListenerDAL(pgsql, schema)
@@ -55,7 +57,7 @@ func NewContainer() (*Container, error) {
 
 	// Initialize services
 	redisService := repos.NewRedisService()
-	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 15, 30*24*60*60)
+	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
 	listenersService := services.NewListenerService(checkInController, agentAuthController)
 
 	//Type assertion error fix
@@ -68,8 +70,8 @@ func NewContainer() (*Container, error) {
 		UserController:     handlers.NewUserController(userDal),
 		RedisService:       &redisService,
 		AuthController:     handlers.NewAuthController(userDal, jwtService),
+		TeamController:     handlers.NewTeamController(teamDal),
 		JwtService:         jwtService,
-		AdminController:    handlers.NewAdminController(adminDal),
 		AgentController:    handlers.NewAgentController(agentDal),
 		ListenerController: handlers.NewListenersHandler(listenerDal, listenersService),
 		ListenerService:    listenersService,
