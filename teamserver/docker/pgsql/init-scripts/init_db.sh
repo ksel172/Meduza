@@ -26,7 +26,7 @@ echo "Finished creating schema using PSQL with status code $?"
 
 # Set up Tables
 echo "Creating tables..."
-tables=("users" "listeners" "agents" "agent_config" "agent_info" "agent_task" "agent_command" "payloads" "modules")
+tables=("users" "listeners" "agents" "agent_config" "agent_info" "agent_task" "agent_command" "payloads" "modules" "teams" "team_members" )
 
 for t in "${tables[@]}";do
     current_file="$TMP_QUERY_PATH/$t.sql"
@@ -40,3 +40,17 @@ for t in "${tables[@]}";do
 done
 
 echo "Finished creating tables"
+
+# Enable pgcrypto extension
+echo "Enabling pgcrypto extension..."
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+EOSQL
+echo "Finished enabling pgcrypto extension"
+
+# Insert default admin
+echo "Inserting default admin..."
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    INSERT INTO ${POSTGRES_SCHEMA}.users (username, pw_hash, role) VALUES ('Meduza', crypt('Meduza', gen_salt('bf')), 'admin');
+EOSQL
+echo "Finished inserting default admin"

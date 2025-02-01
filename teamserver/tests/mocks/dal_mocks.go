@@ -162,7 +162,7 @@ type MockAdminDal struct {
 	mock.Mock
 }
 
-func (m *MockAdminDal) CreateDefaultAdmins(ctx context.Context, admin *models.ResAdmin) error {
+func (m *MockAdminDal) CreateDefaultAdmins(ctx context.Context, admin *models.ResUser) error {
 	args := m.Called(admin)
 	return args.Error(0)
 }
