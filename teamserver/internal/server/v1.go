@@ -12,7 +12,7 @@ func (s *Server) AuthV1(group *gin.RouterGroup) {
 	{
 		authRoutes.POST("/register", s.AdminMiddleware(), s.dependencies.UserController.AddUsers)
 		authRoutes.POST("/login", s.dependencies.AuthController.LoginController)
-		authRoutes.GET("/refresh", s.UserMiddleware(), s.dependencies.AuthController.RefreshTokenController)
+		authRoutes.GET("/refresh", s.dependencies.AuthController.RefreshTokenController)
 		authRoutes.POST("/logout", s.UserMiddleware(), s.dependencies.AuthController.LogoutController)
 	}
 }
