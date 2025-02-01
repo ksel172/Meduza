@@ -96,7 +96,7 @@ type HTTPListenerConfig struct {
 	PortBind         string           `json:"port_bind"`
 	PortConn         string           `json:"port_conn"`
 	Secure           bool             `json:"secure"`
-	HostHeader       string           `json:"host_header"`
+	UserAgent        string           `json:"user_agent"`
 	Headers          []Header         `json:"headers"`
 	Uris             []string         `json:"uris"`
 	Certificate      Certificate      `json:"certificate"`
