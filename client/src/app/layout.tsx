@@ -46,7 +46,7 @@ export default function RootLayout({
           <SidebarProvider>
             <AppSidebar />
             <main>
-              <SidebarTrigger className="mt-5 ml-5"/>
+              <SidebarTrigger className="mt-5 ml-12"/>
               <ModeToggle />
               {children}
             </main>

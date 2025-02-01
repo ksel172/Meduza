@@ -15,7 +15,7 @@ export function Infocard({
   }) {
 
   return (
-    <Card className="w-[250px]">
+    <Card className="w-[100%]">
         <CardHeader className="flex flex-row justify-between items-center">
             <CardDescription>{title}</CardDescription>
             {/* <Ear size={20}/> */}

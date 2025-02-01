@@ -91,24 +91,24 @@ export default function Home() {
   );
 
   return (
-    <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] flex flex-col gap-4 justify-items-center min-h-screen pb-4 p-0 m-6">
-      <div className="flex flex-row gap-2 w-[100%]">
+    <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] flex flex-col gap-4 justify-items-center items-center min-h-screen pb-4 p-0 mt-6">
+      <div className="flex flex-row gap-2 w-[calc(100vw-var(--sidebar-width)-6.5em)]">
         <Combobox options={comboboxOptions} deafultLabel="Select Filter" />
         <Input className="w-[50%]" type="email" placeholder="Search..." />
       </div>
-      <Card className="w-[calc(95vw-var(--sidebar-width))]">
+      <Card className="w-[calc(100vw-var(--sidebar-width)-6.5em)]">
         <CardContent className="m-0 p-0">
            <TableComponent headers={agentHeaders} data={shells} renderRow={renderRow} />
         </CardContent>
       </Card>
-      <div className="flex flex-row w-[calc(95vw-var(--sidebar-width))] justify-between">
+      <div className="flex flex-row w-[calc(100vw-var(--sidebar-width)-6.5em)] justify-between">
         <p>4 total agent(s) found.</p>
         <div className="flex flex-row gap-2">
           <Button>Previous</Button>
           <Button>Next</Button>
         </div>
       </div>
-      <Card className="w-[calc(95vw-var(--sidebar-width))]">
+      <Card className="w-[calc(100vw-var(--sidebar-width)-6.5em)]">
         <CardContent className="m-0 p-0 h-[60vh]">
           <ConsoleWidget />
         </CardContent>

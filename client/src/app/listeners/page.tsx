@@ -137,21 +137,23 @@ export default function Listeners() {
 
   if(isCreating === false){
     return (
-      <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] flex flex-col gap-4 justify-items-center min-h-screen pb-4 p-0 m-6">
-        <div className="flex flex-row justify-between p-1 bg-secondary w-[19em] rounded">
-          <Button className="w-[10em]">Table</Button>
-          <Button className="bg-transparent text-white w-[10em]" onClick={() => setIsCreating(true)}>Add</Button>
-        </div>
-        <Card className="w-[calc(95vw-var(--sidebar-width))]">
-          <CardContent className="m-0 p-0">
-            <TableComponent headers={agentHeaders} data={listeners} renderRow={renderRow} />
-          </CardContent>
-        </Card>
-        <div className="flex flex-row w-[calc(95vw-var(--sidebar-width))] justify-between">
-          <p>1 total listener(s) found.</p>
-          <div className="flex flex-row gap-2">
-            <Button>Previous</Button>
-            <Button>Next</Button>
+      <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] gap-4 justify-items-center items-center flex flex-col pb-0 mb-0 p-0">
+        <div className="w-[calc(100vw-var(--sidebar-width)-6.5em)] h-[100%] flex flex-col gap-4 justify-items-center min-h-screen pb-4 p-0 m-6">
+          <div className="flex flex-row justify-between p-1 bg-secondary w-[19em] rounded">
+            <Button className="w-[10em]">Table</Button>
+            <Button className="bg-transparent text-white w-[10em]" onClick={() => setIsCreating(true)}>Add</Button>
+          </div>
+          <Card className="w-[calc(100vw-var(--sidebar-width)-6.5em)]">
+            <CardContent className="m-0 p-0">
+              <TableComponent headers={agentHeaders} data={listeners} renderRow={renderRow} />
+            </CardContent>
+          </Card>
+          <div className="flex flex-row w-[calc(100vw-var(--sidebar-width)-6.5em)] justify-between">
+            <p>1 total listener(s) found.</p>
+            <div className="flex flex-row gap-2">
+              <Button>Previous</Button>
+              <Button>Next</Button>
+            </div>
           </div>
         </div>
       </div>
@@ -159,15 +161,15 @@ export default function Listeners() {
   } else{
     return (
 
-      <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] gap-4 justify-items-center flex flex-col pb-0 mb-0 p-0 m-6">
-        <div className="flex flex-row w-[calc(97vw-var(--sidebar-width))] justify-between">
+      <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] gap-4 justify-items-center items-center flex flex-col pb-0 mb-0 p-0 mt-6">
+        <div className="flex flex-row w-[calc(100vw-var(--sidebar-width)-6.5em)] justify-between">
           <div className="flex flex-row justify-between p-1 bg-secondary w-[19em] rounded">
               <Button className="bg-transparent text-white w-[10em]" onClick={() => setIsCreating(false)}>Table</Button>
               <Button className="w-[10em]">Add</Button>
           </div>
           <Button className="w-[10em]">Create</Button>
         </div>
-        <div className="max-w-[calc(100vw-var(--sidebar-width)-3em)] grid grid-cols-3 gap-0 items-start justify-items-end p-0 mb-0 mt-0 border-solid border-2 pt-5 rounded">
+        <div className="w-[calc(100vw-var(--sidebar-width)-6.5em)] grid grid-cols-3 gap-0 items-start justify-items-end p-0 mb-0 mt-0 border-solid border-2 pt-5 rounded">
           <Card className="mx-auto max-w-sm border-none mb-4">
             <CardContent>
                 <div className="space-y-4">
