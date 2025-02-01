@@ -1,6 +1,8 @@
 package container
 
 import (
+	"time"
+
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
 	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
@@ -10,16 +12,25 @@ import (
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
+// Controllers owned by the listener server
+type ListenerContainer struct {
+	CheckInController   *services.CheckInController
+	AgentAuthController *services.AgentAuthController
+}
+
 type Container struct {
 	UserController     *handlers.UserController
 	RedisService       *repos.Service
 	AuthController     *handlers.AuthController
+	TeamController     *handlers.TeamController
 	JwtService         models.JWTServiceProvider
-	AdminController    *handlers.AdminController
 	AgentController    *handlers.AgentController
-	CheckInController  *services.CheckInController // handler is not directly accessible by the C2 server
 	ListenerController *handlers.ListenerHandler
+	ListenerService    *services.ListenersService // for autostart
+	ListenerDal        *dal.ListenerDAL
 	PayloadController  *handlers.PayloadHandler
+	ModuleController   *handlers.ModuleController
+	ListenerContainer
 }
 
 func NewContainer() (*Container, error) {
@@ -30,32 +41,46 @@ func NewContainer() (*Container, error) {
 		return nil, err
 	}
 
-	redisService := repos.NewRedisService()
-	schema := conf.GetMeduzaDbSchema()
-
 	logger.Info("Setting Up Data Access Layer")
+	schema := conf.GetMeduzaDbSchema()
 	userDal := dal.NewUsersDAL(pgsql, schema)
-	adminDal := dal.NewAdminsDAL(pgsql, schema)
+	teamDal := dal.NewTeamDAL(pgsql, schema)
 	agentDal := dal.NewAgentDAL(pgsql, schema)
 	checkInDal := dal.NewCheckInDAL(pgsql, schema)
 	listenerDal := dal.NewListenerDAL(pgsql, schema)
 	payloadDal := dal.NewPayloadDAL(pgsql, schema)
+	moduleDal := dal.NewModuleDAL(pgsql, schema)
 
-	// Check In Controller
+	// CheckInController is owned by the listener server
 	checkInController := services.NewCheckInController(checkInDal, agentDal)
+	agentAuthController := services.NewAgentAuthController(payloadDal)
 
-	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 15, 30*24*60*60)
-	listenersService := services.NewListenerService(checkInController)
+	// Initialize services
+	redisService := repos.NewRedisService()
+	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
+	listenersService := services.NewListenerService(checkInController, agentAuthController)
+
+	//Type assertion error fix
+	autoStart, ok := listenerDal.(*dal.ListenerDAL)
+	if !ok {
+		logger.Warn("Unable to type assetion ListenerDAL")
+	}
 
 	return &Container{
 		UserController:     handlers.NewUserController(userDal),
 		RedisService:       &redisService,
 		AuthController:     handlers.NewAuthController(userDal, jwtService),
+		TeamController:     handlers.NewTeamController(teamDal),
 		JwtService:         jwtService,
-		AdminController:    handlers.NewAdminController(adminDal),
 		AgentController:    handlers.NewAgentController(agentDal),
-		CheckInController:  checkInController,
 		ListenerController: handlers.NewListenersHandler(listenerDal, listenersService),
+		ListenerService:    listenersService,
+		ListenerDal:        autoStart,
 		PayloadController:  handlers.NewPayloadHandler(agentDal, listenerDal, payloadDal),
+		ModuleController:   handlers.NewModuleController(moduleDal),
+		ListenerContainer: ListenerContainer{
+			CheckInController:   checkInController,
+			AgentAuthController: agentAuthController,
+		},
 	}, nil
 }

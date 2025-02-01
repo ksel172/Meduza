@@ -7,19 +7,15 @@ import (
 	"github.com/google/uuid"
 )
 
-type (
-	Id       = uuid.UUID
-	status   = int32
-	LogLevel = string
-)
-
 // Listener Statuses (Enum)
+type status uint8
+
 const (
-	StatusStopped    status = 0
-	StatusRunning    status = 1
-	StatusPaused     status = 2
-	StatusProcessing status = 3
-	StatusError      status = 4
+	StatusStopped status = iota
+	StatusRunning
+	StatusPaused
+	StatusProcessing
+	StatusError
 )
 
 // Listener Types (Enum)
@@ -38,6 +34,8 @@ var AllowedListenerTypes = []string{
 }
 
 // Log levels
+type LogLevel string
+
 const (
 	Silly LogLevel = "silly" // logs everthing, including verbose information
 	Debug LogLevel = "debug" // logs detailed debugging information.
@@ -59,12 +57,12 @@ var ValidLogLevel = []LogLevel{
 
 // Listener represents a listener configuration , including settings for logging, response rules, and network configuration.
 type Listener struct {
-	ID          Id     `json:"id"`                    // UUID
-	Type        string `json:"type"`                  // Listener Type (http, tcp, etc.)
-	Name        string `json:"name"`                  // Name
-	Status      int    `json:"status"`                // 0 = stopped, 1 = running, 2 = paused, 3 = processing
-	Description string `json:"description,omitempty"` // description
-	Config      any    `json:"config"`                // Configuration of the Listener
+	ID          uuid.UUID `json:"id"`                    // UUID
+	Type        string    `json:"type"`                  // Listener Type (http, tcp, etc.)
+	Name        string    `json:"name"`                  // Name
+	Status      int       `json:"status"`                // 0 = stopped, 1 = running, 2 = paused, 3 = processing
+	Description string    `json:"description,omitempty"` // description
+	Config      any       `json:"config"`                // Configuration of the Listener
 
 	// Logging
 	LoggingEnabled bool    `json:"logging_enabled"` // Toggle for enabling Logs

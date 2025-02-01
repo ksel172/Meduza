@@ -2,8 +2,6 @@ package models
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // C2Request represents any request sent to a C2 server by an Agent.
@@ -24,20 +22,13 @@ func NewC2Request() C2Request {
 
 // Validates if the C2Request contains valid data
 func (r C2Request) Valid() bool {
-
-	// Validate AgentID is uuid
-	if _, err := uuid.Parse(r.AgentID); err != nil {
-		return false
-	}
-
-	// Validate other fields are one of the valid values
 	return (r.AgentStatus == AgentUninitialized || r.AgentStatus == AgentActive || r.AgentStatus == AgentExited)
 }
 
 // Converts a C2Request into a new Agent for registration
 func (r C2Request) IntoNewAgent() Agent {
 	return Agent{
-		AgentID:       r.AgentID, // uuid generated at agent computer, sent with initial checkin request
+		AgentID:       r.AgentID, // uuid generated at agent host machine, sent with initial checkin request
 		ConfigID:      r.ConfigID,
 		Status:        r.AgentStatus,
 		FirstCallback: time.Now(),
@@ -45,7 +36,7 @@ func (r C2Request) IntoNewAgent() Agent {
 	}
 }
 
-type RequestReason int
+type RequestReason uint16
 
 const (
 	Register RequestReason = iota

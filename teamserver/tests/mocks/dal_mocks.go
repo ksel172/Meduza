@@ -105,11 +105,6 @@ func (m *MockCheckInDal) CreateAgent(ctx context.Context, agent models.Agent) er
 	return args.Error(0)
 }
 
-func (m *MockCheckInDal) GetAgent(ctx context.Context, agentID string) (models.Agent, error) {
-	args := m.Called(agentID)
-	return args.Get(0).(models.Agent), args.Error(1)
-}
-
 type MockUserDAL struct {
 	mock.Mock
 }
@@ -167,7 +162,36 @@ type MockAdminDal struct {
 	mock.Mock
 }
 
-func (m *MockAdminDal) CreateDefaultAdmins(ctx context.Context, admin *models.ResAdmin) error {
+func (m *MockAdminDal) CreateDefaultAdmins(ctx context.Context, admin *models.ResUser) error {
 	args := m.Called(admin)
 	return args.Error(0)
+}
+
+type MockPayloadDAL struct {
+	mock.Mock
+}
+
+func (m *MockPayloadDAL) CreatePayload(ctx context.Context, config models.PayloadConfig) error {
+	args := m.Called(config)
+	return args.Error(0)
+}
+
+func (m *MockPayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error) {
+	args := m.Called()
+	return args.Get(0).([]models.PayloadConfig), args.Error(1)
+}
+
+func (m *MockPayloadDAL) DeletePayload(ctx context.Context, payloadID string) error {
+	args := m.Called(payloadID)
+	return args.Error(0)
+}
+
+func (m *MockPayloadDAL) DeleteAllPayloads(ctx context.Context) error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockPayloadDAL) GetPayloadToken(ctx context.Context, configID string) (string, error) {
+	args := m.Called(configID)
+	return args.String(0), args.Error(1)
 }

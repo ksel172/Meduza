@@ -1,4 +1,4 @@
-﻿using Agent.ModuleBase;
+﻿using Meduza.Agent.ModuleBase;
 using System.Reflection;
 using System.Runtime.Loader;
 

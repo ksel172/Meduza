@@ -1,13 +1,18 @@
 package handlers
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
 type AgentController struct {
@@ -87,6 +92,10 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 	agentTask := agentTaskRequest.IntoAgentTask()
 	agentTask.AgentID = agentID
 
+	if agentTask.Type == models.HelpCommand {
+		// Placeholder for future help command logic
+	}
+
 	if err := ac.dal.CreateAgentTask(ctx, agentTask); err != nil {
 		ctx.JSON(http.StatusInternalServerError, fmt.Sprintf("Agent task creation failed: %s", err.Error()))
 		return
@@ -133,6 +142,31 @@ func (ac *AgentController) GetAgentTasks(ctx *gin.Context) {
 		return
 	}
 
+	// Load modules for each task
+	for i, task := range tasks {
+		//if task.Module != "" {
+		modulePath := filepath.Join(conf.GetModuleUploadPath(), task.Module)
+
+		moduleConfig, err := LoadModuleConfig(modulePath)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load module config: %s", err.Error())})
+			return
+		}
+		logger.Info(moduleConfig) //
+
+		moduleBytes, err := json.Marshal(moduleConfig.Module)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to marshal module config: %s", err.Error())})
+			return
+		}
+
+		logger.Info(moduleBytes)
+
+		task.Module = base64.StdEncoding.EncodeToString(moduleBytes)
+		tasks[i] = task
+		//}
+	}
+
 	ctx.JSON(http.StatusOK, tasks)
 }
 
@@ -152,8 +186,8 @@ func (ac *AgentController) DeleteAgentTasks(ctx *gin.Context) {
 }
 
 func (ac *AgentController) DeleteAgentTask(ctx *gin.Context) {
-	agentID := ctx.Param("id")
-	taskID := ctx.Param("task_id")
+	agentID := ctx.Param(models.ParamAgentID)
+	taskID := ctx.Param(models.ParamTaskID)
 	if agentID == "" || taskID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id and task_id are required"})
 		return

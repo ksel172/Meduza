@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
@@ -37,6 +38,8 @@ const (
 	MeduzaJWTTokenEnvVar        = "JWT_TOKEN"
 	BaseConfPathEnvVar          = "BASECONF_PATH"
 	BaseConfPathDefault         = "./agent/Agent/baseconf.json"
+	ModuleUploadPathEnvVar      = "MODULE_UPLOAD_PATH"
+	ModuleUploadPathDefault     = "./teamserver/modules"
 )
 
 func GetMeduzaServerHostname() string {
@@ -104,4 +107,20 @@ func GetMeduzaJWTToken() string {
 
 func GetBaseConfPath() string {
 	return utils.GetEnvString(BaseConfPathEnvVar, BaseConfPathDefault)
+}
+
+func GetModuleUploadPath() string {
+	return utils.GetEnvString(ModuleUploadPathEnvVar, ModuleUploadPathDefault)
+}
+
+func GetProjectRootPath() string {
+	// Get the directory of the currently running file
+	execPath, err := os.Executable()
+	if err != nil {
+		panic("Failed to determine the executable path: " + err.Error())
+	}
+
+	// Resolve the executable path to the root project directory
+	projectRoot := filepath.Dir(filepath.Dir(execPath)) // Assuming the binary is two levels deep in the project
+	return projectRoot
 }

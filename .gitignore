@@ -9,6 +9,7 @@ main.exe*
 Makefile
 
 teamserver/build
+teamserver/modules
 teamserver/tmp
 
 ## Ignore Visual Studio temporary files, build results, and
