@@ -16,6 +16,13 @@ import {
   CardDescription
 } from "@/components/ui/card"
 
+import { useToast } from "@/hooks/use-toast"
+import { ToastAction } from "@/components/ui/toast"
+
+import axios from "axios";
+
+import { formatISO } from "date-fns";
+
 import { Label } from "@radix-ui/react-label";
 
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem, CommandGroup } from "@/components/ui/command";
@@ -37,6 +44,7 @@ import {
 
 import { format } from "date-fns"
 import { Switch } from "@/components/ui/switch";
+import { useCookies } from "react-cookie";
 
 
 export default function Listeners() {
@@ -45,44 +53,67 @@ export default function Listeners() {
   const [value, setValue] = useState();
   const [open, setOpen] = useState();
   const [isCreating, setIsCreating] = useState(false);
+
   const [selectedHostValues, setSelectedHostValues] = React.useState<string[]>([]);
   const [selectedHeaderValues, setSelectedHeaderValues] = React.useState<string[]>([]);
   const [selectedWhitelistValues, setSelectedWhitelistValues] = React.useState<string[]>([]);
   const [selectedBlacklistValues, setSelectedBlacklistValues] = React.useState<string[]>([]);
+
+  const [listenerName, setListenerName] = useState("");
+  const [listenerDescription, setListenerDescription] = useState("");
+  const [listenerType, setListenerType] = useState("http"); //default
+
+  // HTTP LISTENER OPTIONS
+  const [hostIP, setHostIP] = useState("");
+  const [hostPort, setHostPort] = useState("");
+  const [connectionPort, setConnectionPort] = useState("");
+  const [workingHours, setWorkingHours] = useState("9-5");
+  const [hostRotation, setHostRotation] = useState("");
+  const [userAgent, setUserAgent] = useState("");
+  const [sslEnabled, setSslEnabled] = useState(false);
+  const [proxyEnabled, setProxyEnabled] = useState(false);
+  const [proxyType, setProxyType] = useState("");
+  const [proxyPort, setProxyPort] = useState("");
+  const [proxyUsername, setProxyUsername] = useState("");
+  const [proxyPassword, setProxyPassword] = useState("");
+  const [whitelistEnabled, setWhitelistEnabled] = useState(false);
+  const [blacklistEnabled, setBlacklistEnabled] = useState(false);
+
+
   const [defaultAgents, setDefaultAgents] = useState([
     {
-      value: "Firefox",
+      value: "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",
       label: "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",
     },
     {
-      value: "Firefox 2",
+      value: "Mozilla/5.0 (Windows NT 5.1; rv:37.0) Gecko/20100101 Firefox/37.0",
       label: "Mozilla/5.0 (Windows NT 5.1; rv:37.0) Gecko/20100101 Firefox/37.0",
     },
     {
-      value: "Firefox 3",
+      value: "Mozilla/5.0 (Windows NT 6.1; rv:32.0) Gecko/20100101 Firefox/32.0",
       label: "Mozilla/5.0 (Windows NT 6.1; rv:32.0) Gecko/20100101 Firefox/32.0",
     },
     {
-      value: "Intel Mac",
+      value: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:31.0) Gecko/20100101 Firefox/31.0",
       label: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:31.0) Gecko/20100101 Firefox/31.0",
     },
     {
-      value: "Linux",
+      value: "Mozilla/5.0 (X11; Linux i686; rv:40.0) Gecko/20100101 Firefox/40.0",
       label: "Mozilla/5.0 (X11; Linux i686; rv:40.0) Gecko/20100101 Firefox/40.0",
     },
   ])
 
   const [defaultHeaders, setDefaultHeaders] = useState([
     {
-      value: "Content Type JSON",
+      value: '{"key": "Content-Type", "value": "application/json"}',
       label: '{"key": "Content-Type", "value": "application/json"}',
     },
     {
-      value: "Connection Alive",
+      value: '{"key": "Connection", "value": "keep-alive"}',
       label: '{"key": "Connection", "value": "keep-alive"}',
     },
     {
-      value: "Cache Control",
+      value: '{"key": "Accept", "value": "*/*"}',
       label: '{"key": "Accept", "value": "*/*"}',
     },
   ])
@@ -101,22 +132,20 @@ export default function Listeners() {
     }
   ])
 
-  const [defaultHosts, setDefaultHosts] = useState([
-    {
-      value: "localhost",
-      label: 'http://localhost:8080',
-    }
-  ])
+  const [defaultHosts, setDefaultHosts] = useState([])
 
-  const listeners = [
-    {
-      name: "CIA Listener",
-      listenerStatus: "Alive",
-      listenerType: "HTTP",
-      listenerBind: "0.0.0.0:80",
-      startTime: "12/19/2024"
-    }
-  ]
+  interface Listener {
+    name: string;
+    listenerStatus: string;
+    listenerType: string;
+    listenerBind: string;
+    startTime: string;
+  }
+
+  const [listeners, setListeners] = useState<Listener[]>([]);
+
+  const [cookies, setCookie, removeCookie] = useCookies(["cookie-name"]);
+  const { toast } = useToast()
 
   const agentHeaders = ["Name", "Status", "Listener Type", "Bind", "Start Time"];
 
@@ -132,12 +161,126 @@ export default function Listeners() {
       </TableCell>
       <TableCell>{listener.listenerType}</TableCell>
       <TableCell>{listener.listenerBind}</TableCell>
-      <TableCell>{listener.startTime}</TableCell>
+      <TableCell>{format(listener.startTime, "Pp")}</TableCell>
       <TableCell className="text-right m-0 p-0">
         <Ellipsis />
       </TableCell>
     </>
   );
+
+  const axiosInstance = axios.create({
+    baseURL: 'http://localhost:8080/api/v1', // Ensure this matches your API base URL
+    headers: {
+      'Content-Type': 'application/json', // Set default headers if required
+    },
+  });
+
+  const refreshToken = async () => {
+    if(cookies.refresh_token){
+      console.log(cookies.refresh_token)
+      try {
+        const url = "/auth/refresh";
+        const tokenResponse = await axiosInstance.get(url,
+          {
+            "refresh_token": cookies.refresh_token
+          }
+        );
+        console.log(tokenResponse);
+
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  };
+
+  const fetchListeners = async () => {
+    try {
+        const url = "/listeners/all";
+        const listenersData = await axiosInstance.get(url,
+          {
+            headers: { authorization: `Bearer ${cookies.jwt}` }
+          }
+        );
+        console.log(listenersData.data.data);
+
+        setListeners((prevListeners) => [
+          ...prevListeners,
+          ...listenersData.data.data.map((listener : any) => ({
+            name: listener.name || "Unknown Listener",
+            listenerStatus: listener.status || "Unknown",
+            listenerType: listener.type || "Unknown",
+            listenerBind: listener.config.host_bind + ":" + listener.config.port_bind || "N/A",
+            startTime: listener.created_at || "N/A",
+          })),
+        ]);
+    } catch (error) {
+        console.log(error);
+        if(error.status === 401 && cookies.refresh_token){
+          refreshToken();
+        }
+    }
+  };
+
+  const createListener = async () => {
+    try{
+        const url = '/listeners';
+        const { data } = await axiosInstance.post(
+            url,
+            {
+              "type": listenerType,
+              "name": listenerName,
+              "description": listenerDescription,
+              "config": {
+                "working_hours": "9-5",
+                "hosts": selectedHostValues,
+                "host_bind": hostIP,
+                "host_rotation": hostRotation,
+                "port_bind": hostPort,
+                "port_conn": connectionPort,
+                "secure": sslEnabled,
+                "user_agent": userAgent,
+                "headers": selectedHeaderValues,
+                "certificate": {
+                  "cert_path": "",
+                  "key_path": ""
+                },
+                "whitelist_enabled": whitelistEnabled,
+                "whitelist": selectedWhitelistValues,
+                "blacklist_enabled": blacklistEnabled,
+                "blacklist": selectedBlacklistValues,
+                "proxy_settings": {
+                  "enabled": proxyEnabled,
+                  "type": proxyType,
+                  "port": proxyPort,
+                  "username": proxyUsername,
+                  "password": proxyPassword
+                }
+              }
+            },
+            {
+                headers: { authorization: `Bearer ${cookies.jwt}` }
+            }
+        );
+        toast({
+          title: "Listener Creation Successful!",
+          description: "You have successfully created a listener.",
+          action: (
+            <ToastAction altText="undo">Close</ToastAction>
+          ),
+        })
+        location.reload()
+    }
+    catch(error){
+        console.log(error);
+        toast({
+          title: "Listener Creation Failed...",
+          description: "Ensure the port is within the same range as specified in the docker compose.",
+          action: (
+            <ToastAction altText="undo">Close</ToastAction>
+          ),
+        })
+    }
+  }
 
   React.useEffect(() => {
     console.log("Hosts Array: ", selectedHostValues)
@@ -146,13 +289,17 @@ export default function Listeners() {
     console.log("Blacklist Array: ", selectedBlacklistValues)
   }, [selectedBlacklistValues, selectedHeaderValues, selectedHostValues, selectedWhitelistValues])
 
+  React.useEffect(() => {
+    fetchListeners();
+  }, [])
+
   if(isCreating === false){
     return (
       <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] gap-4 justify-items-center items-center flex flex-col pb-0 mb-0 p-0">
         <div className="w-[calc(100vw-var(--sidebar-width)-6.5em)] h-[100%] flex flex-col gap-4 justify-items-center min-h-screen pb-4 p-0 m-6">
-          <div className="flex flex-row justify-between p-1 bg-secondary w-[19em] rounded">
-            <Button className="w-[10em]">Table</Button>
-            <Button className="bg-transparent text-white w-[10em]" onClick={() => setIsCreating(true)}>Add</Button>
+          <div className="flex flex-row justify-between p-1 bg-secondary w-[19em] h-[2.5em] rounded">
+            <Button className="w-[10em] h-[100%]">Table</Button>
+            <Button className="bg-transparent text-white w-[10em] h-[100%] hover:bg-[#3d3d3d]" onClick={() => setIsCreating(true)}>Add</Button>
           </div>
           <Card className="w-[calc(100vw-var(--sidebar-width)-6.5em)]">
             <CardContent className="m-0 p-0">
@@ -160,7 +307,8 @@ export default function Listeners() {
             </CardContent>
           </Card>
           <div className="flex flex-row w-[calc(100vw-var(--sidebar-width)-6.5em)] justify-between">
-            <p>1 total listener(s) found.</p>
+            {/* <p>1 total listener(s) found.</p> */}
+            <p>{listeners.length} total listener(s) found.</p>
             <div className="flex flex-row gap-2">
               <Button>Previous</Button>
               <Button>Next</Button>
@@ -174,11 +322,11 @@ export default function Listeners() {
 
       <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] gap-4 justify-items-center items-center flex flex-col pb-0 mb-0 p-0 mt-6">
         <div className="flex flex-row w-[calc(100vw-var(--sidebar-width)-6.5em)] justify-between">
-          <div className="flex flex-row justify-between p-1 bg-secondary w-[19em] rounded">
-            <Button className="bg-transparent text-white w-[10em]" onClick={() => setIsCreating(false)}>Table</Button>
-            <Button className="w-[10em]">Add</Button>
+          <div className="flex flex-row justify-between p-1 bg-secondary w-[19em] h-[2.5em] rounded">
+            <Button className="bg-transparent text-white w-[10em] h-[100%] hover:bg-[#3d3d3d]" onClick={() => setIsCreating(false)}>Table</Button>
+            <Button className="w-[10em] h-[100%]">Add</Button>
           </div>
-          <Button className="w-[10em]">Create</Button>
+          <Button className="w-[10em]" onClick={() => createListener()}>+ Create</Button>
         </div>
         <div className="w-[calc(100vw-var(--sidebar-width)-6.5em)] grid grid-cols-3 gap-0 items-start justify-items-end p-0 mb-0 mt-0 border-solid border-2 pt-5 rounded">
           <Card className="mx-auto border-none w-[100%] space-x-2">
@@ -186,15 +334,15 @@ export default function Listeners() {
               <div className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="email">Name</Label>
-                    <Input id="email" type="email" placeholder="CIA Listener" required />
+                    <Input id="email" type="email" placeholder="CIA Listener" value={listenerName} onChange={(e) => setListenerName(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Description</Label>
-                  <Input id="email" type="email" placeholder="Definitely not spyware..." required />
+                  <Input id="email" type="email" placeholder="Definitely not spyware..." value={listenerDescription} onChange={(e) => setListenerDescription(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Listener Type</Label>
-                  <Select>
+                  <Select onValueChange={setListenerType}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select Listener Type" />
                     </SelectTrigger>
@@ -209,10 +357,6 @@ export default function Listeners() {
                     </SelectContent>
                   </Select>
                 </div>
-                  {/* <div className="flex items-center space-x-2">
-                    <Switch id="ssl-mode" />
-                    <Label htmlFor="enable-proxy">Enable Secure Connection</Label>
-                  </div> */}
               </div>
             </CardContent>
           </Card>
@@ -223,17 +367,17 @@ export default function Listeners() {
                 <div className="flex flex-row justify-between items-center gap-2">
                   <div className="space-y-2 w-[100%]">
                     <Label htmlFor="password">Bind IP</Label>
-                    <Input id="password" type="password" placeholder="0.0.0.0" required />
+                    <Input placeholder="0.0.0.0" value={hostIP} onChange={(e) => setHostIP(e.target.value)} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Bind Port</Label>
-                    <Input id="password" type="password" placeholder="80" required />
+                    <Input placeholder="80" value={hostPort} onChange={(e) => setHostPort(e.target.value)} required />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Connection Port</Label>
-                  <Input id="email" type="email" placeholder="8080" required />
+                  <Input id="email" type="email" placeholder="8080" value={connectionPort} onChange={(e) => setConnectionPort(e.target.value)} required />
                 </div>
 
                 <div className="space-y-2" >
@@ -292,7 +436,7 @@ export default function Listeners() {
               </div>
               <div className="space-y-2 w-[100%]">
                 <Label htmlFor="email">Host Rotation</Label>
-                <Select>
+                <Select onValueChange={setHostRotation}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Rotation Method" />
                   </SelectTrigger>
@@ -306,11 +450,10 @@ export default function Listeners() {
               <div className="space-y-2">
                   <Label htmlFor="email">User Agent</Label>
                   {/* <MultiSelectPopover initialFrameworks={defaultAgents} selectPlaceholder="Select Agents..." addPlaceholder="Add Agent"/> */}
-                  <Input id="email" type="email" placeholder="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0" />
+                  <Input id="email" type="email" placeholder="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0" value={userAgent} onChange={(e) => setUserAgent(e.target.value)} />
               </div>
               <div className="space-y-2">
                   <Label htmlFor="email">Custom Headers</Label>
-                  {/* <Input id="email" type="email" placeholder='{"key": "X-Custom-Header", "value": "CustomValue"}' /> */}
                   <MultiSelectPopover initialFrameworks={defaultHeaders} selectPlaceholder="Select Headers..." addPlaceholder="Add Header" selectedValues={selectedHeaderValues} setSelectedValues={setSelectedHeaderValues}/>
               </div>
             </CardContent>
@@ -323,7 +466,7 @@ export default function Listeners() {
           <Card className="mx-auto border-none w-[100%] space-x-2">
             <CardContent className="flex flex-col gap-5">
               <div className="flex items-center space-x-2">
-                <Switch id="airplane-mode" />
+                <Switch id="secure-connection" checked={sslEnabled} onCheckedChange={setSslEnabled} />
                 <Label htmlFor="enable-proxy">Enable Secure Connection</Label>
               </div>
               <div className="space-y-2">
@@ -359,13 +502,13 @@ export default function Listeners() {
           <Card className="mx-auto border-none w-[100%] space-x-2">
             <CardContent className="flex flex-col gap-5">
               <div className="flex items-center space-x-2">
-                <Switch id="airplane-mode" />
+                <Switch id="proxy-mode" checked={proxyEnabled} onCheckedChange={setProxyEnabled} />
                 <Label htmlFor="enable-proxy">Enable Proxy</Label>
               </div>
               <div className="flex flex-row items-center justify-between w-[100%] gap-2">
                 <div className="space-y-2 w-[100%]">
                   <Label htmlFor="email">Proxy Type</Label>
-                  <Select>
+                  <Select onValueChange={setProxyType}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select Proxy Type" />
                     </SelectTrigger>
@@ -378,17 +521,17 @@ export default function Listeners() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Proxy Port</Label>
-                  <Input id="email" type="email" placeholder="1234" required />
+                  <Input id="email" type="email" placeholder="1234" value={proxyPort} onChange={(e) => setProxyPort(e.target.value)} required />
                 </div>
               </div>
               <div className="flex flex-row justify-between items-center gap-2">
                 <div className="w-[100%]">
                   <Label htmlFor="password">Username</Label>
-                  <Input id="password" type="password" placeholder="Batman" required />
+                  <Input id="password" type="password" placeholder="Batman" value={proxyUsername} onChange={(e) => setProxyUsername(e.target.value)} required />
                 </div>
                 <div className="w-[100%]">
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" placeholder="****" required />
+                  <Input id="password" type="password" placeholder="****" value={proxyPassword} onChange={(e) => setProxyPassword(e.target.value)} required />
                 </div>
               </div>
             </CardContent>
@@ -397,7 +540,7 @@ export default function Listeners() {
           <Card className="mx-auto border-none w-[100%] space-x-2">
             <CardContent className="flex flex-col gap-5">
               <div className="flex items-center space-x-2">
-                <Switch id="airplane-mode" />
+                <Switch id="whitelist-option" checked={whitelistEnabled} onCheckedChange={setWhitelistEnabled} />
                 <Label htmlFor="enable-proxy">Enable Whitelisted IP's</Label>
               </div>
               <div className="space-y-2">
@@ -407,7 +550,7 @@ export default function Listeners() {
               </div>
 
               <div className="flex items-center space-x-2">
-                <Switch id="airplane-mode" />
+                <Switch id="blacklist-option" checked={blacklistEnabled} onCheckedChange={setBlacklistEnabled} />
                 <Label htmlFor="enable-proxy">Enable Blacklisted IP's</Label>
               </div>
               <div className="space-y-2">
