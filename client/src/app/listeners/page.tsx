@@ -45,6 +45,7 @@ export default function Listeners() {
   const [value, setValue] = useState();
   const [open, setOpen] = useState();
   const [isCreating, setIsCreating] = useState(false);
+<<<<<<< Updated upstream
   
   const [isSecureConnEnabled, setIsSecureConnEnabled] = useState(false);
   const handleSwitchToggle = (checked: boolean) => {
@@ -65,6 +66,12 @@ export default function Listeners() {
   const handleBlacklistedSwitchToggle = (checked: boolean) => {
     setIsBlacklistedEnabled(checked);
   };
+=======
+  const [selectedHostValues, setSelectedHostValues] = React.useState<string[]>([]);
+  const [selectedHeaderValues, setSelectedHeaderValues] = React.useState<string[]>([]);
+  const [selectedWhitelistValues, setSelectedWhitelistValues] = React.useState<string[]>([]);
+  const [selectedBlacklistValues, setSelectedBlacklistValues] = React.useState<string[]>([]);
+>>>>>>> Stashed changes
   const [defaultAgents, setDefaultAgents] = useState([
     {
       value: "Firefox",
@@ -154,6 +161,13 @@ export default function Listeners() {
       </TableCell>
     </>
   );
+
+  // React.useEffect(() => {
+  //   console.log("Hosts Array: ", selectedHostValues)
+  //   console.log("Header Array: ", selectedHeaderValues)
+  //   console.log("Whitelist Array: ", selectedWhitelistValues)
+  //   console.log("Blacklist Array: ", selectedBlacklistValues)
+  // }, [selectedBlacklistValues, selectedHeaderValues, selectedHostValues, selectedWhitelistValues])
 
   if(isCreating === false){
     return (
@@ -412,6 +426,7 @@ export default function Listeners() {
           </Select>
         </div>
 
+<<<<<<< Updated upstream
         {/* Key File Select */}
         <div className="space-y-2">
           <Label htmlFor="key-file" className={isSecureConnEnabled ? '' : 'opacity-50'}>
@@ -571,6 +586,62 @@ export default function Listeners() {
     </div>
   </CardContent>
 </Card>
+=======
+          <Card className="mx-auto max-w-sm border-none w-[100%] mt-4">
+            <CardContent className="flex flex-col gap-5">
+              <div className="space-y-2">
+                  <Label htmlFor="email">Hosts Selection</Label>
+                  {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
+                  <MultiSelectPopover initialFrameworks={defaultHosts} selectPlaceholder="Select Hosts..." addPlaceholder="Add Hosts" selectedValues={selectedHostValues} setSelectedValues={setSelectedHostValues}/>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Host Rotation</Label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Rotation Method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="apple">Fallback</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="email">User Agent</Label>
+                  {/* <MultiSelectPopover initialFrameworks={defaultAgents} selectPlaceholder="Select Agents..." addPlaceholder="Add Agent"/> */}
+                  <Input id="email" type="email" placeholder="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0" />
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="email">Custom Headers</Label>
+                  {/* <Input id="email" type="email" placeholder='{"key": "X-Custom-Header", "value": "CustomValue"}' /> */}
+                  <MultiSelectPopover initialFrameworks={defaultHeaders} selectPlaceholder="Select Headers..." addPlaceholder="Add Header" selectedValues={selectedHeaderValues} setSelectedValues={setSelectedHeaderValues}/>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mx-auto max-w-sm border-none w-[100%] mt-4">
+            <CardContent className="flex flex-col gap-5">
+              <div className="flex items-center space-x-2">
+                <Switch id="airplane-mode" />
+                <Label htmlFor="enable-proxy">Enable Whitelisted IP's</Label>
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="email">Select IP's</Label>
+                  {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
+                  <MultiSelectPopover initialFrameworks={whitelistedIPs} selectPlaceholder="Select IPs..." addPlaceholder="Add IP" selectedValues={selectedWhitelistValues} setSelectedValues={setSelectedWhitelistValues}/>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch id="airplane-mode" />
+                <Label htmlFor="enable-proxy">Enable Blacklisted IP's</Label>
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="email">Select IP's</Label>
+                  {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
+                  <MultiSelectPopover initialFrameworks={whitelistedIPs} selectPlaceholder="Select IPs..." addPlaceholder="Add IP" selectedValues={selectedBlacklistValues} setSelectedValues={setSelectedBlacklistValues}/>
+              </div>
+>>>>>>> Stashed changes
 
         </div>
       </div>

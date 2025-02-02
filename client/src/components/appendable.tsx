@@ -29,15 +29,19 @@ import { Badge } from "@/components/ui/badge"
 
 export function MultiSelectPopover({
     initialFrameworks,
+    selectedValues,
+    setSelectedValues,
     selectPlaceholder,
     addPlaceholder,
   }: {
     initialFrameworks: { value: string, label: string }[]
+    selectedValues: string[];
+    setSelectedValues: React.Dispatch<React.SetStateAction<string[]>>;
     selectPlaceholder: string;
     addPlaceholder: string;
   }) {
   const [open, setOpen] = React.useState(false)
-  const [selectedValues, setSelectedValues] = React.useState<string[]>([])
+  // const [selectedValues, setSelectedValues] = React.useState<string[]>([])
   const [frameworks, setFrameworks] = React.useState(initialFrameworks)
   const [inputValue, setInputValue] = React.useState("")
 
