@@ -28,7 +28,7 @@ export function UserManagement() {
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto border-none">
+    <Card className="w-full max-w-4xl mx-auto border-none max-h-[50vh] overflow-y-scroll">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-2xl font-bold">Teams</CardTitle>
         {isAdmin && (

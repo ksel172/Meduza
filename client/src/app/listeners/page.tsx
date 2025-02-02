@@ -45,6 +45,10 @@ export default function Listeners() {
   const [value, setValue] = useState();
   const [open, setOpen] = useState();
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedHostValues, setSelectedHostValues] = React.useState<string[]>([]);
+  const [selectedHeaderValues, setSelectedHeaderValues] = React.useState<string[]>([]);
+  const [selectedWhitelistValues, setSelectedWhitelistValues] = React.useState<string[]>([]);
+  const [selectedBlacklistValues, setSelectedBlacklistValues] = React.useState<string[]>([]);
   const [defaultAgents, setDefaultAgents] = useState([
     {
       value: "Firefox",
@@ -135,6 +139,13 @@ export default function Listeners() {
     </>
   );
 
+  React.useEffect(() => {
+    console.log("Hosts Array: ", selectedHostValues)
+    console.log("Header Array: ", selectedHeaderValues)
+    console.log("Whitelist Array: ", selectedWhitelistValues)
+    console.log("Blacklist Array: ", selectedBlacklistValues)
+  }, [selectedBlacklistValues, selectedHeaderValues, selectedHostValues, selectedWhitelistValues])
+
   if(isCreating === false){
     return (
       <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] gap-4 justify-items-center items-center flex flex-col pb-0 mb-0 p-0">
@@ -164,127 +175,94 @@ export default function Listeners() {
       <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] gap-4 justify-items-center items-center flex flex-col pb-0 mb-0 p-0 mt-6">
         <div className="flex flex-row w-[calc(100vw-var(--sidebar-width)-6.5em)] justify-between">
           <div className="flex flex-row justify-between p-1 bg-secondary w-[19em] rounded">
-              <Button className="bg-transparent text-white w-[10em]" onClick={() => setIsCreating(false)}>Table</Button>
-              <Button className="w-[10em]">Add</Button>
+            <Button className="bg-transparent text-white w-[10em]" onClick={() => setIsCreating(false)}>Table</Button>
+            <Button className="w-[10em]">Add</Button>
           </div>
           <Button className="w-[10em]">Create</Button>
         </div>
         <div className="w-[calc(100vw-var(--sidebar-width)-6.5em)] grid grid-cols-3 gap-0 items-start justify-items-end p-0 mb-0 mt-0 border-solid border-2 pt-5 rounded">
           <Card className="mx-auto max-w-sm border-none mb-4">
             <CardContent>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="email">Name</Label>
-                      <Input id="email" type="email" placeholder="CIA Listener" required />
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="email">Description</Label>
-                      <Input id="email" type="email" placeholder="Definitely not spyware..." required />
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="email">Listener Type</Label>
-                      {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Listener Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            <SelectItem value="http">HTTP/S</SelectItem>
-                            <SelectItem value="tcp">TCP</SelectItem>
-                            <SelectItem value="udp">UDP</SelectItem>
-                            <SelectItem value="smb">SMB</SelectItem>
-                            <SelectItem value="winrm">WINRM</SelectItem>
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="email">Name</Label>
+                    <Input id="email" type="email" placeholder="CIA Listener" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Description</Label>
+                  <Input id="email" type="email" placeholder="Definitely not spyware..." required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Listener Type</Label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Listener Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="http">HTTP/S</SelectItem>
+                        <SelectItem value="tcp">TCP</SelectItem>
+                        <SelectItem value="udp">UDP</SelectItem>
+                        <SelectItem value="smb">SMB</SelectItem>
+                        <SelectItem value="winrm">WINRM</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Switch id="ssl-mode" />
                     <Label htmlFor="enable-proxy">Enable Secure Connection</Label>
                   </div>
-                  {/* <div className="flex flex-row justify-center items-center gap-2">
-                    <div>
-                      <Label htmlFor="password">Bind IP</Label>
-                      <Input id="password" type="password" placeholder="0.0.0.0" required />
-                    </div>
-                    <div>
-                      <Label htmlFor="password">Bind Port</Label>
-                      <Input id="password" type="password" placeholder="80" required />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="email">Connection Port</Label>
-                      <Input id="email" type="email" placeholder="8080" required />
-                  </div> */}
-                </div>
+              </div>
             </CardContent>
           </Card>
 
           <Card className="mx-auto max-w-sm border-none mb-4">
             <CardContent>
-                <div className="space-y-4">
-                  {/* <div className="space-y-2">
-                      <Label htmlFor="email">Working Hours</Label>
-                      <Input id="email" type="email" placeholder="Round Robin" required />
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Rotation Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            <SelectItem value="apple">Round Robin</SelectItem>
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                  </div> */}
+              <div className="space-y-4">
+                <div className="flex flex-row justify-center items-center gap-2">
+                  <div>
+                    <Label htmlFor="password">Bind IP</Label>
+                    <Input id="password" type="password" placeholder="0.0.0.0" required />
+                  </div>
+                  <div>
+                    <Label htmlFor="password">Bind Port</Label>
+                    <Input id="password" type="password" placeholder="80" required />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Connection Port</Label>
+                  <Input id="email" type="email" placeholder="8080" required />
+                </div>
+
+                <div className="space-y-2" >
+                  <Label htmlFor="email">Working Hours</Label>
                   <div className="flex flex-row justify-center items-center gap-2">
-                    <div>
-                      <Label htmlFor="password">Bind IP</Label>
-                      <Input id="password" type="password" placeholder="0.0.0.0" required />
-                    </div>
-                    <div>
-                      <Label htmlFor="password">Bind Port</Label>
-                      <Input id="password" type="password" placeholder="80" required />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="email">Connection Port</Label>
-                      <Input id="email" type="email" placeholder="8080" required />
-                  </div>
-                  <div className="space-y-2" >
-                    <Label htmlFor="email">Working Hours</Label>
-                    <div className="flex flex-row justify-center items-center gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !date && "text-muted-foreground")} >
+                          <CalendarIcon />
+                          {date ? format(date, "P") : <span>From</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={date}
+                          onSelect={setDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             variant={"outline"}
-                            className={cn(
-                              "w-[240px] justify-start text-left font-normal",
-                              !date && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon />
-                            {date ? format(date, "P") : <span>From</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={setDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-[240px] justify-start text-left font-normal",
-                              !date && "text-muted-foreground"
-                            )}
+                                      className={cn(
+                                        "w-[240px] justify-start text-left font-normal",
+                                        !date && "text-muted-foreground"
+                                      )}
                           >
                             <CalendarIcon />
                             {date ? format(date, "P") : <span>Until</span>}
@@ -299,9 +277,9 @@ export default function Listeners() {
                           />
                         </PopoverContent>
                       </Popover>
-                    </div>
                   </div>
                 </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -312,22 +290,21 @@ export default function Listeners() {
                 <Label htmlFor="enable-proxy">Enable Proxy</Label>
               </div>
               <div className="space-y-2">
-                  <Label htmlFor="email">Enable Proxy</Label>
-                  {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Proxy Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="apple">RIO (Experimental)</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                <Label htmlFor="email">Enable Proxy</Label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Proxy Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="apple">RIO (Experimental)</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                  <Label htmlFor="email">Proxy Port</Label>
-                  <Input id="email" type="email" placeholder="1234" required />
+                <Label htmlFor="email">Proxy Port</Label>
+                <Input id="email" type="email" placeholder="1234" required />
               </div>
               <div className="flex flex-row justify-center items-center gap-2">
                 <div>
@@ -353,33 +330,31 @@ export default function Listeners() {
                 <Label htmlFor="enable-proxy">Enable Secure Connection</Label>
               </div>
               <div className="space-y-2">
-                  <Label htmlFor="email">Certificate File</Label>
-                  {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="cert.cer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="apple">Cert</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                <Label htmlFor="email">Certificate File</Label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="cert.cer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="apple">Cert</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
                 <Label htmlFor="email">Key File</Label>
-                {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="key.pem" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="apple">Key</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="key.pem" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="apple">Key</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
               </div>
             </CardContent>
           </Card>
@@ -389,7 +364,7 @@ export default function Listeners() {
               <div className="space-y-2">
                   <Label htmlFor="email">Hosts Selection</Label>
                   {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                  <MultiSelectPopover initialFrameworks={defaultHosts} selectPlaceholder="Select Hosts..." addPlaceholder="Add Hosts"/>
+                  <MultiSelectPopover initialFrameworks={defaultHosts} selectPlaceholder="Select Hosts..." addPlaceholder="Add Hosts" selectedValues={selectedHostValues} setSelectedValues={setSelectedHostValues}/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Host Rotation</Label>
@@ -412,7 +387,7 @@ export default function Listeners() {
               <div className="space-y-2">
                   <Label htmlFor="email">Custom Headers</Label>
                   {/* <Input id="email" type="email" placeholder='{"key": "X-Custom-Header", "value": "CustomValue"}' /> */}
-                  <MultiSelectPopover initialFrameworks={defaultHeaders} selectPlaceholder="Select Headers..." addPlaceholder="Add Header"/>
+                  <MultiSelectPopover initialFrameworks={defaultHeaders} selectPlaceholder="Select Headers..." addPlaceholder="Add Header" selectedValues={selectedHeaderValues} setSelectedValues={setSelectedHeaderValues}/>
               </div>
             </CardContent>
           </Card>
@@ -426,7 +401,7 @@ export default function Listeners() {
               <div className="space-y-2">
                   <Label htmlFor="email">Select IP's</Label>
                   {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                  <MultiSelectPopover initialFrameworks={whitelistedIPs} selectPlaceholder="Select IPs..." addPlaceholder="Add IP"/>
+                  <MultiSelectPopover initialFrameworks={whitelistedIPs} selectPlaceholder="Select IPs..." addPlaceholder="Add IP" selectedValues={selectedWhitelistValues} setSelectedValues={setSelectedWhitelistValues}/>
               </div>
 
               <div className="flex items-center space-x-2">
@@ -436,9 +411,8 @@ export default function Listeners() {
               <div className="space-y-2">
                   <Label htmlFor="email">Select IP's</Label>
                   {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                  <MultiSelectPopover initialFrameworks={whitelistedIPs} selectPlaceholder="Select IPs..." addPlaceholder="Add IP"/>
+                  <MultiSelectPopover initialFrameworks={whitelistedIPs} selectPlaceholder="Select IPs..." addPlaceholder="Add IP" selectedValues={selectedBlacklistValues} setSelectedValues={setSelectedBlacklistValues}/>
               </div>
-
             </CardContent>
           </Card>
         </div>
