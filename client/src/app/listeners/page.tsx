@@ -181,7 +181,7 @@ export default function Listeners() {
           <Button className="w-[10em]">Create</Button>
         </div>
         <div className="w-[calc(100vw-var(--sidebar-width)-6.5em)] grid grid-cols-3 gap-0 items-start justify-items-end p-0 mb-0 mt-0 border-solid border-2 pt-5 rounded">
-          <Card className="mx-auto max-w-sm border-none mb-4">
+          <Card className="mx-auto border-none w-[100%] space-x-2">
             <CardContent>
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -208,24 +208,24 @@ export default function Listeners() {
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  </div>
-                  <div className="flex items-center space-x-2">
+                </div>
+                  {/* <div className="flex items-center space-x-2">
                     <Switch id="ssl-mode" />
                     <Label htmlFor="enable-proxy">Enable Secure Connection</Label>
-                  </div>
+                  </div> */}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="mx-auto max-w-sm border-none mb-4">
+          <Card className="mx-auto border-none w-[100%] space-x-2">
             <CardContent>
               <div className="space-y-4">
-                <div className="flex flex-row justify-center items-center gap-2">
-                  <div>
+                <div className="flex flex-row justify-between items-center gap-2">
+                  <div className="space-y-2 w-[100%]">
                     <Label htmlFor="password">Bind IP</Label>
                     <Input id="password" type="password" placeholder="0.0.0.0" required />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="password">Bind Port</Label>
                     <Input id="password" type="password" placeholder="80" required />
                   </div>
@@ -283,47 +283,44 @@ export default function Listeners() {
             </CardContent>
           </Card>
 
-          <Card className="mx-auto max-w-sm border-none w-[100%] mt-4">
+          <Card className="mx-auto border-none w-[100%] space-x-2">
             <CardContent className="flex flex-col gap-5">
-              <div className="flex items-center space-x-2">
-                <Switch id="airplane-mode" />
-                <Label htmlFor="enable-proxy">Enable Proxy</Label>
+              <div className="space-y-2 w-[100%]">
+                  <Label htmlFor="email">Hosts Selection</Label>
+                  {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
+                  <MultiSelectPopover initialFrameworks={defaultHosts} selectPlaceholder="Select Hosts..." addPlaceholder="Add Hosts" selectedValues={selectedHostValues} setSelectedValues={setSelectedHostValues}/>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Enable Proxy</Label>
+              <div className="space-y-2 w-[100%]">
+                <Label htmlFor="email">Host Rotation</Label>
                 <Select>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Proxy Type" />
+                    <SelectValue placeholder="Select Rotation Method" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="apple">RIO (Experimental)</SelectItem>
+                      <SelectItem value="apple">Fallback</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Proxy Port</Label>
-                <Input id="email" type="email" placeholder="1234" required />
+                  <Label htmlFor="email">User Agent</Label>
+                  {/* <MultiSelectPopover initialFrameworks={defaultAgents} selectPlaceholder="Select Agents..." addPlaceholder="Add Agent"/> */}
+                  <Input id="email" type="email" placeholder="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0" />
               </div>
-              <div className="flex flex-row justify-center items-center gap-2">
-                <div>
-                  <Label htmlFor="password">Username</Label>
-                  <Input id="password" type="password" placeholder="Batman" required />
-                </div>
-                <div>
-                  <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" placeholder="****" required />
-                </div>
+              <div className="space-y-2">
+                  <Label htmlFor="email">Custom Headers</Label>
+                  {/* <Input id="email" type="email" placeholder='{"key": "X-Custom-Header", "value": "CustomValue"}' /> */}
+                  <MultiSelectPopover initialFrameworks={defaultHeaders} selectPlaceholder="Select Headers..." addPlaceholder="Add Header" selectedValues={selectedHeaderValues} setSelectedValues={setSelectedHeaderValues}/>
               </div>
             </CardContent>
           </Card>
 
-          <span className="border-solid border-0 border-b rounded-none h-[1px] w-[100%]" />
-          <span className="border-solid border-0 border-b rounded-none h-[1px] w-[100%]" />
-          <span className="border-solid border-0 border-b rounded-none h-[1px] w-[100%]" />
+          <span className="border-solid border-0 border-b rounded-none h-[1px] w-[100%] mt-6 mb-6" />
+          <span className="border-solid border-0 border-b rounded-none h-[1px] w-[100%] mt-6 mb-6" />
+          <span className="border-solid border-0 border-b rounded-none h-[1px] w-[100%] mt-6 mb-6" />
 
-          <Card className="mx-auto max-w-sm border-none w-[100%] mt-4">
+          <Card className="mx-auto border-none w-[100%] space-x-2">
             <CardContent className="flex flex-col gap-5">
               <div className="flex items-center space-x-2">
                 <Switch id="airplane-mode" />
@@ -359,40 +356,45 @@ export default function Listeners() {
             </CardContent>
           </Card>
 
-          <Card className="mx-auto max-w-sm border-none w-[100%] mt-4">
+          <Card className="mx-auto border-none w-[100%] space-x-2">
             <CardContent className="flex flex-col gap-5">
-              <div className="space-y-2">
-                  <Label htmlFor="email">Hosts Selection</Label>
-                  {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                  <MultiSelectPopover initialFrameworks={defaultHosts} selectPlaceholder="Select Hosts..." addPlaceholder="Add Hosts" selectedValues={selectedHostValues} setSelectedValues={setSelectedHostValues}/>
+              <div className="flex items-center space-x-2">
+                <Switch id="airplane-mode" />
+                <Label htmlFor="enable-proxy">Enable Proxy</Label>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Host Rotation</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Rotation Method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="apple">Fallback</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-row items-center justify-between w-[100%] gap-2">
+                <div className="space-y-2 w-[100%]">
+                  <Label htmlFor="email">Proxy Type</Label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Proxy Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="apple">RIO (Experimental)</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Proxy Port</Label>
+                  <Input id="email" type="email" placeholder="1234" required />
+                </div>
               </div>
-              <div className="space-y-2">
-                  <Label htmlFor="email">User Agent</Label>
-                  {/* <MultiSelectPopover initialFrameworks={defaultAgents} selectPlaceholder="Select Agents..." addPlaceholder="Add Agent"/> */}
-                  <Input id="email" type="email" placeholder="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0" />
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="email">Custom Headers</Label>
-                  {/* <Input id="email" type="email" placeholder='{"key": "X-Custom-Header", "value": "CustomValue"}' /> */}
-                  <MultiSelectPopover initialFrameworks={defaultHeaders} selectPlaceholder="Select Headers..." addPlaceholder="Add Header" selectedValues={selectedHeaderValues} setSelectedValues={setSelectedHeaderValues}/>
+              <div className="flex flex-row justify-between items-center gap-2">
+                <div className="w-[100%]">
+                  <Label htmlFor="password">Username</Label>
+                  <Input id="password" type="password" placeholder="Batman" required />
+                </div>
+                <div className="w-[100%]">
+                  <Label htmlFor="password">Password</Label>
+                  <Input id="password" type="password" placeholder="****" required />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="mx-auto max-w-sm border-none w-[100%] mt-4">
+          <Card className="mx-auto border-none w-[100%] space-x-2">
             <CardContent className="flex flex-col gap-5">
               <div className="flex items-center space-x-2">
                 <Switch id="airplane-mode" />
