@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -31,48 +32,52 @@ func NewListenersHandler(dal dal.IListenerDAL, service *services.ListenersServic
 }
 
 func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
-
-	// Read the request body into listener model
 	var listener models.Listener
 	if err := ctx.ShouldBindJSON(&listener); err != nil {
 		ctx.JSON(http.StatusConflict, gin.H{
-			"message": "Invalid Request body.Please type correct input",
+			"message": "Invalid Request body. Please type correct input",
 			"status":  utils.Status.ERROR,
 		})
-		logger.Error("Request Body Error while bind the json:\n", err)
+		logger.Error("Request Body Error while binding the JSON:\n", err)
 		return
 	}
 
 	reqCtx := ctx.Request.Context()
 
-	// Convert the parsed configuration back to JSON
-	/* configJSON, err := json.Marshal(listener.Config)
+	// Check if a listener with the same name already exists
+	existingListener, err := h.dal.GetListenerByName(reqCtx, listener.Name)
 	if err != nil {
-		logger.Error("Error converting parsed config to JSON:", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Internal error processing configuration.",
+			"message": "Internal server error",
 			"status":  utils.Status.ERROR,
 		})
+		logger.Error("Error checking for existing listener by name:\n", err)
 		return
 	}
-	listener.Config = configJSON */
+	if existingListener.ID != uuid.Nil {
+		ctx.JSON(http.StatusConflict, gin.H{
+			"message": "Listener with the same name already exists",
+			"status":  utils.Status.ERROR,
+		})
+		logger.Warn("Attempt to create listener with duplicate name:", listener.Name)
+		return
+	}
 
 	// Create the listener in the database
-	err := h.dal.CreateListener(reqCtx, &listener)
+	err = h.dal.CreateListener(reqCtx, &listener)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"status":  utils.Status.ERROR,
 			"message": "Unable to create a listener.",
 		})
-		logger.Error("Error Occured while Adding Data to listener:\n", err)
+		logger.Error("Error occurred while adding data to listener:\n", err)
 		return
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
 		"status":  utils.Status.SUCCESS,
-		"message": "listener created successfully",
+		"message": "Listener created successfully",
 	})
-
 }
 
 func (h *ListenerHandler) GetAllListeners(ctx *gin.Context) {
