@@ -45,7 +45,6 @@ export default function Listeners() {
   const [value, setValue] = useState();
   const [open, setOpen] = useState();
   const [isCreating, setIsCreating] = useState(false);
-<<<<<<< Updated upstream
   
   const [isSecureConnEnabled, setIsSecureConnEnabled] = useState(false);
   const handleSwitchToggle = (checked: boolean) => {
@@ -66,12 +65,10 @@ export default function Listeners() {
   const handleBlacklistedSwitchToggle = (checked: boolean) => {
     setIsBlacklistedEnabled(checked);
   };
-=======
   const [selectedHostValues, setSelectedHostValues] = React.useState<string[]>([]);
   const [selectedHeaderValues, setSelectedHeaderValues] = React.useState<string[]>([]);
   const [selectedWhitelistValues, setSelectedWhitelistValues] = React.useState<string[]>([]);
   const [selectedBlacklistValues, setSelectedBlacklistValues] = React.useState<string[]>([]);
->>>>>>> Stashed changes
   const [defaultAgents, setDefaultAgents] = useState([
     {
       value: "Firefox",
@@ -426,167 +423,6 @@ export default function Listeners() {
           </Select>
         </div>
 
-<<<<<<< Updated upstream
-        {/* Key File Select */}
-        <div className="space-y-2">
-          <Label htmlFor="key-file" className={isSecureConnEnabled ? '' : 'opacity-50'}>
-            Key File
-          </Label>
-          <Select disabled={!isSecureConnEnabled}>
-            <SelectTrigger className={isSecureConnEnabled ? '' : 'opacity-50 pointer-events-none'}>
-              <SelectValue placeholder="(.pem)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="apple">Key</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-      </CardContent>
-    </Card>
-
-
-    <Card className="mx-auto max-w-sm border-none w-[100%] mt-4">
-  <CardContent className="flex flex-col gap-5">
-    {/* Proxy Switch */}
-    <div className="flex items-center space-x-2">
-      <Switch
-        id="enable-proxy-switch"
-        checked={isProxyEnabled}
-        onCheckedChange={handleProxySwitchToggle}
-      />
-      <Label htmlFor="enable-proxy-switch">Enable Proxy</Label>
-    </div>
-
-    
-    <div className="flex flex-row space-x-2">
-      {/* Proxy Type Select */}
-      <div className="w-full space-y-2">
-        <Label htmlFor="proxy-type" className={isProxyEnabled ? '' : 'opacity-50'}>
-          Proxy Type
-        </Label>
-        <Select disabled={!isProxyEnabled}>
-          <SelectTrigger
-            className={`${isProxyEnabled ? '' : 'opacity-50 pointer-events-none'}`}
-          >
-            <SelectValue placeholder="" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value="apple">RIO (Experimental)</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Proxy Port Input */}
-      <div className="w-[150px] space-y-2">
-        <Label htmlFor="proxy-port" className={isProxyEnabled ? '' : 'opacity-50'}>
-          Proxy Port
-        </Label>
-        <Input
-          id="proxy-port"
-          type="number"
-          placeholder=""
-          required
-          disabled={!isProxyEnabled}
-          className={`${isProxyEnabled ? '' : 'opacity-50 pointer-events-none'}`}
-        />
-      </div>
-    </div>
-
-    {/* Username and Password Inputs */}
-    <div className="flex flex-row justify-center items-center gap-2">
-      <div className="space-y-2">
-        <Label htmlFor="username" className={isProxyEnabled ? '' : 'opacity-50'}>
-          Username
-        </Label>
-        <Input
-          id="username"
-          type="text"
-          placeholder=""
-          required
-          disabled={!isProxyEnabled}
-          className={`${isProxyEnabled ? '' : 'opacity-50 pointer-events-none'}`}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password" className={isProxyEnabled ? '' : 'opacity-50'}>
-          Password
-        </Label>
-        <Input
-          id="password"
-          type="password"
-          placeholder=""
-          required
-          disabled={!isProxyEnabled}
-          className={`${isProxyEnabled ? '' : 'opacity-50 pointer-events-none'}`}
-        />
-      </div>
-    </div>
-  </CardContent>
-</Card>
-
-
-<Card className="mx-auto max-w-sm border-none w-[100%] mt-4">
-  <CardContent className="flex flex-col gap-5">
-    {/* Whitelisted IPs Switch */}
-    <div className="flex items-center space-x-2">
-      <Switch
-        id="whitelisted-switch"
-        checked={isWhitelistedEnabled}
-        onCheckedChange={handleWhitelistedSwitchToggle}
-      />
-      <Label htmlFor="whitelisted-switch">Enable Whitelisted IP's</Label>
-    </div>
-    <div className="space-y-2">
-      <Label
-        htmlFor="whitelisted-ips"
-        className={isWhitelistedEnabled ? '' : 'opacity-50'}
-      >
-        Select IP's
-      </Label>
-      <div
-        className={`${!isWhitelistedEnabled ? 'opacity-50 pointer-events-none' : ''}`}
-      >
-        <MultiSelectPopover
-          initialFrameworks={whitelistedIPs}
-          selectPlaceholder=""
-          addPlaceholder="Add IP"
-        />
-      </div>
-    </div>
-
-    {/* Blacklisted IPs Switch */}
-    <div className="flex items-center space-x-2">
-      <Switch
-        id="blacklisted-switch"
-        checked={isBlacklistedEnabled}
-        onCheckedChange={handleBlacklistedSwitchToggle}
-      />
-      <Label htmlFor="blacklisted-switch">Enable Blacklisted IP's</Label>
-    </div>
-    <div className="space-y-2">
-      <Label
-        htmlFor="blacklisted-ips"
-        className={isBlacklistedEnabled ? '' : 'opacity-50'}
-      >
-        Select IP's
-      </Label>
-      <div
-        className={`${!isBlacklistedEnabled ? 'opacity-50 pointer-events-none' : ''}`}
-      >
-        <MultiSelectPopover
-          initialFrameworks={blacklistedIPs}
-          selectPlaceholder=""
-          addPlaceholder="Add IP"
-        />
-      </div>
-    </div>
-  </CardContent>
-</Card>
-=======
           <Card className="mx-auto max-w-sm border-none w-[100%] mt-4">
             <CardContent className="flex flex-col gap-5">
               <div className="space-y-2">
@@ -641,7 +477,6 @@ export default function Listeners() {
                   {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
                   <MultiSelectPopover initialFrameworks={whitelistedIPs} selectPlaceholder="Select IPs..." addPlaceholder="Add IP" selectedValues={selectedBlacklistValues} setSelectedValues={setSelectedBlacklistValues}/>
               </div>
->>>>>>> Stashed changes
 
         </div>
       </div>
