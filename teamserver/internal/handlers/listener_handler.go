@@ -34,24 +34,19 @@ func NewListenersHandler(dal dal.IListenerDAL, service *services.ListenersServic
 func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 	var listener models.Listener
 	if err := ctx.ShouldBindJSON(&listener); err != nil {
-		ctx.JSON(http.StatusConflict, gin.H{
-			"message": "Invalid Request body. Please type correct input",
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid request payload",
 			"status":  utils.Status.ERROR,
 		})
-		logger.Error("Request Body Error while binding the JSON:\n", err)
 		return
 	}
 
-	reqCtx := ctx.Request.Context()
-
-	// Check if a listener with the same name already exists
-	existingListener, err := h.dal.GetListenerByName(reqCtx, listener.Name)
+	existingListener, err := h.dal.GetListenerByName(ctx.Request.Context(), listener.Name)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Internal server error",
 			"status":  utils.Status.ERROR,
 		})
-		logger.Error("Error checking for existing listener by name:\n", err)
 		return
 	}
 	if existingListener.ID != uuid.Nil {
@@ -59,18 +54,37 @@ func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 			"message": "Listener with the same name already exists",
 			"status":  utils.Status.ERROR,
 		})
-		logger.Warn("Attempt to create listener with duplicate name:", listener.Name)
 		return
 	}
 
+	// Validate the listener configuration
+	switch listener.Type {
+	case models.ListenerTypeHTTP:
+		var httpConfig models.HTTPListenerConfig
+		if err := utils.MapToStruct(listener.Config, &httpConfig); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid configuration for HTTP listener",
+				"status":  utils.Status.ERROR,
+			})
+			return
+		}
+		if err := httpConfig.Validate(); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"message": err.Error(),
+				"status":  utils.Status.ERROR,
+			})
+			return
+		}
+		listener.Config = httpConfig
+	}
+
 	// Create the listener in the database
-	err = h.dal.CreateListener(reqCtx, &listener)
+	err = h.dal.CreateListener(ctx.Request.Context(), &listener)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"status":  utils.Status.ERROR,
 			"message": "Unable to create a listener.",
 		})
-		logger.Error("Error occurred while adding data to listener:\n", err)
 		return
 	}
 

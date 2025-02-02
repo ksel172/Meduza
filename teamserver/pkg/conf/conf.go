@@ -39,6 +39,8 @@ const (
 	BaseConfPathDefault         = "./agent/Agent/baseconf.json"
 	ModuleUploadPathEnvVar      = "MODULE_UPLOAD_PATH"
 	ModuleUploadPathDefault     = "./teamserver/modules"
+	ListenPortRangeStartEnvVar  = "LISTENER_PORT_RANGE_START"
+	ListenPortRangeEndEnvVar    = "LISTENER_PORT_RANGE_END"
 )
 
 func GetMeduzaServerHostname() string {
@@ -113,4 +115,12 @@ func GetProjectRootPath() string {
 	// Resolve the executable path to the root project directory
 	projectRoot := filepath.Dir(filepath.Dir(execPath)) // Assuming the binary is two levels deep in the project
 	return projectRoot
+}
+
+func GetListenerPortRangeStart() int {
+	return utils.GetEnvInt(ListenPortRangeStartEnvVar, 8000)
+}
+
+func GetListenerPortRangeEnd() int {
+	return utils.GetEnvInt(ListenPortRangeEndEnvVar, 8010)
 }

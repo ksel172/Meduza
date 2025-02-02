@@ -2,9 +2,11 @@ package models
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 )
 
 // Listener Statuses (Enum)
@@ -109,27 +111,44 @@ type HTTPListenerConfig struct {
 
 // Validate ensures the configuration is valid before use.
 func (config *HTTPListenerConfig) Validate() error {
+
+	portRangeStart := conf.GetListenerPortRangeStart()
+	portRangeEnd := conf.GetListenerPortRangeEnd()
+
 	if config.HostBind == "" {
 		return fmt.Errorf("HostBind is required")
 	}
 	if config.PortBind == "" {
 		return fmt.Errorf("PortBind is required")
 	}
+
+	portBindInt, err := strconv.Atoi(config.PortBind)
+	if err != nil {
+		return fmt.Errorf("PortBind must be a valid integer")
+	}
+
+	if portBindInt < portRangeStart || portBindInt > portRangeEnd {
+		return fmt.Errorf("PortBind must be within the range %d-%d", portRangeStart, portRangeEnd)
+	}
+
 	for _, validType := range ValidCallbackRotationTypes {
 		if validType == config.HostRotation {
 			return fmt.Errorf("enter a valid host rotation type digit")
 		}
 	}
+
 	/*
-		if len(config.Uris) == 0 {
-			return fmt.Errorf("At least one URI is required")
-		}
+	   if len(config.Uris) == 0 {
+	       return fmt.Errorf("At least one URI is required")
+	   }
 	*/
+
 	if config.Secure {
 		if config.Certificate.CertPath == "" || config.Certificate.KeyPath == "" {
 			return fmt.Errorf("Certificate paths are required for secure mode")
 		}
 	}
+
 	return nil
 }
 
