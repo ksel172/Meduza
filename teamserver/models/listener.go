@@ -131,41 +131,41 @@ func (config *HTTPListenerConfig) Validate() error {
 	}
 
 	if len(config.Hosts) == 0 {
-		return fmt.Errorf("At least one host is required")
+		return fmt.Errorf("at least one host is required")
 	}
 
 	for _, host := range config.Hosts {
 		if host == "" {
-			return fmt.Errorf("Hosts cannot contain empty values")
+			return fmt.Errorf("hosts cannot contain empty values")
 		}
 	}
 
 	if config.Secure {
 		if config.Certificate.CertPath == "" || config.Certificate.KeyPath == "" {
-			return fmt.Errorf("Certificate paths are required for secure mode")
+			return fmt.Errorf("certificate paths are required for secure mode")
 		}
 	}
 
 	if config.WhitelistEnabled && len(config.Whitelist) == 0 {
-		return fmt.Errorf("Whitelist is enabled but no whitelist entries are provided")
+		return fmt.Errorf("whitelist is enabled but no whitelist entries are provided")
 	}
 
 	if config.BlacklistEnabled && len(config.Blacklist) == 0 {
-		return fmt.Errorf("Blacklist is enabled but no blacklist entries are provided")
+		return fmt.Errorf("blacklist is enabled but no blacklist entries are provided")
 	}
 
 	for _, header := range config.Headers {
 		if header.Key == "" || header.Value == "" {
-			return fmt.Errorf("Headers must have both key and value")
+			return fmt.Errorf("headers must have both key and value")
 		}
 	}
 
 	if config.ProxySettings.Enabled {
 		if config.ProxySettings.Type == "" {
-			return fmt.Errorf("Proxy type is required when proxy is enabled")
+			return fmt.Errorf("proxy type is required when proxy is enabled")
 		}
 		if config.ProxySettings.Port == "" {
-			return fmt.Errorf("Proxy port is required when proxy is enabled")
+			return fmt.Errorf("proxy port is required when proxy is enabled")
 		}
 	}
 
