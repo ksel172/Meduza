@@ -103,6 +103,7 @@ type HTTPListenerConfig struct {
 	WhitelistEnabled bool             `json:"whitelist_enabled"`
 	Whitelist        []string         `json:"whitelist"`
 	BlacklistEnabled bool             `json:"blacklist_enabled"`
+	Blacklist        []string         `json:"blacklist"`
 	ProxySettings    ProxySettings    `json:"proxy_settings"`
 }
 
