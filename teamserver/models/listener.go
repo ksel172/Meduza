@@ -109,7 +109,6 @@ type HTTPListenerConfig struct {
 	ProxySettings    ProxySettings `json:"proxy_settings"`
 }
 
-// Validate ensures the configuration is valid before use.
 func (config *HTTPListenerConfig) Validate() error {
 
 	portRangeStart := conf.GetListenerPortRangeStart()
@@ -131,21 +130,42 @@ func (config *HTTPListenerConfig) Validate() error {
 		return fmt.Errorf("PortBind must be within the range %d-%d", portRangeStart, portRangeEnd)
 	}
 
-	for _, validType := range ValidCallbackRotationTypes {
-		if validType == config.HostRotation {
-			return fmt.Errorf("enter a valid host rotation type digit")
-		}
+	if len(config.Hosts) == 0 {
+		return fmt.Errorf("At least one host is required")
 	}
 
-	/*
-	   if len(config.Uris) == 0 {
-	       return fmt.Errorf("At least one URI is required")
-	   }
-	*/
+	for _, host := range config.Hosts {
+		if host == "" {
+			return fmt.Errorf("Hosts cannot contain empty values")
+		}
+	}
 
 	if config.Secure {
 		if config.Certificate.CertPath == "" || config.Certificate.KeyPath == "" {
 			return fmt.Errorf("Certificate paths are required for secure mode")
+		}
+	}
+
+	if config.WhitelistEnabled && len(config.Whitelist) == 0 {
+		return fmt.Errorf("Whitelist is enabled but no whitelist entries are provided")
+	}
+
+	if config.BlacklistEnabled && len(config.Blacklist) == 0 {
+		return fmt.Errorf("Blacklist is enabled but no blacklist entries are provided")
+	}
+
+	for _, header := range config.Headers {
+		if header.Key == "" || header.Value == "" {
+			return fmt.Errorf("Headers must have both key and value")
+		}
+	}
+
+	if config.ProxySettings.Enabled {
+		if config.ProxySettings.Type == "" {
+			return fmt.Errorf("Proxy type is required when proxy is enabled")
+		}
+		if config.ProxySettings.Port == "" {
+			return fmt.Errorf("Proxy port is required when proxy is enabled")
 		}
 	}
 
