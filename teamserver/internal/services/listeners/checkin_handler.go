@@ -36,8 +36,8 @@ var (
 		mu:       sync.Mutex{},
 		registry: make(map[string][]byte),
 	}
-	LogLevel  = "[Handler] "
-	LogDetail = "[CheckIn] "
+	LogLevel  = "[Handler]"
+	LogDetail = "[CheckIn]"
 )
 
 type ICheckInController interface {
@@ -45,65 +45,76 @@ type ICheckInController interface {
 }
 
 type CheckInController struct {
+	payloadDAL dal.IPayloadDAL
 	checkInDAL dal.ICheckInDAL
 	agentDAL   dal.IAgentDAL
 }
 
-func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL) *CheckInController {
-	return &CheckInController{checkInDAL: checkInDAL, agentDAL: agentDAL}
+func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL, payloadDAL dal.IPayloadDAL) *CheckInController {
+	return &CheckInController{checkInDAL: checkInDAL, agentDAL: agentDAL, payloadDAL: payloadDAL}
 }
 
 func (cc *CheckInController) Checkin(ctx *gin.Context) {
-
-	req, exists := ctx.Get("c2request")
-	if !exists {
-		logger.Error(LogLevel, LogDetail, "c2request not set by previous handler")
-		ctx.Status(http.StatusInternalServerError)
+	var c2request models.C2Request
+	if err := ctx.ShouldBindJSON(&c2request); err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to bind body with C2Request model: %v", err))
+		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	c2request, ok := req.(models.C2Request)
-	if !ok {
-		logger.Error(LogLevel, LogDetail, "c2request is not of C2Request type")
-		ctx.Status(http.StatusInternalServerError)
-		return
-	}
-
-	// Verify if the agent has sent authentication token (done in the previous handler)
-	// if yes, server will have to provide the client with the key
-	if _, ok := ctx.Get(AuthToken); ok {
-		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling encryption key request for agent %s", c2request.AgentID))
-		cc.handleEncryptionKeyRequest(ctx, c2request)
-		return
-	}
-	if c2request.Reason == models.Task {
+	switch c2request.Reason {
+	case models.Authenticate:
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling authentication request for agent %s", c2request.AgentID))
+		cc.authenticate(ctx, c2request)
+	case models.Task:
 		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling task request for agent %s", c2request.AgentID))
 		cc.handleTaskRequest(ctx, c2request)
-
-	} else if c2request.Reason == models.Response {
+		return
+	case models.Response:
 		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling response request for agent %s", c2request.AgentID))
 		cc.handleResponseRequest(ctx, c2request)
 		return
-	} else if c2request.Reason == models.Register {
+	case models.Register:
 		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling register request for agent %s", c2request.AgentID))
 		cc.handleRegisterRequest(ctx, c2request)
 		return
 	}
 }
 
-func (cc *CheckInController) handleEncryptionKeyRequest(ctx *gin.Context, c2request models.C2Request) {
-	// Generate an AES key for this session to communicate with the agent
-	key, err := utils.GenerateAES256Key()
+func (cc *CheckInController) authenticate(ctx *gin.Context, c2request models.C2Request) {
+	// Get the agent base 64 encoded public key and decode it
+	agentPublicKeyBase64 := c2request.Message
+	if agentPublicKeyBase64 == "" {
+		logger.Info("Authentication request sent with no public key")
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+	agentPublicKey, err := base64.StdEncoding.DecodeString(agentPublicKeyBase64)
 	if err != nil {
-		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to generate AES256 key: %v", err))
 		ctx.Status(http.StatusInternalServerError)
 		return
 	}
 
-	// Store the key in the registry
-	KeyRegistry.writeKey(c2request.AgentID, key)
+	// TODO: add agent public key signature verification here
 
-	ctx.JSON(http.StatusOK, gin.H{"key": key})
+	// Retrieve the server private key to derive shared key
+	// and the public key to send to the agent
+	serverPrivKey, serverPublicKey, err := cc.payloadDAL.GetKeys(ctx.Request.Context(), c2request.ConfigID)
+	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		return
+	}
+
+	// Generate AES session key and store in the registry
+	aesKey, err := utils.DeriveECDHSharedSecret(serverPrivKey, agentPublicKey)
+	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		return
+	}
+	KeyRegistry.writeKey(c2request.AgentID, aesKey)
+
+	// Return the server public key to the agent
+	ctx.JSON(http.StatusAccepted, gin.H{"message": base64.StdEncoding.EncodeToString(serverPublicKey)})
 }
 
 func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request models.C2Request) {
@@ -206,6 +217,25 @@ func (cc *CheckInController) handleResponseRequest(ctx *gin.Context, c2request m
 
 func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request models.C2Request) {
 	logger.Info(LogLevel, LogDetail, fmt.Sprintf("Received check-in request from agent: %s", c2request.AgentID))
+
+	// Get payload token from request and validate against the payload token
+	agentPayloadToken := ctx.GetHeader("Authorization")
+	if agentPayloadToken == "" {
+		logger.Info(LogLevel, LogDetail, "Register request sent with no payload token in header")
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+	serverPayloadToken, err := cc.payloadDAL.GetToken(ctx.Request.Context(), c2request.ConfigID)
+	if err != nil {
+		logger.Info(LogLevel, LogDetail, "Failed to get token for payload")
+		ctx.Status(http.StatusInternalServerError)
+		return
+	}
+	if agentPayloadToken != serverPayloadToken {
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Failed payload token comparison: %s != %s", agentPayloadToken, serverPayloadToken))
+		ctx.Status(http.StatusUnauthorized)
+		return
+	}
 
 	var agentInfo models.AgentInfo
 	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {

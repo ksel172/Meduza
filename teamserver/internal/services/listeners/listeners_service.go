@@ -13,17 +13,15 @@ import (
 )
 
 type ListenersService struct {
-	controller          listeners.ListenerController // controller is used internally to launch and manage listeners
-	checkinController   *CheckInController
-	agentAuthController *AgentAuthController
-	registry            *listeners.Registry
+	controller        listeners.ListenerController // controller is used internally to launch and manage listeners
+	checkinController *CheckInController
+	registry          *listeners.Registry
 }
 
-func NewListenerService(checkInController *CheckInController, agentAuthController *AgentAuthController) *ListenersService {
+func NewListenerService(checkInController *CheckInController) *ListenersService {
 	listenerService := &ListenersService{
-		registry:            listeners.NewRegistry(),
-		checkinController:   checkInController,
-		agentAuthController: agentAuthController,
+		registry:          listeners.NewRegistry(),
+		checkinController: checkInController,
 	}
 
 	// Create default http controller
@@ -56,7 +54,7 @@ func (s *ListenersService) CreateListenerController(listenerType string, config 
 		}
 
 		// Create HTTP controller and save to controller field
-		controller, err := NewHTTPListenerController(httpConfig.UserAgent, *httpConfig, s.checkinController, s.agentAuthController)
+		controller, err := NewHTTPListenerController(httpConfig.UserAgent, *httpConfig, s.checkinController)
 		if err != nil {
 			return fmt.Errorf("failed to create HTTP listener controller: %v", err)
 		}

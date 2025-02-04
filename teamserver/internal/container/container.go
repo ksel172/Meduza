@@ -14,8 +14,7 @@ import (
 
 // Controllers owned by the listener server
 type ListenerContainer struct {
-	CheckInController   *services.CheckInController
-	AgentAuthController *services.AgentAuthController
+	CheckInController *services.CheckInController
 }
 
 type Container struct {
@@ -52,13 +51,12 @@ func NewContainer() (*Container, error) {
 	moduleDal := dal.NewModuleDAL(pgsql, schema)
 
 	// CheckInController is owned by the listener server
-	checkInController := services.NewCheckInController(checkInDal, agentDal)
-	agentAuthController := services.NewAgentAuthController(payloadDal)
+	checkInController := services.NewCheckInController(checkInDal, agentDal, payloadDal)
 
 	// Initialize services
 	redisService := repos.NewRedisService()
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
-	listenersService := services.NewListenerService(checkInController, agentAuthController)
+	listenersService := services.NewListenerService(checkInController)
 
 	//Type assertion error fix
 	autoStart, ok := listenerDal.(*dal.ListenerDAL)
@@ -79,8 +77,7 @@ func NewContainer() (*Container, error) {
 		PayloadController:  handlers.NewPayloadHandler(agentDal, listenerDal, payloadDal),
 		ModuleController:   handlers.NewModuleController(moduleDal),
 		ListenerContainer: ListenerContainer{
-			CheckInController:   checkInController,
-			AgentAuthController: agentAuthController,
+			CheckInController: checkInController,
 		},
 	}, nil
 }
