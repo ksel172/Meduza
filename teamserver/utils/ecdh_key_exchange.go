@@ -9,7 +9,8 @@ import (
 
 // Using a P256 curve to generate the public and private keys
 func GenerateECDHKeyPair() ([]byte, []byte, error) {
-	privKey, err := ecdh.P256().GenerateKey(rand.Reader)
+	curve := ecdh.P256()
+	privKey, err := curve.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate private key: %v", err)
 	}
