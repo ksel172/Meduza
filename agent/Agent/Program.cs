@@ -45,9 +45,6 @@ var baseCommunicationService = new CommunicationService(baseConfig);
 
 var (privKey, pubKey) = ECDHUtils.GenerateECDHKeyPair();
 
-Console.WriteLine(JsonSerializer.Serialize(privKey));
-Console.WriteLine(JsonSerializer.Serialize(pubKey));
-
 var authRequest = new C2Request
 {
     Reason = C2RequestReason.Authenticate,
@@ -56,13 +53,10 @@ var authRequest = new C2Request
     Message = Convert.ToBase64String(pubKey)
 };
 
-byte[] peerPublicKey = Convert.FromBase64String("BFJWrGsCTB4Qz54xpLT2YKFCuycUyapLAxTroHBKi5d+P5wAp2JdXWBWkokZ9QGu150/d2esO9DLVHxjkA/+ddw=");
-byte[] sharedSecret = ECDHUtils.DeriveECDHSharedSecret(privKey, peerPublicKey);
-
-Console.WriteLine(JsonSerializer.Serialize(sharedSecret));
-
 var authResponse = baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(authRequest));
+var peerPublicKey = Convert.FromBase64String(authResponse.Result);
 Console.WriteLine("Auth response: " + authResponse.Result);
+byte[] sharedSecret = ECDHUtils.DeriveECDHSharedSecret(privKey, peerPublicKey);
 
 // TEMP
 string jsonOutput = JsonSerializer.Serialize(baseConfig);

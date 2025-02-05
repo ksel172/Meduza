@@ -114,7 +114,7 @@ func (cc *CheckInController) authenticate(ctx *gin.Context, c2request models.C2R
 	KeyRegistry.writeKey(c2request.AgentID, aesKey)
 
 	// Return the server public key to the agent
-	ctx.JSON(http.StatusAccepted, gin.H{"message": base64.StdEncoding.EncodeToString(serverPublicKey)})
+	ctx.String(http.StatusAccepted, base64.StdEncoding.EncodeToString(serverPublicKey))
 }
 
 func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request models.C2Request) {
