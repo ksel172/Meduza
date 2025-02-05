@@ -21,4 +21,21 @@ namespace Agent.Models.C2Request
 
         // public string Hmac { get; set; } = string.Empty;
     }
+
+    public class AuthenticationResponse
+    {
+
+        [JsonPropertyName("public_key")]
+        public string PublicKey { get; set; } = string.Empty;
+
+        [JsonPropertyName("session_token")]
+        public string SessionToken { get; set; } = string.Empty;
+    }
+
+    public class EncryptedRequest
+    {
+        [JsonPropertyName("message")]
+        public string Message { get; set; } = string.Empty;
+
+    }
 }
