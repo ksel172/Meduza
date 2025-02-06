@@ -69,7 +69,6 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 	sessionToken := ctx.GetHeader("Session-Token")
 
 	body, _ := ioutil.ReadAll(ctx.Request.Body)
-	logger.Info(string(body))
 	if len(body) == 0 {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
 		return
@@ -99,18 +98,20 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 		return
 	}
 
+	// TODO: What is illegal abput the converted string?
 	// Decode base64 encrypted request
 	encryptedData, err := base64.StdEncoding.DecodeString(string(body))
 	if err != nil {
-		logger.Info(err)
-		logger.Info(encryptedData)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid encrypted data"})
 		return
 	}
 
-	decryptedData, err := utils.AesDecrypt(encryptedData, key)
+	//TODO: Figured out that the shared secret doesn't actually match on both sides,
+	// so I need to reformat the way it is generated
+	logger.Info("SECRET: ", base64.StdEncoding.EncodeToString(key)) // Temp
+
+	decryptedData, err := utils.AesDecrypt(key, encryptedData)
 	if err != nil {
-		logger.Info(err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "decryption failed"})
 		return
 	}
@@ -298,39 +299,8 @@ func (cc *CheckInController) handleResponseRequest(ctx *gin.Context, c2request m
 func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request models.C2Request) {
 	logger.Info(LogLevel, LogDetail, fmt.Sprintf("Received check-in request from agent: %s", c2request.AgentID))
 
-	// Get the session token from the request header
-	sessionToken := ctx.GetHeader("Session-Token")
-	if sessionToken == "" {
-		logger.Info(LogLevel, LogDetail, "Register request sent with no session token in header")
-		ctx.Status(http.StatusBadRequest)
-		return
-	}
-
-	// Retrieve the AES key from the registry using the session token
-	aesKey, exists := KeyRegistry.getKey(sessionToken)
-	if !exists {
-		logger.Info(LogLevel, LogDetail, "Invalid session token")
-		ctx.Status(http.StatusUnauthorized)
-		return
-	}
-
-	// Decrypt the registration request message using the AES key
-	encryptedMessage, err := base64.StdEncoding.DecodeString(c2request.Message)
-	if err != nil {
-		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to decode encrypted message: %v", err))
-		ctx.Status(http.StatusInternalServerError)
-		return
-	}
-
-	decryptedMessage, err := utils.AesDecrypt(aesKey, encryptedMessage)
-	if err != nil {
-		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to decrypt message: %v", err))
-		ctx.Status(http.StatusInternalServerError)
-		return
-	}
-
 	var agentInfo models.AgentInfo
-	if err := json.Unmarshal(decryptedMessage, &agentInfo); err != nil {
+	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
 		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to parse agent info from decrypted message: %v", err))
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
 		return

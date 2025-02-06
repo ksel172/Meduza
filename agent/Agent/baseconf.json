@@ -1,11 +1,11 @@
 {
-  "payload_id": "7baef28b-f389-4970-81ed-1c26a47096d3",
+  "payload_id": "1c1f30d6-775a-45b3-9896-e408422884be",
   "payload_name": "newPayload",
-  "config_id": "0b2f5340-a6ba-49ae-8e50-9781815fe2c7",
-  "listener_id": "c393663a-3f65-47c8-8eb9-d8a613a7bd92",
-  "public_key": "BKHeaj9i/VfoTtvN6xiiwHhMGqw1qy/Vp7XsRwpghjq1cOUAcYyGe5Mnyk/REFICTLpgWFAHNJmvY8KMxODw9tk=",
-  "private_key": "7VsvCH46aOZdHDjBaY2Ry5vxJ7PgtpZ1GqSf/9Gkh54=",
-  "token": "6bc30465-fd9d-4067-bb1b-f9915b01fcb2",
+  "config_id": "4b560573-c518-4dbd-963f-6fec0fd3f904",
+  "listener_id": "654df40a-2b48-4edc-b685-f1b3385a34bf",
+  "public_key": "BNppW1Rt+QdEAtrfM9L2vabO21HuAnG6Omuw3xtXIIdlxIvVsmIGd5n1dCUwqwD6X4kqBwC5HaH+zwkbtu+ZjGU=",
+  "private_key": "+4TVyl33Y07HQNYfdZJQfukeEdZO+oYh8UGhlvZJmuA=",
+  "token": "d1cd3e01-a0e6-4d8a-a78d-8e951a7e99e4",
   "architecture": "win-x64",
   "config": {
     "blacklist": [

