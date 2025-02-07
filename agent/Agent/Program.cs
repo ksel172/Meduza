@@ -87,7 +87,10 @@ var registerRequest = new C2Request
 };
 
 var encryptedRegisterRequestMessage = aesEncryptionDecorator.Transform(JsonSerializer.Serialize(registerRequest), JsonSerializer.Serialize(sharedSecret));
-Console.WriteLine("Secret: " + JsonSerializer.Serialize(sharedSecret));
+
+// TODO: Need to fix the secret key gen to match server
+string secretByteString = "[" + string.Join(" ", sharedSecret.Select(b => b.ToString())) + "]";
+Console.WriteLine("Secret: " + secretByteString);
 Console.WriteLine(encryptedRegisterRequestMessage);
 
 // Init contact request

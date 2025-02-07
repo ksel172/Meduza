@@ -28,37 +28,31 @@ namespace Agent.Core.Utils
         {
             using (var ecdh = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256))
             {
-                // Import private key
                 var parameters = new ECParameters
                 {
                     Curve = ECCurve.NamedCurves.nistP256,
-                    D = privateKeyBytes
+                    D = privateKeyBytes,
+                    Q = new ECPoint
+                    {
+                        X = new byte[32],
+                        Y = new byte[32]
+                    }
                 };
                 ecdh.ImportParameters(parameters);
 
-                // Import peer's public key
-                using (var peerKey = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256))
+                var peerKey = ECDiffieHellman.Create();
+                var peerParams = new ECParameters
                 {
-                    var peerParams = new ECParameters
+                    Curve = ECCurve.NamedCurves.nistP256,
+                    Q = new ECPoint
                     {
-                        Curve = ECCurve.NamedCurves.nistP256,
-                        Q = new ECPoint
-                        {
-                            X = peerPublicKeyBytes.AsSpan(1, 32).ToArray(),
-                            Y = peerPublicKeyBytes.AsSpan(33, 32).ToArray()
-                        }
-                    };
-                    peerKey.ImportParameters(peerParams);
-
-                    // Derive shared secret
-                    byte[] sharedSecret = ecdh.DeriveKeyMaterial(peerKey.PublicKey);
-
-                    // Hash the shared secret to get the final key
-                    using (SHA256 sha256 = SHA256.Create())
-                    {
-                        return sha256.ComputeHash(sharedSecret);
+                        X = peerPublicKeyBytes[1..33],
+                        Y = peerPublicKeyBytes[33..65]
                     }
-                }
+                };
+                peerKey.ImportParameters(peerParams);
+
+                return ecdh.DeriveKeyFromHash(peerKey.PublicKey, HashAlgorithmName.SHA256);
             }
         }
     }
