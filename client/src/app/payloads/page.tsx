@@ -24,7 +24,7 @@ import axios from "axios";
 import { formatISO } from "date-fns";
 
 import { Label } from "@radix-ui/react-label";
-import { Pause, Play, PlayIcon, PlaySquare, PlaySquareIcon } from "lucide-react";
+import { Pause, Play, PlayIcon, PlaySquare, PlaySquareIcon, Trash2 } from "lucide-react";
 
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem, CommandGroup } from "@/components/ui/command";
 import { Check, ChevronsUpDown, MoreHorizontal } from "lucide-react"
@@ -52,89 +52,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 export default function Payloads() {
 
   const [date, setDate] = useState();
-  const [value, setValue] = useState();
-  const [open, setOpen] = useState();
   const [isCreating, setIsCreating] = useState(false);
 
-  const [selectedHostValues, setSelectedHostValues] = React.useState<string[]>([]);
-  const [selectedHeaderValues, setSelectedHeaderValues] = React.useState<string[]>([]);
-  const [selectedWhitelistValues, setSelectedWhitelistValues] = React.useState<string[]>([]);
-  const [selectedBlacklistValues, setSelectedBlacklistValues] = React.useState<string[]>([]);
+  const [payloadName, setPayloadName] = useState("");
+  const [payloadArchitecture, setPayloadArchitecture] = useState("win-x64"); //default
+  const [sleepValue, setSleepValue] = useState("");
+  const [jitterValue, setJitterValue] = useState("");
 
-  const [listenerName, setListenerName] = useState("");
-  const [listenerDescription, setListenerDescription] = useState("");
-  const [listenerType, setListenerType] = useState("http"); //default
-
-  // HTTP LISTENER OPTIONS
-  const [hostIP, setHostIP] = useState("");
-  const [hostPort, setHostPort] = useState("");
-  const [connectionPort, setConnectionPort] = useState("");
-  const [workingHours, setWorkingHours] = useState("9-5");
-  const [hostRotation, setHostRotation] = useState("");
-  const [userAgent, setUserAgent] = useState("");
-  const [sslEnabled, setSslEnabled] = useState(false);
-  const [proxyEnabled, setProxyEnabled] = useState(false);
-  const [proxyType, setProxyType] = useState("");
-  const [proxyPort, setProxyPort] = useState("");
-  const [proxyUsername, setProxyUsername] = useState("");
-  const [proxyPassword, setProxyPassword] = useState("");
-  const [whitelistEnabled, setWhitelistEnabled] = useState(false);
-  const [blacklistEnabled, setBlacklistEnabled] = useState(false);
-
-
-  const [defaultAgents, setDefaultAgents] = useState([
-    {
-      value: "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",
-      label: "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",
-    },
-    {
-      value: "Mozilla/5.0 (Windows NT 5.1; rv:37.0) Gecko/20100101 Firefox/37.0",
-      label: "Mozilla/5.0 (Windows NT 5.1; rv:37.0) Gecko/20100101 Firefox/37.0",
-    },
-    {
-      value: "Mozilla/5.0 (Windows NT 6.1; rv:32.0) Gecko/20100101 Firefox/32.0",
-      label: "Mozilla/5.0 (Windows NT 6.1; rv:32.0) Gecko/20100101 Firefox/32.0",
-    },
-    {
-      value: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:31.0) Gecko/20100101 Firefox/31.0",
-      label: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:31.0) Gecko/20100101 Firefox/31.0",
-    },
-    {
-      value: "Mozilla/5.0 (X11; Linux i686; rv:40.0) Gecko/20100101 Firefox/40.0",
-      label: "Mozilla/5.0 (X11; Linux i686; rv:40.0) Gecko/20100101 Firefox/40.0",
-    },
-  ])
-
-  const [defaultHeaders, setDefaultHeaders] = useState([
-    {
-      value: '{"key": "Content-Type", "value": "application/json"}',
-      label: '{"key": "Content-Type", "value": "application/json"}',
-    },
-    {
-      value: '{"key": "Connection", "value": "keep-alive"}',
-      label: '{"key": "Connection", "value": "keep-alive"}',
-    },
-    {
-      value: '{"key": "Accept", "value": "*/*"}',
-      label: '{"key": "Accept", "value": "*/*"}',
-    },
-  ])
-
-  const [whitelistedIPs, setWhitelistedIPs] = useState([
-    {
-      value: "localhost",
-      label: 'localhost',
-    }
-  ])
-
-  const [blacklistedIPs, setBlacklistedIPs] = useState([
-    {
-      value: "localhost",
-      label: 'localhost',
-    }
-  ])
-
-  const [defaultHosts, setDefaultHosts] = useState([])
+  const [selfContained, setSelfContained] = useState(false);
+  const [singleFile, setSingleFile] = useState(false);
 
   interface Listener {
     name: string;
@@ -144,7 +70,15 @@ export default function Payloads() {
     startTime: string;
   }
 
+  interface Payload {
+    name: string;
+    payloadArch: string;
+    payloadListener: string;
+    startTime: string;
+  }
+
   const [listeners, setListeners] = useState<Listener[]>([]);
+  const [payloads, setPayloads] = useState<Listener[]>([]);
 
   const [cookies, setCookie, removeCookie] = useCookies(["cookie-name"]);
   const { toast } = useToast()
@@ -167,22 +101,7 @@ export default function Payloads() {
       {console.log(listener.listenerStatus)}
       <TableCell className="text-right flex flex-row items-center justify-center">
 
-        {(listener.listenerStatus === "Stopped" || listener.listenerStatus === "Paused") ?
-          <Play onClick={() => startListener(listener)} size={18} color="#ffffff" strokeWidth={1} fill="#ffffff"  />
-          :
-          (listener.listenerStatus === "Running" ?
-            <Pause onClick={() => stopListener(listener)} size={18} color="#ffffff" strokeWidth={1} fill="#ffffff" />
-            :
-            null
-          )
-          
-        }
-        
-        {/* {(listener.listenerStatus === "Stopped" || listener.listenerStatus === "Paused") ?
-          console.log("STOPPED OR PAUSED")
-          :
-          console.log("ASD")
-        } */}
+        <Trash2 size={18} strokeWidth={1} />
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -194,7 +113,7 @@ export default function Payloads() {
             <DropdownMenuItem onClick={() => handleEdit(listener)}>Edit</DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDetails(listener)}>Details</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => deleteListener(listener)}>Delete</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => deletePayload(listener)}>Delete</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
@@ -215,24 +134,6 @@ export default function Payloads() {
       'Content-Type': 'application/json', // Set default headers if required
     },
   });
-
-  const refreshToken = async () => {
-    if(cookies.refresh_token){
-      console.log(cookies.refresh_token)
-      try {
-        const url = "/auth/refresh";
-        const tokenResponse = await axiosInstance.get(url,
-          {
-            "refresh_token": cookies.refresh_token
-          }
-        );
-        console.log(tokenResponse);
-
-      } catch (error) {
-        console.log(error);
-      }
-    }
-  };
 
   const fetchListeners = async () => {
     try {
@@ -267,50 +168,64 @@ export default function Payloads() {
     }
   };
 
-  const createListener = async () => {
+  const fetchPayloads = async () => {
+    try {
+        const url = "/payloads/all";
+        const payloadsData = await axiosInstance.get(url,
+          {
+            headers: { authorization: `Bearer ${cookies.jwt}` }
+          }
+        );
+        console.log(payloadsData.data.data);
+
+        if(payloadsData.data.data){
+          setPayloads((prevPayloads) => [
+            ...prevPayloads,
+            ...payloadsData.data.data.map((payload : any) => (
+              {
+              name: payload.name || "Unknown Listener",
+              payloadArch: payload.architecture || "Unknown",
+              payloadListener: payload.listener,
+              startTime: payload.created_at || "N/A",
+              id: payload.id
+            })),
+          ]);
+        }
+        
+    } catch (error) {
+        console.log(error);
+        if(error.status === 401 && cookies.refresh_token){
+          refreshToken();
+        }
+    }
+  };
+
+  const createPayload = async () => {
     try{
-        const url = '/listeners';
+        const url = '/payloads/create';
         const { data } = await axiosInstance.post(
             url,
             {
-              "type": listenerType,
-              "name": listenerName,
-              "description": listenerDescription,
-              "config": {
-                "working_hours": "9-5",
-                "hosts": selectedHostValues,
-                "host_bind": hostIP,
-                "host_rotation": hostRotation,
-                "port_bind": hostPort,
-                "port_conn": connectionPort,
-                "secure": sslEnabled,
-                "user_agent": userAgent,
-                "headers": selectedHeaderValues,
-                "certificate": {
-                  "cert_path": "",
-                  "key_path": ""
-                },
-                "whitelist_enabled": whitelistEnabled,
-                "whitelist": selectedWhitelistValues,
-                "blacklist_enabled": blacklistEnabled,
-                "blacklist": selectedBlacklistValues,
-                "proxy_settings": {
-                  "enabled": proxyEnabled,
-                  "type": proxyType,
-                  "port": proxyPort,
-                  "username": proxyUsername,
-                  "password": proxyPassword
-                }
-              }
-            },
+              "payload_name": payloadName,
+              "listener_id": "{{listener_id}}",
+              "architecture": payloadArchitecture,
+              "self_contained": selfContained,
+              "publish_single_file": singleFile,
+              "sleep": sleepValue,
+              "jitter": jitterValue,
+              "start_date": "",
+              "kill_date": "",
+              "working_hours_start": 9,
+              "working_hours_end": 17
+            },            
             {
                 headers: { authorization: `Bearer ${cookies.jwt}` }
             }
         );
         toast({
           variant: "success",
-          title: "Listener Creation Successful!",
-          description: "You have successfully created a listener.",
+          title: "Payload Creation Successful!",
+          description: "You have successfully created a payload.",
           action: (
             <ToastAction altText="undo">Close</ToastAction>
           ),
@@ -321,8 +236,8 @@ export default function Payloads() {
         console.log(error);
         toast({
           variant: "destructive",
-          title: "Listener Creation Failed...",
-          description: "Ensure the port is within the same range as specified in the docker compose.",
+          title: "Payload Creation Failed...",
+          description: "Failed to generate payload. Please try again later.",
           action: (
             <ToastAction altText="undo">Close</ToastAction>
           ),
@@ -330,80 +245,10 @@ export default function Payloads() {
     }
   }
 
-  const startListener = async (listener: any) => {
+  const deletePayload = async (payload: any) => {
     try{
-      console.log(listener)
-        const url = `/listeners/${listener.id}/start`;
-        const { data } = await axiosInstance.post(
-            url,
-            {
-            },
-            {
-                headers: { authorization: `Bearer ${cookies.jwt}` }
-            }
-        );
-        toast({
-          variant: "success",
-          title: "Listener Start Successful!",
-          description: "You listener is now listening.",
-          action: (
-            <ToastAction altText="undo">Close</ToastAction>
-          ),
-        })
-        location.reload()
-    }
-    catch(error){
-        console.log(error);
-        toast({
-          variant: "destructive",
-          title: "Unable to Start Listener...",
-          description: "Ensure the port is within the same range as specified in the docker compose.",
-          action: (
-            <ToastAction altText="undo">Close</ToastAction>
-          ),
-        })
-    }
-  }
-
-  const stopListener = async (listener: any) => {
-    try{
-      console.log(listener)
-        const url = `/listeners/${listener.id}/stop`;
-        const { data } = await axiosInstance.post(
-            url,
-            {
-            },
-            {
-                headers: { authorization: `Bearer ${cookies.jwt}` }
-            }
-        );
-        toast({
-          variant: "success",
-          title: "Listener Start Successful!",
-          description: "You listener is now listening.",
-          action: (
-            <ToastAction altText="undo">Close</ToastAction>
-          ),
-        })
-        location.reload()
-    }
-    catch(error){
-        console.log(error);
-        toast({
-          variant: "destructive",
-          title: "Unable to Start Listener...",
-          description: "Ensure the port is within the same range as specified in the docker compose.",
-          action: (
-            <ToastAction altText="undo">Close</ToastAction>
-          ),
-        })
-    }
-  }
-
-  const deleteListener = async (listener: any) => {
-    try{
-      console.log(listener)
-        const url = `/listeners/${listener.id}`;
+      console.log(payload)
+        const url = `/payloads/delete/${payload.id}`;
         const { data } = await axiosInstance.delete(
             url,
             {
@@ -412,8 +257,8 @@ export default function Payloads() {
         );
         toast({
           variant: "success",
-          title: "Your listener has been deleted.",
-          description: "You listener is now deleted.",
+          title: "Your payload has been deleted.",
+          description: "You payload is now deleted.",
           action: (
             <ToastAction altText="undo">Close</ToastAction>
           ),
@@ -424,7 +269,7 @@ export default function Payloads() {
         console.log(error);
         toast({
           variant: "destructive",
-          title: "Unable to Delete Listener...",
+          title: "Unable to Delete Payload...",
           description: "Please try again later.",
           action: (
             <ToastAction altText="undo">Close</ToastAction>
@@ -434,14 +279,8 @@ export default function Payloads() {
   }
 
   React.useEffect(() => {
-    console.log("Hosts Array: ", selectedHostValues)
-    console.log("Header Array: ", selectedHeaderValues)
-    console.log("Whitelist Array: ", selectedWhitelistValues)
-    console.log("Blacklist Array: ", selectedBlacklistValues)
-  }, [selectedBlacklistValues, selectedHeaderValues, selectedHostValues, selectedWhitelistValues])
-
-  React.useEffect(() => {
     fetchListeners();
+    fetchPayloads();
   }, [])
 
   if(isCreating === false){
@@ -454,12 +293,12 @@ export default function Payloads() {
           </div>
           <Card className="w-[calc(100vw-var(--sidebar-width)-6.5em)]">
             <CardContent className="m-0 p-0">
-              <TableComponent headers={agentHeaders} data={listeners} renderRow={renderRow} />
+              <TableComponent headers={agentHeaders} data={payloads} renderRow={renderRow} />
             </CardContent>
           </Card>
           <div className="flex flex-row w-[calc(100vw-var(--sidebar-width)-6.5em)] justify-between">
             {/* <p>1 total listener(s) found.</p> */}
-            <p>{listeners.length} total listener(s) found.</p>
+            <p>{payloads.length} total payload(s) found.</p>
             <div className="flex flex-row gap-2">
               <Button>Previous</Button>
               <Button>Next</Button>
@@ -477,7 +316,7 @@ export default function Payloads() {
             <Button className="bg-transparent text-white w-[10em] h-[100%] hover:bg-[#3d3d3d]" onClick={() => setIsCreating(false)}>Table</Button>
             <Button className="w-[10em] h-[100%]">Add</Button>
           </div>
-          <Button className="w-[10em]" onClick={() => createListener()}>+ Create</Button>
+          <Button className="w-[10em]" onClick={() => createPayload()}>+ Create</Button>
         </div>
         <div className="w-[calc(100vw-var(--sidebar-width)-6.5em)] grid grid-cols-3 gap-0 items-start justify-items-end p-0 mb-0 mt-0 border-solid border-[1px] pt-5 rounded-lg">
           <Card className="mx-auto border-none w-[100%] space-x-2">
@@ -485,25 +324,36 @@ export default function Payloads() {
               <div className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="email">Name</Label>
-                    <Input id="email" type="email" placeholder="Listener Name" value={listenerName} onChange={(e) => setListenerName(e.target.value)} required />
+                    <Input id="email" type="email" placeholder="Payload Name" value={payloadName} onChange={(e) => setPayloadName(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Description</Label>
-                  <Input id="email" type="email" placeholder="Listener Description" value={listenerDescription} onChange={(e) => setListenerDescription(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Listener Type</Label>
-                  <Select onValueChange={setListenerType}>
+                  <Label htmlFor="email">Select Listener</Label>
+                  <Select onValueChange={setPayloadArchitecture}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select Listener Type"/>
+                      <SelectValue placeholder="Select Payload Architecture"/>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectItem value="http">HTTP/S</SelectItem>
-                        <SelectItem value="tcp">TCP</SelectItem>
-                        <SelectItem value="udp">UDP</SelectItem>
-                        <SelectItem value="smb">SMB</SelectItem>
-                        <SelectItem value="winrm">WINRM</SelectItem>
+                        <SelectItem value="win-x64">win-x64</SelectItem>
+                        <SelectItem value="win-x86">win-x86</SelectItem>
+                        <SelectItem value="linux-x64">linux-x64</SelectItem>
+                        <SelectItem value="linux-x86">linux-x86</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Payload Architecture</Label>
+                  <Select onValueChange={setPayloadArchitecture}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Payload Architecture"/>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="win-x64">win-x64</SelectItem>
+                        <SelectItem value="win-x86">win-x86</SelectItem>
+                        <SelectItem value="linux-x64">linux-x64</SelectItem>
+                        <SelectItem value="linux-x86">linux-x86</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
@@ -515,30 +365,65 @@ export default function Payloads() {
           <Card className="mx-auto border-none w-[100%] space-x-2">
             <CardContent>
               <div className="space-y-4">
-                <div className="flex flex-row justify-between items-center gap-2">
-                  <div className="space-y-2 w-[100%]">
-                    <Label htmlFor="password">Bind IP</Label>
-                    <Input placeholder="0.0.0.0" value={hostIP} onChange={(e) => setHostIP(e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Bind Port</Label>
-                    <Input placeholder="80" value={hostPort} onChange={(e) => setHostPort(e.target.value)} required />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Sleep</Label>
+                  <Input id="email" type="email" placeholder="5" value={sleepValue} onChange={(e) => setSleepValue(e.target.value)} required />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Connection Port</Label>
-                  <Input id="email" type="email" placeholder="8080" value={connectionPort} onChange={(e) => setConnectionPort(e.target.value)} required />
+                  <Label htmlFor="email">Jitter</Label>
+                  <Input id="email" type="email" placeholder="5" value={jitterValue} onChange={(e) => setJitterValue(e.target.value)} required />
                 </div>
 
-                <div className="space-y-2" >
-                  <Label htmlFor="email">Working Hours</Label>
-                  <div className="flex flex-row justify-center items-center gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Generation Options</Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch id="proxy-mode" checked={selfContained} onCheckedChange={setSelfContained} />
+                  <Label htmlFor="enable-contained">Generate Self Contained</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch id="proxy-mode" checked={singleFile} onCheckedChange={setSingleFile} />
+                  <Label htmlFor="single-file">Generate Single File</Label>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mx-auto border-none w-[100%] space-x-2">
+            <CardContent className="flex flex-col gap-5">
+
+              <div className="space-y-2" >
+                <Label htmlFor="email">Start / Kill Date</Label>
+                <div className="flex flex-row justify-center items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !date && "text-muted-foreground")} >
+                        <CalendarIcon />
+                        {date ? format(date, "P") : <span>From</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !date && "text-muted-foreground")} >
+                        <Button
+                          variant={"outline"}
+                                    className={cn(
+                                      "w-[240px] justify-start text-left font-normal",
+                                      !date && "text-muted-foreground"
+                                    )}
+                        >
                           <CalendarIcon />
-                          {date ? format(date, "P") : <span>From</span>}
+                          {date ? format(date, "P") : <span>Until</span>}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -550,164 +435,50 @@ export default function Payloads() {
                         />
                       </PopoverContent>
                     </Popover>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                                      className={cn(
-                                        "w-[240px] justify-start text-left font-normal",
-                                        !date && "text-muted-foreground"
-                                      )}
-                          >
-                            <CalendarIcon />
-                            {date ? format(date, "P") : <span>Until</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={setDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="mx-auto border-none w-[100%] space-x-2">
-            <CardContent className="flex flex-col gap-5">
-              <div className="space-y-2 w-[100%]">
-                  <Label htmlFor="email">Hosts Selection</Label>
-                  {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                  <MultiSelectPopover initialFrameworks={defaultHosts} selectPlaceholder="Select Hosts..." addPlaceholder="Add Hosts" selectedValues={selectedHostValues} setSelectedValues={setSelectedHostValues}/>
-              </div>
-              <div className="space-y-2 w-[100%]">
-                <Label htmlFor="email">Host Rotation</Label>
-                <Select onValueChange={setHostRotation}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Rotation Method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="apple">Fallback</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="email">User Agent</Label>
-                  {/* <MultiSelectPopover initialFrameworks={defaultAgents} selectPlaceholder="Select Agents..." addPlaceholder="Add Agent"/> */}
-                  <Input id="email" type="email" placeholder="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0" value={userAgent} onChange={(e) => setUserAgent(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="email">Custom Headers</Label>
-                  <MultiSelectPopover initialFrameworks={defaultHeaders} selectPlaceholder="Select Headers..." addPlaceholder="Add Header" selectedValues={selectedHeaderValues} setSelectedValues={setSelectedHeaderValues}/>
-              </div>
-            </CardContent>
-          </Card>
-
-          <span className="border-solid border-0 border-b rounded-none h-[1px] w-[100%] mt-6 mb-6" />
-          <span className="border-solid border-0 border-b rounded-none h-[1px] w-[100%] mt-6 mb-6" />
-          <span className="border-solid border-0 border-b rounded-none h-[1px] w-[100%] mt-6 mb-6" />
-
-          <Card className="mx-auto border-none w-[100%] space-x-2">
-            <CardContent className="flex flex-col gap-5">
-              <div className="flex items-center space-x-2">
-                <Switch id="secure-connection" checked={sslEnabled} onCheckedChange={setSslEnabled} />
-                <Label htmlFor="enable-proxy">Enable Secure Connection</Label>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Certificate File</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="cert.cer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="apple">Cert</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="email">Key File</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="key.pem" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="apple">Key</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="mx-auto border-none w-[100%] space-x-2">
-            <CardContent className="flex flex-col gap-5">
-              <div className="flex items-center space-x-2">
-                <Switch id="proxy-mode" checked={proxyEnabled} onCheckedChange={setProxyEnabled} />
-                <Label htmlFor="enable-proxy">Enable Proxy</Label>
-              </div>
-              <div className="flex flex-row items-center justify-between w-[100%] gap-2">
-                <div className="space-y-2 w-[100%]">
-                  <Label htmlFor="email">Proxy Type</Label>
-                  <Select onValueChange={setProxyType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Proxy Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="apple">RIO (Experimental)</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-2" >
+                <Label htmlFor="email">Working Hours</Label>
+                <div className="flex flex-row justify-center items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !date && "text-muted-foreground")} >
+                        <CalendarIcon />
+                        {date ? format(date, "P") : <span>From</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                                    className={cn(
+                                      "w-[240px] justify-start text-left font-normal",
+                                      !date && "text-muted-foreground"
+                                    )}
+                        >
+                          <CalendarIcon />
+                          {date ? format(date, "P") : <span>Until</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={date}
+                          onSelect={setDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Proxy Port</Label>
-                  <Input id="email" type="email" placeholder="1234" value={proxyPort} onChange={(e) => setProxyPort(e.target.value)} required />
-                </div>
-              </div>
-              <div className="flex flex-row justify-between items-center gap-2">
-                <div className="w-[100%]">
-                  <Label htmlFor="password">Username</Label>
-                  <Input id="password" type="password" placeholder="Batman" value={proxyUsername} onChange={(e) => setProxyUsername(e.target.value)} required />
-                </div>
-                <div className="w-[100%]">
-                  <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" placeholder="****" value={proxyPassword} onChange={(e) => setProxyPassword(e.target.value)} required />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="mx-auto border-none w-[100%] space-x-2">
-            <CardContent className="flex flex-col gap-5">
-              <div className="flex items-center space-x-2">
-                <Switch id="whitelist-option" checked={whitelistEnabled} onCheckedChange={setWhitelistEnabled} />
-                <Label htmlFor="enable-proxy">Enable Whitelisted IP's</Label>
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="email">Select IP's</Label>
-                  {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                  <MultiSelectPopover initialFrameworks={whitelistedIPs} selectPlaceholder="Select IPs..." addPlaceholder="Add IP" selectedValues={selectedWhitelistValues} setSelectedValues={setSelectedWhitelistValues}/>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch id="blacklist-option" checked={blacklistEnabled} onCheckedChange={setBlacklistEnabled} />
-                <Label htmlFor="enable-proxy">Enable Blacklisted IP's</Label>
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="email">Select IP's</Label>
-                  {/* <Input id="email" type="email" placeholder="Round Robin" required /> */}
-                  <MultiSelectPopover initialFrameworks={whitelistedIPs} selectPlaceholder="Select IPs..." addPlaceholder="Add IP" selectedValues={selectedBlacklistValues} setSelectedValues={setSelectedBlacklistValues}/>
               </div>
             </CardContent>
           </Card>

@@ -1,30 +1,24 @@
 {
-  "payload_id": "bb4be5ab-ad84-4aab-bc87-f302aad1d072",
+  "payload_id": "9dcad000-ad0e-4b57-a48d-adf78ae3d634",
   "payload_name": "newPayload",
-  "config_id": "2d7f471c-0965-490c-ab73-7da3678bd8cc",
-  "listener_id": "031a1a50-78a9-4bdc-aa5d-30eba7814f14",
-  "token": "d6ea983b-2c1c-483a-af31-0fc2af4e103f",
+  "config_id": "02d33ace-c354-4a95-9353-a05a007dbfff",
+  "listener_id": "7b8685d4-8d42-4f3c-b0f1-37607d1f62c3",
+  "token": "66e66feb-fa16-41e2-a7ea-7fa43f56d5ad",
   "architecture": "win-x64",
   "config": {
+    "blacklist": [],
     "blacklist_enabled": false,
     "certificate": {
       "cert_path": "",
       "key_path": ""
     },
-    "headers": [
-      {
-        "key": "X-Custom-Header",
-        "value": "CustomValue"
-      }
-    ],
+    "headers": [],
     "host_bind": "0.0.0.0",
-    "host_header": "meduza.com",
-    "host_rotation": "fallback",
+    "host_rotation": "apple",
     "hosts": [
-      "http://localhost:8009"
+      "localhost"
     ],
-    "port_bind": "8009",
-    "port_conn": "8009",
+    "port_bind": "8010",
     "proxy_settings": {
       "enabled": false,
       "password": "",
@@ -33,15 +27,14 @@
       "username": ""
     },
     "secure": false,
-    "whitelist": [
-      "192.168.1.1",
-      "192.168.1.2"
-    ],
+    "uris": null,
+    "user_agent": "",
+    "whitelist": [],
     "whitelist_enabled": false,
     "working_hours": "9-5"
   },
-  "sleep": 1,
-  "jitter": 1,
+  "sleep": 5,
+  "jitter": 5,
   "start_date": "2025-01-15T08:00:00Z",
   "kill_date": "2025-02-15T08:00:00Z",
   "working_hours_start": 9,
