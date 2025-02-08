@@ -262,6 +262,7 @@ export default function Listeners() {
             }
         );
         toast({
+          variant: "success",
           title: "Listener Creation Successful!",
           description: "You have successfully created a listener.",
           action: (
@@ -273,6 +274,7 @@ export default function Listeners() {
     catch(error){
         console.log(error);
         toast({
+          variant: "destructive",
           title: "Listener Creation Failed...",
           description: "Ensure the port is within the same range as specified in the docker compose.",
           action: (
@@ -328,23 +330,23 @@ export default function Listeners() {
           </div>
           <Button className="w-[10em]" onClick={() => createListener()}>+ Create</Button>
         </div>
-        <div className="w-[calc(100vw-var(--sidebar-width)-6.5em)] grid grid-cols-3 gap-0 items-start justify-items-end p-0 mb-0 mt-0 border-solid border-2 pt-5 rounded">
+        <div className="w-[calc(100vw-var(--sidebar-width)-6.5em)] grid grid-cols-3 gap-0 items-start justify-items-end p-0 mb-0 mt-0 border-solid border-[1px] pt-5 rounded-lg">
           <Card className="mx-auto border-none w-[100%] space-x-2">
             <CardContent>
               <div className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="email">Name</Label>
-                    <Input id="email" type="email" placeholder="CIA Listener" value={listenerName} onChange={(e) => setListenerName(e.target.value)} required />
+                    <Input id="email" type="email" placeholder="Listener Name" value={listenerName} onChange={(e) => setListenerName(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Description</Label>
-                  <Input id="email" type="email" placeholder="Definitely not spyware..." value={listenerDescription} onChange={(e) => setListenerDescription(e.target.value)} required />
+                  <Input id="email" type="email" placeholder="Listener Description" value={listenerDescription} onChange={(e) => setListenerDescription(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Listener Type</Label>
                   <Select onValueChange={setListenerType}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select Listener Type" />
+                      <SelectValue placeholder="Select Listener Type"/>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
