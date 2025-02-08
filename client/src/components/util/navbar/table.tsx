@@ -20,7 +20,7 @@ import {
         <TableHeader>
           <TableRow>
             {headers.map((header) => (
-                <TableHead>{header}</TableHead>
+                <TableHead key={header}>{header}</TableHead>
             ))}
           </TableRow>
         </TableHeader>
