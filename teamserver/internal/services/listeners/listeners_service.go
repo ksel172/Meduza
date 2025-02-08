@@ -28,7 +28,7 @@ func NewListenerService(checkInController *CheckInController, agentAuthControlle
 
 	// Create default http controller
 	// TODO: add default listener HTTP Listener config
-	listenerService.CreateListenerController("http", &models.HTTPListenerConfig{HostHeader: "default"})
+	listenerService.CreateListenerController("http", &models.HTTPListenerConfig{UserAgent: "default"})
 
 	return listenerService
 }
@@ -56,7 +56,7 @@ func (s *ListenersService) CreateListenerController(listenerType string, config 
 		}
 
 		// Create HTTP controller and save to controller field
-		controller, err := NewHTTPListenerController(httpConfig.HostHeader, *httpConfig, s.checkinController, s.agentAuthController)
+		controller, err := NewHTTPListenerController(httpConfig.UserAgent, *httpConfig, s.checkinController, s.agentAuthController)
 		if err != nil {
 			return fmt.Errorf("failed to create HTTP listener controller: %v", err)
 		}

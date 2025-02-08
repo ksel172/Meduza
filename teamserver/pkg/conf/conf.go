@@ -34,12 +34,13 @@ const (
 	MeduzaRedisPortDefault      = 6379
 	MeduzaRedisPasswordEnvVar   = "REDIS_PASSWORD"
 	MeduzaRedisPasswordDefault  = "password"
-	MeduzaAdminSecretKeyEnvVar  = "ADMIN_SECRET"
 	MeduzaJWTTokenEnvVar        = "JWT_TOKEN"
 	BaseConfPathEnvVar          = "BASECONF_PATH"
 	BaseConfPathDefault         = "./agent/Agent/baseconf.json"
 	ModuleUploadPathEnvVar      = "MODULE_UPLOAD_PATH"
 	ModuleUploadPathDefault     = "./teamserver/modules"
+	ListenPortRangeStartEnvVar  = "LISTENER_PORT_RANGE_START"
+	ListenPortRangeEndEnvVar    = "LISTENER_PORT_RANGE_END"
 )
 
 func GetMeduzaServerHostname() string {
@@ -87,15 +88,6 @@ func GetMeduzaServerMode() string {
 	return utils.GetEnvString(MeduzaServerModeEnvVar, MeduzaServerModeDefault)
 }
 
-func GetMeduzaAdminSecret() string {
-	envToken, ok := os.LookupEnv(MeduzaAdminSecretKeyEnvVar)
-	if !ok {
-		log.Fatalf("server not configured correctly, missing '%s' environment variable", MeduzaAdminSecretKeyEnvVar)
-	}
-
-	return envToken
-}
-
 func GetMeduzaJWTToken() string {
 	jwt, ok := os.LookupEnv(MeduzaJWTTokenEnvVar)
 	if !ok {
@@ -123,4 +115,12 @@ func GetProjectRootPath() string {
 	// Resolve the executable path to the root project directory
 	projectRoot := filepath.Dir(filepath.Dir(execPath)) // Assuming the binary is two levels deep in the project
 	return projectRoot
+}
+
+func GetListenerPortRangeStart() int {
+	return utils.GetEnvInt(ListenPortRangeStartEnvVar, 8000)
+}
+
+func GetListenerPortRangeEnd() int {
+	return utils.GetEnvInt(ListenPortRangeEndEnvVar, 8010)
 }

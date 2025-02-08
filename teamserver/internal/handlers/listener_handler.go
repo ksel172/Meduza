@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -31,48 +32,66 @@ func NewListenersHandler(dal dal.IListenerDAL, service *services.ListenersServic
 }
 
 func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
-
-	// Read the request body into listener model
 	var listener models.Listener
 	if err := ctx.ShouldBindJSON(&listener); err != nil {
-		ctx.JSON(http.StatusConflict, gin.H{
-			"message": "Invalid Request body.Please type correct input",
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid request payload",
 			"status":  utils.Status.ERROR,
 		})
-		logger.Error("Request Body Error while bind the json:\n", err)
 		return
 	}
 
-	reqCtx := ctx.Request.Context()
-
-	// Convert the parsed configuration back to JSON
-	/* configJSON, err := json.Marshal(listener.Config)
+	existingListener, err := h.dal.GetListenerByName(ctx.Request.Context(), listener.Name)
 	if err != nil {
-		logger.Error("Error converting parsed config to JSON:", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Internal error processing configuration.",
+			"message": "Internal server error",
 			"status":  utils.Status.ERROR,
 		})
 		return
 	}
-	listener.Config = configJSON */
+	if existingListener.ID != uuid.Nil {
+		ctx.JSON(http.StatusConflict, gin.H{
+			"message": "Listener with the same name already exists",
+			"status":  utils.Status.ERROR,
+		})
+		return
+	}
+
+	// Validate the listener configuration
+	switch listener.Type {
+	case models.ListenerTypeHTTP:
+		var httpConfig models.HTTPListenerConfig
+		if err := utils.MapToStruct(listener.Config, &httpConfig); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid configuration for HTTP listener",
+				"status":  utils.Status.ERROR,
+			})
+			return
+		}
+		if err := httpConfig.Validate(); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"message": err.Error(),
+				"status":  utils.Status.ERROR,
+			})
+			return
+		}
+		listener.Config = httpConfig
+	}
 
 	// Create the listener in the database
-	err := h.dal.CreateListener(reqCtx, &listener)
+	err = h.dal.CreateListener(ctx.Request.Context(), &listener)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"status":  utils.Status.ERROR,
 			"message": "Unable to create a listener.",
 		})
-		logger.Error("Error Occured while Adding Data to listener:\n", err)
 		return
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
 		"status":  utils.Status.SUCCESS,
-		"message": "listener created successfully",
+		"message": "Listener created successfully",
 	})
-
 }
 
 func (h *ListenerHandler) GetAllListeners(ctx *gin.Context) {

@@ -22,6 +22,7 @@ type IListenerDAL interface {
 	DeleteListener(context.Context, string) error
 	UpdateListener(context.Context, string, map[string]any) error
 	GetActiveListeners(context.Context) ([]models.Listener, error)
+	GetListenerByName(context.Context, string) (models.Listener, error)
 }
 
 type ListenerDAL struct {
@@ -221,4 +222,45 @@ func (dal *ListenerDAL) GetActiveListeners(ctx context.Context) ([]models.Listen
 		lists = append(lists, listener)
 	}
 	return lists, nil
+}
+
+func (dal *ListenerDAL) GetListenerByName(ctx context.Context, name string) (models.Listener, error) {
+	query := fmt.Sprintf(`SELECT id, type, name, status, description, config, logging_enabled, logging, created_at, updated_at, started_at, stopped_at FROM %s.listeners WHERE name=$1`, dal.schema)
+	row := dal.db.QueryRowContext(ctx, query, name)
+
+	var (
+		rawConfig  json.RawMessage
+		rawLogging json.RawMessage
+		listener   models.Listener
+	)
+
+	if err := row.Scan(
+		&listener.ID,
+		&listener.Type,
+		&listener.Name,
+		&listener.Status,
+		&listener.Description,
+		&rawConfig,
+		&listener.LoggingEnabled,
+		&rawLogging,
+		&listener.CreatedAt,
+		&listener.UpdatedAt,
+		&listener.StartedAt,
+		&listener.StoppedAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return models.Listener{}, nil
+		}
+		return models.Listener{}, err
+	}
+
+	if err := json.Unmarshal(rawConfig, &listener.Config); err != nil {
+		return models.Listener{}, fmt.Errorf("failed to parse Config field: %w", err)
+	}
+
+	if err := json.Unmarshal(rawLogging, &listener.Logging); err != nil {
+		return models.Listener{}, fmt.Errorf("failed to parse Logging field: %w", err)
+	}
+
+	return listener, nil
 }

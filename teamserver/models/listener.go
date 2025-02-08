@@ -2,9 +2,11 @@ package models
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 )
 
 // Listener Statuses (Enum)
@@ -89,46 +91,84 @@ type ListenerRequest struct {
 }
 
 type HTTPListenerConfig struct {
-	WorkingHours     string           `json:"working_hours"`
-	Hosts            []string         `json:"hosts"`
-	HostBind         string           `json:"host_bind"`
-	HostRotation     HostRotationType `json:"host_rotation"`
-	PortBind         string           `json:"port_bind"`
-	PortConn         string           `json:"port_conn"`
-	Secure           bool             `json:"secure"`
-	HostHeader       string           `json:"host_header"`
-	Headers          []Header         `json:"headers"`
-	Uris             []string         `json:"uris"`
-	Certificate      Certificate      `json:"certificate"`
-	WhitelistEnabled bool             `json:"whitelist_enabled"`
-	Whitelist        []string         `json:"whitelist"`
-	BlacklistEnabled bool             `json:"blacklist_enabled"`
-	ProxySettings    ProxySettings    `json:"proxy_settings"`
+	WorkingHours string           `json:"working_hours"`
+	Hosts        []string         `json:"hosts"`
+	HostBind     string           `json:"host_bind"`
+	HostRotation HostRotationType `json:"host_rotation"`
+	PortBind     string           `json:"port_bind"`
+	//PortConn         string           `json:"port_conn"`
+	Secure           bool          `json:"secure"`
+	UserAgent        string        `json:"user_agent"`
+	Headers          []Header      `json:"headers"`
+	Uris             []string      `json:"uris"`
+	Certificate      Certificate   `json:"certificate"`
+	WhitelistEnabled bool          `json:"whitelist_enabled"`
+	Whitelist        []string      `json:"whitelist"`
+	BlacklistEnabled bool          `json:"blacklist_enabled"`
+	Blacklist        []string      `json:"blacklist"`
+	ProxySettings    ProxySettings `json:"proxy_settings"`
 }
 
-// Validate ensures the configuration is valid before use.
 func (config *HTTPListenerConfig) Validate() error {
+
+	portRangeStart := conf.GetListenerPortRangeStart()
+	portRangeEnd := conf.GetListenerPortRangeEnd()
+
 	if config.HostBind == "" {
 		return fmt.Errorf("HostBind is required")
 	}
 	if config.PortBind == "" {
 		return fmt.Errorf("PortBind is required")
 	}
-	for _, validType := range ValidCallbackRotationTypes {
-		if validType == config.HostRotation {
-			return fmt.Errorf("enter a valid host rotation type digit")
+
+	portBindInt, err := strconv.Atoi(config.PortBind)
+	if err != nil {
+		return fmt.Errorf("PortBind must be a valid integer")
+	}
+
+	if portBindInt < portRangeStart || portBindInt > portRangeEnd {
+		return fmt.Errorf("PortBind must be within the range %d-%d", portRangeStart, portRangeEnd)
+	}
+
+	if len(config.Hosts) == 0 {
+		return fmt.Errorf("at least one host is required")
+	}
+
+	for _, host := range config.Hosts {
+		if host == "" {
+			return fmt.Errorf("hosts cannot contain empty values")
 		}
 	}
-	/*
-		if len(config.Uris) == 0 {
-			return fmt.Errorf("At least one URI is required")
-		}
-	*/
+
 	if config.Secure {
 		if config.Certificate.CertPath == "" || config.Certificate.KeyPath == "" {
-			return fmt.Errorf("Certificate paths are required for secure mode")
+			return fmt.Errorf("certificate paths are required for secure mode")
 		}
 	}
+
+	if config.WhitelistEnabled && len(config.Whitelist) == 0 {
+		return fmt.Errorf("whitelist is enabled but no whitelist entries are provided")
+	}
+
+	if config.BlacklistEnabled && len(config.Blacklist) == 0 {
+		return fmt.Errorf("blacklist is enabled but no blacklist entries are provided")
+	}
+
+	for _, header := range config.Headers {
+		if header.Key == "" || header.Value == "" {
+			return fmt.Errorf("headers must have both key and value")
+		}
+	}
+
+	if config.ProxySettings.Enabled {
+		if config.ProxySettings.Type == "" {
+			return fmt.Errorf("proxy type is required when proxy is enabled")
+		}
+		if config.ProxySettings.Port == "" {
+			return fmt.Errorf("proxy port is required when proxy is enabled")
+		}
+	}
+
 	return nil
 }
 
