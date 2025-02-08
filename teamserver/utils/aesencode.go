@@ -4,75 +4,69 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
-	"errors"
 	"fmt"
-	"io"
 )
 
-const (
-	AES256KeySize = 32
-)
-
-// GenerateAES256Key returns a 32-byte AES key.
-func GenerateAES256Key() ([]byte, error) {
-	key := make([]byte, AES256KeySize)
-	if _, err := io.ReadFull(rand.Reader, key); err != nil {
-		return nil, fmt.Errorf("failed to generate AES-256 key: %v", err)
-	}
-	return key, nil
+// DeriveKey derives a 32-byte key from a string input using SHA256
+func DeriveKey(key string) []byte {
+	hash := sha256.Sum256([]byte(key))
+	return hash[:32]
 }
 
-// AesEncrypt encrypts data using AES-GCM with the provided key.
-func AesEncrypt(key, data []byte) ([]byte, error) {
+// AesEncrypt encrypts data using AES-GCM with the provided key string
+func AesEncrypt(keyString string, data []byte) ([]byte, error) {
+	key := DeriveKey(keyString)
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("error while creating a new cipher: %w", err)
+		return nil, fmt.Errorf("error creating cipher block: %w", err)
 	}
 
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf("error while creating a new GCM: %w", err)
+		return nil, fmt.Errorf("error creating GCM: %w", err)
 	}
 
 	nonce := make([]byte, aesGCM.NonceSize())
-	_, err = io.ReadFull(rand.Reader, nonce)
-	if err != nil {
-		return nil, fmt.Errorf("error while reading a nonce: %w", err)
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, fmt.Errorf("error generating nonce: %w", err)
 	}
 
-	cipherData := aesGCM.Seal(nonce, nonce, data, nil)
-	return []byte(base64.StdEncoding.EncodeToString(cipherData)), nil
+	ciphertext := aesGCM.Seal(nonce, nonce, data, nil)
+	return []byte(base64.StdEncoding.EncodeToString(ciphertext)), nil
 }
 
-// AesDecrypt decrypts data using AES-GCM with the provided key.
-func AesDecrypt(key, ciphertext []byte) ([]byte, error) {
-	decodeCipherText, err := base64.StdEncoding.DecodeString(string(ciphertext))
+// AesDecrypt decrypts data using AES-GCM with the provided key string
+func AesDecrypt(keyString string, ciphertext []byte) ([]byte, error) {
+	key := DeriveKey(keyString)
+
+	decoded, err := base64.StdEncoding.DecodeString(string(ciphertext))
 	if err != nil {
-		return nil, fmt.Errorf("error decoding ciphertext: %w", err)
+		return nil, fmt.Errorf("error decoding base64: %w", err)
 	}
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("error creating a cipher block instance: %w", err)
+		return nil, fmt.Errorf("error creating cipher block: %w", err)
 	}
 
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf("error creating a NewGCM instance: %w", err)
+		return nil, fmt.Errorf("error creating GCM: %w", err)
 	}
 
 	nonceSize := aesGCM.NonceSize()
-	if len(decodeCipherText) < nonceSize {
-		return nil, errors.New("ciphertext is too short")
+	if len(decoded) < nonceSize {
+		return nil, fmt.Errorf("ciphertext too short")
 	}
 
-	nonce, encryptedData := decodeCipherText[:nonceSize], decodeCipherText[nonceSize:]
-
-	data, err := aesGCM.Open(nil, nonce, encryptedData, nil)
+	nonce, ciphertextBytes := decoded[:nonceSize], decoded[nonceSize:]
+	plaintext, err := aesGCM.Open(nil, nonce, ciphertextBytes, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding encrypted data: %w", err)
+		return nil, fmt.Errorf("error decrypting: %w", err)
 	}
 
-	return data, nil
+	return plaintext, nil
 }

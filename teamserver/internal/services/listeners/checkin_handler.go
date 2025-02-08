@@ -100,26 +100,24 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
 	// TODO: What is illegal abput the converted string?
 	// Decode base64 encrypted request
-	encryptedData, err := base64.StdEncoding.DecodeString(string(body))
-	if err != nil {
-		logger.Info(err)
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid encrypted data"})
-		return
-	}
+	// encryptedData, err := base64.StdEncoding.DecodeString(string(body))
+	// if err != nil {
+	// 	logger.Info(LogLevel, LogDetail, "Base64 decode error:", err)
+	// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid encrypted data"})
+	// 	return
+	// }
 
 	//TODO: Figured out that the shared secret doesn't actually match on both sides,
 	// so I need to reformat the way it is generated
 	logger.Info("SECRET: ", key) // Temp
 
-	decryptedData, err := utils.AesDecrypt(key, encryptedData)
+	decryptedData, err := utils.AesDecrypt(key, body)
 	if err != nil {
-		logger.Info(err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "decryption failed"})
 		return
 	}
 
 	if err := json.Unmarshal(decryptedData, &c2request); err != nil {
-		logger.Info(err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid decrypted data format"})
 		return
 	}

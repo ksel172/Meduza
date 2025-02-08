@@ -13,27 +13,32 @@ namespace Agent.Core.Utils.Encryption
         public override string Transform(string input, string key)
         {
             if (string.IsNullOrEmpty(key)) return "Key is required";
-
             string encryptedData = Encrypt(input, key);
             return base.Transform(encryptedData);
         }
 
         private string Encrypt(string data, string key)
         {
-            using var aes = Aes.Create();
-            aes.Key = DeriveAesKey(key);
-            aes.GenerateIV(); // Generates a new IV
-            aes.Mode = CipherMode.CBC;
-            aes.Padding = PaddingMode.PKCS7;
+            byte[] derivedKey = DeriveAesKey(key);
+            byte[] plaintext = System.Text.Encoding.UTF8.GetBytes(data);
 
-            using var encryptor = aes.CreateEncryptor();
-            byte[] plainBytes = System.Text.Encoding.UTF8.GetBytes(data);
-            byte[] encryptedBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
+            using var aes = new AesGcm(derivedKey);
+            byte[] nonce = new byte[AesGcm.NonceByteSizes.MaxSize];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(nonce);
+            }
 
-            // Prepend IV to encrypted data and encode in Base64
-            byte[] result = new byte[aes.IV.Length + encryptedBytes.Length];
-            Buffer.BlockCopy(aes.IV, 0, result, 0, aes.IV.Length);
-            Buffer.BlockCopy(encryptedBytes, 0, result, aes.IV.Length, encryptedBytes.Length);
+            byte[] ciphertext = new byte[plaintext.Length];
+            byte[] tag = new byte[AesGcm.TagByteSizes.MaxSize];
+
+            aes.Encrypt(nonce, plaintext, ciphertext, tag);
+
+            // Combine nonce + ciphertext + tag
+            byte[] result = new byte[nonce.Length + ciphertext.Length + tag.Length];
+            Buffer.BlockCopy(nonce, 0, result, 0, nonce.Length);
+            Buffer.BlockCopy(ciphertext, 0, result, nonce.Length, ciphertext.Length);
+            Buffer.BlockCopy(tag, 0, result, nonce.Length + ciphertext.Length, tag.Length);
 
             return Convert.ToBase64String(result);
         }
@@ -41,7 +46,7 @@ namespace Agent.Core.Utils.Encryption
         private byte[] DeriveAesKey(string key)
         {
             using var sha256 = SHA256.Create();
-            return sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(key)).AsSpan(0, 32).ToArray(); // 256-bit AES key
+            return sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(key));
         }
     }
 
@@ -53,39 +58,38 @@ namespace Agent.Core.Utils.Encryption
         public override string Transform(string input, string key)
         {
             if (string.IsNullOrEmpty(key)) return "Key is required";
-
             string decryptedData = Decrypt(input, key);
             return base.Transform(decryptedData);
         }
 
         private string Decrypt(string data, string key)
         {
-            using var aes = Aes.Create();
-            aes.Key = DeriveAesKey(key);
-            aes.Mode = CipherMode.CBC;
-            aes.Padding = PaddingMode.PKCS7;
+            byte[] derivedKey = DeriveAesKey(key);
+            byte[] combined = Convert.FromBase64String(data);
 
-            byte[] inputBytes = Convert.FromBase64String(data);
+            int nonceSize = AesGcm.NonceByteSizes.MaxSize;
+            int tagSize = AesGcm.TagByteSizes.MaxSize;
 
-            // Extract IV
-            byte[] iv = new byte[aes.BlockSize / 8];
-            byte[] encryptedBytes = new byte[inputBytes.Length - iv.Length];
+            byte[] nonce = new byte[nonceSize];
+            byte[] ciphertext = new byte[combined.Length - nonceSize - tagSize];
+            byte[] tag = new byte[tagSize];
 
-            Buffer.BlockCopy(inputBytes, 0, iv, 0, iv.Length);
-            Buffer.BlockCopy(inputBytes, iv.Length, encryptedBytes, 0, encryptedBytes.Length);
+            Buffer.BlockCopy(combined, 0, nonce, 0, nonceSize);
+            Buffer.BlockCopy(combined, nonceSize, ciphertext, 0, ciphertext.Length);
+            Buffer.BlockCopy(combined, nonceSize + ciphertext.Length, tag, 0, tagSize);
 
-            aes.IV = iv;
+            byte[] plaintext = new byte[ciphertext.Length];
 
-            using var decryptor = aes.CreateDecryptor();
-            byte[] decryptedBytes = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
+            using var aes = new AesGcm(derivedKey);
+            aes.Decrypt(nonce, ciphertext, tag, plaintext);
 
-            return System.Text.Encoding.UTF8.GetString(decryptedBytes);
+            return System.Text.Encoding.UTF8.GetString(plaintext);
         }
 
         private byte[] DeriveAesKey(string key)
         {
             using var sha256 = SHA256.Create();
-            return sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(key)).AsSpan(0, 32).ToArray(); // 256-bit AES key
+            return sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(key));
         }
     }
 }
