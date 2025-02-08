@@ -19,7 +19,7 @@ namespace Agent.Core.Utils.Encryption
 
         private string Encrypt(string data, string key)
         {
-            byte[] derivedKey = DeriveAesKey(key);
+            byte[] derivedKey = System.Text.Encoding.UTF8.GetBytes(key);
             byte[] plaintext = System.Text.Encoding.UTF8.GetBytes(data);
 
             using var aes = new AesGcm(derivedKey);
@@ -42,12 +42,6 @@ namespace Agent.Core.Utils.Encryption
 
             return Convert.ToBase64String(result);
         }
-
-        private byte[] DeriveAesKey(string key)
-        {
-            using var sha256 = SHA256.Create();
-            return sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(key));
-        }
     }
 
     public class AesDecryptionDecorator : BaseTransformerDecorator
@@ -64,7 +58,7 @@ namespace Agent.Core.Utils.Encryption
 
         private string Decrypt(string data, string key)
         {
-            byte[] derivedKey = DeriveAesKey(key);
+            byte[] derivedKey = System.Text.Encoding.UTF8.GetBytes(key);
             byte[] combined = Convert.FromBase64String(data);
 
             int nonceSize = AesGcm.NonceByteSizes.MaxSize;
@@ -84,12 +78,6 @@ namespace Agent.Core.Utils.Encryption
             aes.Decrypt(nonce, ciphertext, tag, plaintext);
 
             return System.Text.Encoding.UTF8.GetString(plaintext);
-        }
-
-        private byte[] DeriveAesKey(string key)
-        {
-            using var sha256 = SHA256.Create();
-            return sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(key));
         }
     }
 }
