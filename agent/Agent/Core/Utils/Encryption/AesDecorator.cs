@@ -19,7 +19,7 @@ namespace Agent.Core.Utils.Encryption
 
         private string Encrypt(string data, string key)
         {
-            byte[] derivedKey = System.Text.Encoding.UTF8.GetBytes(key);
+            byte[] derivedKey = Convert.FromBase64String(key);
             byte[] plaintext = System.Text.Encoding.UTF8.GetBytes(data);
 
             using var aes = new AesGcm(derivedKey);

