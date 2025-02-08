@@ -58,11 +58,16 @@ namespace Agent.Core.Utils.Encryption
 
         private string Decrypt(string data, string key)
         {
-            byte[] derivedKey = System.Text.Encoding.UTF8.GetBytes(key);
+            byte[] derivedKey = Convert.FromBase64String(key);
             byte[] combined = Convert.FromBase64String(data);
 
             int nonceSize = AesGcm.NonceByteSizes.MaxSize;
             int tagSize = AesGcm.TagByteSizes.MaxSize;
+
+            if (combined.Length < nonceSize + tagSize)
+            {
+                throw new ArgumentException("Ciphertext is too short.");
+            }
 
             byte[] nonce = new byte[nonceSize];
             byte[] ciphertext = new byte[combined.Length - nonceSize - tagSize];
@@ -70,14 +75,14 @@ namespace Agent.Core.Utils.Encryption
 
             Buffer.BlockCopy(combined, 0, nonce, 0, nonceSize);
             Buffer.BlockCopy(combined, nonceSize, ciphertext, 0, ciphertext.Length);
-            Buffer.BlockCopy(combined, nonceSize + ciphertext.Length, tag, 0, tagSize);
+            Buffer.BlockCopy(combined, combined.Length - tagSize, tag, 0, tagSize); // Extract tag from end
 
             byte[] plaintext = new byte[ciphertext.Length];
 
             using var aes = new AesGcm(derivedKey);
             aes.Decrypt(nonce, ciphertext, tag, plaintext);
-
             return System.Text.Encoding.UTF8.GetString(plaintext);
         }
+
     }
 }

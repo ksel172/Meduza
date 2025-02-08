@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
 const (
@@ -41,8 +43,18 @@ func AesEncrypt(key, data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("error while reading a nonce: %w", err)
 	}
 
-	cipherData := aesGCM.Seal(nonce, nonce, data, nil)
-	return []byte(base64.StdEncoding.EncodeToString(cipherData)), nil
+	logger.Info("nonce: %v", nonce)
+	logger.Info("data: %v", data)
+
+	cipherData := aesGCM.Seal(nil, nonce, data, nil)
+
+	fullData := append(nonce, cipherData...) // nonce + encrypted data
+	tag := cipherData[len(cipherData)-16:]   // Extract the tag (last 16 bytes)
+
+	logger.Info("cipherData: %v", fullData)
+	logger.Info("auth tag: %v", tag)
+
+	return fullData, nil
 }
 
 // AesDecrypt decrypts data using AES-GCM with the provided key.

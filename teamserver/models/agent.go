@@ -78,6 +78,7 @@ const (
 	UnloadAssembly
 	AgentCommandType
 	ShellCommand
+	ModuleCommand
 	HelpCommand
 	SetDelay
 	SetJitter

