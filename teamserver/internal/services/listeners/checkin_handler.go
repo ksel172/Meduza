@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -68,7 +68,7 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 	// First, try to get the session token
 	sessionToken := ctx.GetHeader("Session-Token")
 
-	body, _ := ioutil.ReadAll(ctx.Request.Body)
+	body, _ := io.ReadAll(ctx.Request.Body)
 	if len(body) == 0 {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
 		return
@@ -106,10 +106,6 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 	// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid encrypted data"})
 	// 	return
 	// }
-
-	//TODO: Figured out that the shared secret doesn't actually match on both sides,
-	// so I need to reformat the way it is generated
-	logger.Info("SECRET: ", key) // Temp
 
 	decryptedData, err := utils.AesDecrypt(key, body)
 	if err != nil {
@@ -266,12 +262,6 @@ func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request model
 }
 
 func (cc *CheckInController) handleResponseRequest(ctx *gin.Context, c2request models.C2Request) {
-	sessionToken := ctx.GetHeader("Session-Token")
-	if sessionToken == "" {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Session token is missing"})
-		return
-	}
-
 	/*
 		aesKey, exists := KeyRegistry.getKey(sessionToken)
 		if !exists {
