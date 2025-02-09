@@ -26,6 +26,21 @@ namespace Agent.Services
                 _headers.Add(key, value);
         }
 
+        internal bool RemoveHeader(string key)
+        {
+            return _headers.Remove(key);
+        }
+
+        internal void ClearHeaders()
+        {
+            _headers.Clear();
+        }
+
+        internal bool HasHeader(string key)
+        {
+            return _headers.ContainsKey(key);
+        }
+
         internal async Task<string> SimpleGetAsync(string slug)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(slug);

