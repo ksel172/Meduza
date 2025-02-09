@@ -6,7 +6,7 @@ type PayloadRequest struct {
 	PayloadName       string    `json:"payload_name" validate:"required"`
 	ListenerID        string    `json:"listener_id" validate:"required"`
 	Arch              string    `json:"architecture" validate:"required,oneof=win-x64 win-x86 linux-x64 linux-x86"`
-	SelfContained     string    `json:"self_contained" validate:"required,oneof=true false"`
+	SelfContained     bool      `json:"self_contained" validate:"required,oneof=true false"`
 	Sleep             int       `json:"sleep" validate:"required"`
 	Jitter            int       `json:"jitter" validate:"required"`
 	StartDate         time.Time `json:"start_date" validate:"required"`
