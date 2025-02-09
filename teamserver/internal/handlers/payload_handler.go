@@ -70,8 +70,21 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	payloadConfig := models.IntoPayloadConfig(payloadRequest)
 	payloadConfig.ConfigID = uuid.New().String()
 	payloadConfig.PayloadID = uuid.New().String()
-	payloadConfig.Token = uuid.New().String() // used for agent authentication
 	payloadConfig.ListenerConfig = listener.Config
+
+	// Generate the public and private keys for the server for this payload
+	privateKey, publicKey, err := utils.GenerateECDHKeyPair()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  utils.Status.FAILED,
+			"message": "failed to generate server ECDH keys",
+		})
+	}
+	payloadConfig.PublicKey = publicKey
+	payloadConfig.PrivateKey = privateKey
+	payloadConfig.Token = uuid.New().String()
+
+	// TODO: ADD SHARED KEY SHARING WITH AGENT FOR HMAC
 
 	file, err := json.MarshalIndent(payloadConfig, "", "  ")
 	if err != nil {

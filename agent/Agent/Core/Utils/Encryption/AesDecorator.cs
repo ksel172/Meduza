@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System;
+using System.Security.Cryptography;
 using System.Text;
 using Agent.Core.Utils.MessageTransformer;
 
@@ -6,78 +7,82 @@ namespace Agent.Core.Utils.Encryption
 {
     public class AesEncryptionDecorator : BaseTransformerDecorator
     {
-        private readonly AesComponents aesComponents;
+        public AesEncryptionDecorator(IMessageTransformer wrappedTransformer)
+            : base(wrappedTransformer) { }
 
-        public AesEncryptionDecorator(IMessageTransformer wrappedTranformer)
-            : base(wrappedTranformer)
-        {
-            aesComponents = new AesComponents();
-        }
         public override string Transform(string input, string key)
         {
-            if (key == null) return "Key is required";
-
+            if (string.IsNullOrEmpty(key)) return "Key is required";
             string encryptedData = Encrypt(input, key);
             return base.Transform(encryptedData);
         }
-        // Returns IV (16 bytes) + EncryptedData byte array
+
         private string Encrypt(string data, string key)
         {
-            var sessionKey = System.Security.Cryptography.Aes.Create();
-            sessionKey.Mode = aesComponents.CipherMode;
-            sessionKey.Padding = aesComponents.PaddingMode;
-            sessionKey.GenerateIV();
-            sessionKey.Key = System.Text.Encoding.UTF8.GetBytes(key);
+            byte[] derivedKey = Convert.FromBase64String(key);
+            byte[] plaintext = System.Text.Encoding.UTF8.GetBytes(data);
 
-            byte[] encrypted = sessionKey.CreateEncryptor().TransformFinalBlock(System.Text.Encoding.UTF8.GetBytes(data), 0, data.Length);
-            byte[] result = new byte[sessionKey.IV.Length + encrypted.Length];
-            Buffer.BlockCopy(sessionKey.IV, 0, result, 0, sessionKey.IV.Length);
-            Buffer.BlockCopy(encrypted, 0, result, sessionKey.IV.Length, encrypted.Length);
-            return System.Text.Encoding.UTF8.GetString(result);
+            using var aes = new AesGcm(derivedKey);
+            byte[] nonce = new byte[AesGcm.NonceByteSizes.MaxSize];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(nonce);
+            }
+
+            byte[] ciphertext = new byte[plaintext.Length];
+            byte[] tag = new byte[AesGcm.TagByteSizes.MaxSize];
+
+            aes.Encrypt(nonce, plaintext, ciphertext, tag);
+
+            // Combine nonce + ciphertext + tag
+            byte[] result = new byte[nonce.Length + ciphertext.Length + tag.Length];
+            Buffer.BlockCopy(nonce, 0, result, 0, nonce.Length);
+            Buffer.BlockCopy(ciphertext, 0, result, nonce.Length, ciphertext.Length);
+            Buffer.BlockCopy(tag, 0, result, nonce.Length + ciphertext.Length, tag.Length);
+
+            return Convert.ToBase64String(result);
         }
     }
+
     public class AesDecryptionDecorator : BaseTransformerDecorator
     {
-        private readonly AesComponents aesComponents;
+        public AesDecryptionDecorator(IMessageTransformer wrappedTransformer)
+            : base(wrappedTransformer) { }
 
-        public AesDecryptionDecorator(IMessageTransformer wrappedTranformer)
-            : base(wrappedTranformer)
-        {
-            aesComponents = new AesComponents();
-        }
         public override string Transform(string input, string key)
         {
-            if (key == null) return "Key is required";
-
-            string encryptedData = Decrypt(input, key);
-            return base.Transform(encryptedData);
+            if (string.IsNullOrEmpty(key)) return "Key is required";
+            string decryptedData = Decrypt(input, key);
+            return base.Transform(decryptedData);
         }
 
-        // Data should be of format: IV (16 bytes) + EncryptedBytes
         private string Decrypt(string data, string key)
         {
-            var sessionKey = System.Security.Cryptography.Aes.Create();
-            byte[] iv = new byte[aesComponents.IvLength];
-            Buffer.BlockCopy(System.Text.Encoding.UTF8.GetBytes(data), 0, iv, 0, aesComponents.IvLength);
-            sessionKey.IV = iv;
-            sessionKey.Key = System.Text.Encoding.UTF8.GetBytes(key);
-            byte[] encryptedData = new byte[data.Length - aesComponents.IvLength];
-            Buffer.BlockCopy(System.Text.Encoding.UTF8.GetBytes(data), aesComponents.IvLength, encryptedData, 0, data.Length - aesComponents.IvLength);
-            byte[] decrypted = sessionKey.CreateDecryptor().TransformFinalBlock(encryptedData, 0, encryptedData.Length);
+            byte[] derivedKey = Convert.FromBase64String(key);
+            byte[] combined = Convert.FromBase64String(data);
 
-            return System.Text.Encoding.UTF8.GetString(decrypted);
+            int nonceSize = AesGcm.NonceByteSizes.MaxSize;
+            int tagSize = AesGcm.TagByteSizes.MaxSize;
+
+            if (combined.Length < nonceSize + tagSize)
+            {
+                throw new ArgumentException("Ciphertext is too short.");
+            }
+
+            byte[] nonce = new byte[nonceSize];
+            byte[] ciphertext = new byte[combined.Length - nonceSize - tagSize];
+            byte[] tag = new byte[tagSize];
+
+            Buffer.BlockCopy(combined, 0, nonce, 0, nonceSize);
+            Buffer.BlockCopy(combined, nonceSize, ciphertext, 0, ciphertext.Length);
+            Buffer.BlockCopy(combined, combined.Length - tagSize, tag, 0, tagSize); // Extract tag from end
+
+            byte[] plaintext = new byte[ciphertext.Length];
+
+            using var aes = new AesGcm(derivedKey);
+            aes.Decrypt(nonce, ciphertext, tag, plaintext);
+            return System.Text.Encoding.UTF8.GetString(plaintext);
         }
 
-        // Convenience method for decrypting an EncryptedMessagePacket
-        //public static byte[] Decrypt(AgentEncryptedMessage encryptedMessage, byte[] key)
-        //{
-        //    byte[] iv = Convert.FromBase64String(encryptedMessage.IV);
-        //    byte[] encrypted = Convert.FromBase64String(encryptedMessage.EncryptedMessage);
-        //    byte[] combined = new byte[iv.Length + encrypted.Length];
-        //    Buffer.BlockCopy(iv, 0, combined, 0, iv.Length);
-        //    Buffer.BlockCopy(encrypted, 0, combined, iv.Length, encrypted.Length);
-
-        //    return Decrypt(combined, key);
-        //}
     }
 }

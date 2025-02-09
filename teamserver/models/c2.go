@@ -42,4 +42,5 @@ const (
 	Register RequestReason = iota
 	Task
 	Response
+	Authenticate
 )
