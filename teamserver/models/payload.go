@@ -6,7 +6,7 @@ type PayloadRequest struct {
 	PayloadName       string    `json:"payload_name" validate:"required"`
 	ListenerID        string    `json:"listener_id" validate:"required"`
 	Arch              string    `json:"architecture" validate:"required,oneof=win-x64 win-x86 linux-x64 linux-x86"`
-	SelfContained     string    `json:"self_contained" validate:"required,oneof=true false"`
+	SelfContained     bool      `json:"self_contained" validate:"required,oneof=true false"`
 	Sleep             int       `json:"sleep" validate:"required"`
 	Jitter            int       `json:"jitter" validate:"required"`
 	StartDate         time.Time `json:"start_date" validate:"required"`
@@ -20,6 +20,8 @@ type PayloadConfig struct {
 	PayloadName       string    `json:"payload_name"`
 	ConfigID          string    `json:"config_id"`
 	ListenerID        string    `json:"listener_id"`
+	PublicKey         []byte    `json:"-"`
+	PrivateKey        []byte    `json:"-"`
 	Token             string    `json:"token"`
 	Arch              string    `json:"architecture"`
 	ListenerConfig    any       `json:"config"`
@@ -29,6 +31,7 @@ type PayloadConfig struct {
 	KillDate          time.Time `json:"kill_date"`
 	WorkingHoursStart int       `json:"working_hours_start"`
 	WorkingHoursEnd   int       `json:"working_hours_end"`
+	CreatedAt         time.Time `json:"created_at"`
 	//ListenerType   string        `json:"listenerType"`
 }
 
@@ -45,6 +48,7 @@ func IntoPayloadConfig(payloadRequest PayloadRequest) PayloadConfig {
 		KillDate:          payloadRequest.KillDate,
 		WorkingHoursStart: payloadRequest.WorkingHoursStart,
 		WorkingHoursEnd:   payloadRequest.WorkingHoursEnd,
+		CreatedAt:         time.Now(),
 	}
 }
 

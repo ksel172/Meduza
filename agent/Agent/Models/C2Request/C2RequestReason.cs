@@ -4,6 +4,7 @@
     {
         Register,
         Task,
-        Response
+        Response,
+        Authenticate
     }
 }

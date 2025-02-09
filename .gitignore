@@ -414,3 +414,4 @@ FodyWeavers.xsd
 /agent/Agent/bin/*
 /agent/Agent.ModuleBase/obj/*
 /agent/Agent.ModuleBase/bin/*
+/agent/Agent/baseconf.json

@@ -70,8 +70,21 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	payloadConfig := models.IntoPayloadConfig(payloadRequest)
 	payloadConfig.ConfigID = uuid.New().String()
 	payloadConfig.PayloadID = uuid.New().String()
-	payloadConfig.Token = uuid.New().String() // used for agent authentication
 	payloadConfig.ListenerConfig = listener.Config
+
+	// Generate the public and private keys for the server for this payload
+	privateKey, publicKey, err := utils.GenerateECDHKeyPair()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"status":  utils.Status.FAILED,
+			"message": "failed to generate server ECDH keys",
+		})
+	}
+	payloadConfig.PublicKey = publicKey
+	payloadConfig.PrivateKey = privateKey
+	payloadConfig.Token = uuid.New().String()
+
+	// TODO: ADD SHARED KEY SHARING WITH AGENT FOR HMAC
 
 	file, err := json.MarshalIndent(payloadConfig, "", "  ")
 	if err != nil {
@@ -98,7 +111,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	args := []string{
 		"publish",
 		"--configuration", "Release",
-		"--self-contained", payloadRequest.SelfContained,
+		"--self-contained", strings.ToLower(fmt.Sprintf("%t", payloadRequest.SelfContained)),
 		"-o", "/app/build/payload-" + payloadConfig.PayloadID,
 		"-p:PublishSingleFile=true",
 		"-p:DefineConstants=TYPE_" + listener.Type, // Specify comm type to cut out pieces of the code

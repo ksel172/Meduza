@@ -1,30 +1,55 @@
 ﻿using Agent.Models;
-using System.Net;
+using System.Net.Http;
 using System.Text;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Agent.Services
 {
     internal class CommunicationService
     {
         internal BaseConfig? BaseConfig { get; set; }
-
         private int lastUrlUsed = -1;
+        private readonly Dictionary<string, string> _headers;
 
-        public CommunicationService(BaseConfig baseConfig)
+        public CommunicationService(BaseConfig baseConfig, Dictionary<string, string>? headers = null)
         {
             BaseConfig = baseConfig;
+            _headers = headers ?? new Dictionary<string, string>();
+        }
+
+        internal void SetHeader(string key, string value)
+        {
+            if (_headers.ContainsKey(key))
+                _headers[key] = value;
+            else
+                _headers.Add(key, value);
+        }
+
+        internal bool RemoveHeader(string key)
+        {
+            return _headers.Remove(key);
+        }
+
+        internal void ClearHeaders()
+        {
+            _headers.Clear();
+        }
+
+        internal bool HasHeader(string key)
+        {
+            return _headers.ContainsKey(key);
         }
 
         internal async Task<string> SimpleGetAsync(string slug)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(slug);
-
             var callbackUri = new Uri(GetCallbackUrl());
 
             using (var client = new HttpClient())
             {
+                AddHeaders(client);
                 var result = await client.GetStringAsync(new Uri(callbackUri, slug));
-
                 return result ?? string.Empty;
             }
         }
@@ -33,38 +58,41 @@ namespace Agent.Services
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(slug, nameof(slug));
             ArgumentException.ThrowIfNullOrWhiteSpace(jsonData, nameof(jsonData));
-
-            HttpResponseMessage response;
             var callbackUri = new Uri(GetCallbackUrl());
 
             using (var client = new HttpClient())
             {
+                AddHeaders(client);
                 var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+                var response = await client.PostAsync(new Uri(callbackUri, slug).ToString(), content);
 
-                var data = await content.ReadAsStringAsync();
-
-                response = await client.PostAsync(new Uri(callbackUri, slug).ToString(), content);
+                return response != null && response.IsSuccessStatusCode
+                    ? await response.Content.ReadAsStringAsync()
+                    : string.Empty;
             }
+        }
 
-            if (response == null || !response.IsSuccessStatusCode) return string.Empty;
-
-            return await response.Content.ReadAsStringAsync();
+        private void AddHeaders(HttpClient client)
+        {
+            foreach (var header in _headers)
+            {
+                client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
+            }
         }
 
         private string GetCallbackUrl()
         {
             switch (BaseConfig!.Config.HostRotation.ToLower())
             {
-                // TODO: Add logic for dead urls here
                 case "fallback":
                     return BaseConfig.Config.Hosts[0];
                 case "sequential":
-                    return BaseConfig.Config.Hosts[lastUrlUsed++];
+                    return BaseConfig.Config.Hosts[lastUrlUsed++ % BaseConfig.Config.Hosts.Count];
                 case "random":
                     var random = new Random();
-                    return BaseConfig.Config.Hosts[random.Next(0, BaseConfig.Config.Hosts.Count - 1)];
+                    return BaseConfig.Config.Hosts[random.Next(0, BaseConfig.Config.Hosts.Count)];
                 default:
-                    return "http://127.0.0.1:8080"; // TODO
+                    return "http://127.0.0.1:8080";
             }
         }
 
@@ -87,7 +115,6 @@ namespace Agent.Services
         }
         */
     }
-
     #region For use later
     //internal async Task<HttpResponseMessage> GetAsync(string slug, bool useCookies = true)
     //{
