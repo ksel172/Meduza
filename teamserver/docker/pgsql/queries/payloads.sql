@@ -13,5 +13,6 @@ CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.{TABLE_NAME}(
     start_date TIMESTAMPTZ NOT NULL,
     kill_date TIMESTAMPTZ NOT NULL,
     working_hours_start INTEGER NOT NULL,
-    working_hours_end INTEGER NOT NULL
+    working_hours_end INTEGER NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

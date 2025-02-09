@@ -45,12 +45,12 @@ func (dal *PayloadDAL) CreatePayload(ctx context.Context, config models.PayloadC
 
 	query := fmt.Sprintf(`INSERT INTO %s.payloads (
 		payload_id, payload_name, config_id, listener_id, private_key, public_key, payload_token, arch,
-		listener_config, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`, dal.schema)
+		listener_config, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`, dal.schema)
 	_, err = tx.ExecContext(ctx, query, config.PayloadID, config.PayloadName, config.ConfigID,
 		config.ListenerID, config.PrivateKey, config.PublicKey, config.Token, config.Arch, listenerConfigJSON,
 		config.Sleep, config.Jitter, config.StartDate, config.KillDate, config.WorkingHoursStart,
-		config.WorkingHoursEnd)
+		config.WorkingHoursEnd, config.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to insert payload: %w", err)
 	}
@@ -59,7 +59,7 @@ func (dal *PayloadDAL) CreatePayload(ctx context.Context, config models.PayloadC
 }
 
 func (dal *PayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error) {
-	query := fmt.Sprintf(`SELECT payload_id, payload_name, config_id, listener_id, arch, listener_config, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end
+	query := fmt.Sprintf(`SELECT payload_id, payload_name, config_id, listener_id, arch, listener_config, sleep, jitter, start_date, kill_date, working_hours_start, working_hours_end, created_at
         FROM %s.payloads`, dal.schema)
 
 	rows, err := dal.db.QueryContext(ctx, query)
@@ -71,7 +71,7 @@ func (dal *PayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConf
 	var configs []models.PayloadConfig
 	for rows.Next() {
 		var config models.PayloadConfig
-		err := rows.Scan(&config.PayloadID, &config.PayloadName, &config.ConfigID, &config.ListenerID, &config.Arch, &config.ListenerConfig, &config.Sleep, &config.Jitter, &config.StartDate, &config.KillDate, &config.WorkingHoursStart, &config.WorkingHoursEnd)
+		err := rows.Scan(&config.PayloadID, &config.PayloadName, &config.ConfigID, &config.ListenerID, &config.Arch, &config.ListenerConfig, &config.Sleep, &config.Jitter, &config.StartDate, &config.KillDate, &config.WorkingHoursStart, &config.WorkingHoursEnd, &config.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan payload: %w", err)
 		}

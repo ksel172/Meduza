@@ -31,6 +31,7 @@ type PayloadConfig struct {
 	KillDate          time.Time `json:"kill_date"`
 	WorkingHoursStart int       `json:"working_hours_start"`
 	WorkingHoursEnd   int       `json:"working_hours_end"`
+	CreatedAt         time.Time `json:"created_at"`
 	//ListenerType   string        `json:"listenerType"`
 }
 
@@ -47,6 +48,7 @@ func IntoPayloadConfig(payloadRequest PayloadRequest) PayloadConfig {
 		KillDate:          payloadRequest.KillDate,
 		WorkingHoursStart: payloadRequest.WorkingHoursStart,
 		WorkingHoursEnd:   payloadRequest.WorkingHoursEnd,
+		CreatedAt:         time.Now(),
 	}
 }
 
