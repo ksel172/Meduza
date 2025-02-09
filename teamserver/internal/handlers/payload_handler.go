@@ -111,7 +111,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	args := []string{
 		"publish",
 		"--configuration", "Release",
-		"--self-contained", payloadRequest.SelfContained,
+		"--self-contained", strings.ToLower(fmt.Sprintf("%t", payloadRequest.SelfContained)),
 		"-o", "/app/build/payload-" + payloadConfig.PayloadID,
 		"-p:PublishSingleFile=true",
 		"-p:DefineConstants=TYPE_" + listener.Type, // Specify comm type to cut out pieces of the code

@@ -10,9 +10,9 @@ CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.{TABLE_NAME}(
     listener_config JSONB NOT NULL,
     sleep INTEGER NOT NULL,
     jitter INTEGER NOT NULL,
-    start_date TIMESTAMPTZ NOT NULL,
-    kill_date TIMESTAMPTZ NOT NULL,
-    working_hours_start INTEGER NOT NULL,
-    working_hours_end INTEGER NOT NULL,
+    start_date TIMESTAMPTZ,
+    kill_date TIMESTAMPTZ,
+    working_hours_start INTEGER,
+    working_hours_end INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
