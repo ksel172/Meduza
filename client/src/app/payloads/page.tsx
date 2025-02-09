@@ -6,6 +6,7 @@ import { useState } from "react";
 import ConsoleWidget from "@/components/util/navbar/console";
 
 import { MultiSelectPopover } from "@/components/appendable";
+import { saveAs, encodeBase64 } from '@progress/kendo-file-saver';
 
 import { Button } from "@/components/ui/button"
 import {
@@ -95,11 +96,10 @@ export default function Payloads() {
       <TableCell>{getPayloadListenerType(payload.payloadListener)}</TableCell>
       <TableCell>{getPayloadListenerName(payload.payloadListener)}</TableCell>
       <TableCell>{format(payload.startTime, "Pp")}</TableCell>
-      {/* <TableCell>{payload.startTime}</TableCell> */}
       <TableCell className="text-right flex flex-row items-center justify-center gap-4">
 
         <Trash2 className="cursor-pointer" size={18} strokeWidth={1} onClick={() => deletePayload(payload)} />
-        <Download className="cursor-pointer" size={18} strokeWidth={1} />
+        <Download className="cursor-pointer" size={18} strokeWidth={1} onClick={() => downloadPayload(payload)} />
       </TableCell>
     </>
   )
@@ -243,6 +243,45 @@ export default function Payloads() {
           variant: "destructive",
           title: "Payload Creation Failed...",
           description: "Failed to generate payload. Please try again later.",
+          action: (
+            <ToastAction altText="undo">Close</ToastAction>
+          ),
+        })
+    }
+  }
+
+  const downloadPayload = async (payload: any) => {
+    try{
+      console.log(payload)
+        const url = `/payloads/download/${payload.id}`;
+        const data : any = await axiosInstance.get(
+            url,
+            {
+                headers: { authorization: `Bearer ${cookies.jwt}` }
+            }
+        ).then((data) => {
+          const file = new Blob([data.data], {
+            type: "application/octet-stream",
+          });
+          // saveAs(file, `${data.headers["Content-Disposition"]}`);
+          saveAs(file, "payload.exe")
+        });
+        toast({
+          variant: "success",
+          title: "Your payload has been downloaded.",
+          description: "A popup window should appear to download your payload.",
+          action: (
+            <ToastAction altText="undo">Close</ToastAction>
+          ),
+        })
+    
+    }
+    catch(error){
+        console.log(error);
+        toast({
+          variant: "destructive",
+          title: "Unable to Download Payload...",
+          description: "Please try again later.",
           action: (
             <ToastAction altText="undo">Close</ToastAction>
           ),
