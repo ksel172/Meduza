@@ -103,11 +103,11 @@ func (dal *PayloadDAL) DeleteAllPayloads(ctx context.Context) error {
 	return nil
 }
 
-func (dal *PayloadDAL) GetKeys(ctx context.Context, configID string) ([]byte, []byte, error) {
+func (dal *PayloadDAL) GetKeys(ctx context.Context, authToken string) ([]byte, []byte, error) {
 	query := fmt.Sprintf(`
 		SELECT private_key, public_key
 		FROM %s.payloads
-		WHERE config_id = $1`,
+		WHERE payload_token = $1`,
 		dal.schema)
 	stmt, err := dal.db.PrepareContext(ctx, query)
 	if err != nil {
@@ -117,9 +117,9 @@ func (dal *PayloadDAL) GetKeys(ctx context.Context, configID string) ([]byte, []
 
 	var publicKey []byte
 	var privateKey []byte
-	if err := stmt.QueryRowContext(ctx, configID).Scan(&privateKey, &publicKey); err != nil {
-		log.Printf("Failed to scan public key: %v", err)
-		return nil, nil, fmt.Errorf("failed to scan public key: %w", err)
+	if err := stmt.QueryRowContext(ctx, authToken).Scan(&privateKey, &publicKey); err != nil {
+		log.Printf("Failed to scan keys: %v", err)
+		return nil, nil, fmt.Errorf("failed to scan keys: %w", err)
 	}
 
 	return privateKey, publicKey, nil

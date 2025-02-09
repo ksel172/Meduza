@@ -65,56 +65,80 @@ func NewCheckInController(checkInDAL dal.ICheckInDAL, agentDAL dal.IAgentDAL, pa
 }
 
 func (cc *CheckInController) Checkin(ctx *gin.Context) {
-	// First, try to get the session token
-	sessionToken := ctx.GetHeader("Session-Token")
-
+	// Read request body to unmarshal into c2request
+	// body might be encrypted with AES or not
+	// depending on whether the agent is already authenticated)
 	body, _ := io.ReadAll(ctx.Request.Body)
 	if len(body) == 0 {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
 		return
 	}
-
 	var c2request models.C2Request
 
-	if sessionToken == "" {
-		if err := json.Unmarshal(body, &c2request); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request format"})
+	// If a session token is sent, that means the agent is authenticated
+	// Otherwise, treat is as an authentication request
+	sessionTokenBase64 := ctx.GetHeader("Session-Token")
+	if sessionTokenBase64 == "" {
+		// Get base64 Auth-Token header and decode it
+		authTokenBase64 := ctx.GetHeader("Auth-Token")
+		if authTokenBase64 == "" {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "missing Auth-Token header"})
+			return
+		}
+		authToken, err := base64.StdEncoding.DecodeString(authTokenBase64)
+		if err != nil {
+			logger.Info(LogLevel, LogDetail, fmt.Sprintf("failed to base64 decode Auth-Token header: %v", authToken))
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid Auth-Token header"})
 			return
 		}
 
-		if c2request.Reason != models.Authenticate {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized: missing session token"})
+		// The C2Request should not be encrypted at this point, only base64 encoded, unmarshal and use it to authenticate
+		// The c2 request should contain only a single message field with the agent public key:
+		// BASE 64 ENCODED REQUEST BODY:
+		// {"message": <AGENT_PUBLIC_KEY>}
+		decodedC2Request, err := base64.StdEncoding.DecodeString(string(body))
+		if err != nil {
+			logger.Info(LogLevel, LogDetail, fmt.Sprintf("failed to base64 decode c2 request: %v, data: %v", err, decodedC2Request))
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid encrypted data"})
+			return
+		}
+		var c2request models.C2Request
+		if err := json.Unmarshal(decodedC2Request, &c2request); err != nil {
+			logger.Info(LogLevel, LogDetail, fmt.Sprintf("Invalid request body: %v", err))
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 			return
 		}
 
+		// Authenticate agent
 		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling authentication request for agent %s", c2request.AgentID))
-		cc.authenticate(ctx, c2request)
+		cc.authenticate(ctx, c2request, string(authToken))
 		return
 	}
 
-	key, exists := KeyRegistry.getKey(sessionToken)
+	// Get session AES key for agent, decrypt request body and unmarshal
+	sessionToken, err := base64.StdEncoding.DecodeString(sessionTokenBase64)
+	if err != nil {
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("failed to base64 decode Session-Token header: %v", sessionToken))
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid Auth-Token header"})
+		return
+	}
+	key, exists := KeyRegistry.getKey(string(sessionToken))
 	if !exists {
+		// If agent received unauthorized response
+		// it should send another authentication request right after
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Missing AES key for session: %s", sessionToken))
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session token"})
 		return
 	}
-
-	// TODO: What is illegal abput the converted string?
-	// Decode base64 encrypted request
-	// encryptedData, err := base64.StdEncoding.DecodeString(string(body))
-	// if err != nil {
-	// 	logger.Info(LogLevel, LogDetail, "Base64 decode error:", err)
-	// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid encrypted data"})
-	// 	return
-	// }
-
 	decryptedData, err := utils.AesDecrypt(key, body)
 	if err != nil {
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Failed to decrypt request body: %v", err))
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "decryption failed"})
 		return
 	}
-
 	if err := json.Unmarshal(decryptedData, &c2request); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid decrypted data format"})
+		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Invalid request body: %v", err))
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
@@ -134,25 +158,18 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 	}
 }
 
-func (cc *CheckInController) authenticate(ctx *gin.Context, c2request models.C2Request) {
-	// Get the agent base 64 encoded public key and decode it
-	agentPublicKeyBase64 := c2request.Message
-	if agentPublicKeyBase64 == "" {
+func (cc *CheckInController) authenticate(ctx *gin.Context, c2request models.C2Request, authToken string) {
+	// Get the agent public key from the request message
+	agentPublicKey := c2request.Message
+	if agentPublicKey == "" {
 		logger.Info("Authentication request sent with no public key")
 		ctx.Status(http.StatusBadRequest)
 		return
 	}
-	agentPublicKey, err := base64.StdEncoding.DecodeString(agentPublicKeyBase64)
-	if err != nil {
-		ctx.Status(http.StatusInternalServerError)
-		return
-	}
-
-	// TODO: add agent public key signature verification here
 
 	// Retrieve the server private key to derive shared key
 	// and the public key to send to the agent
-	serverPrivKey, serverPublicKey, err := cc.payloadDAL.GetKeys(ctx.Request.Context(), c2request.ConfigID)
+	serverPrivKey, serverPublicKey, err := cc.payloadDAL.GetKeys(ctx.Request.Context(), authToken)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			logger.Error(LogLevel, LogDetail, "No public key found for the given config ID")
@@ -164,7 +181,7 @@ func (cc *CheckInController) authenticate(ctx *gin.Context, c2request models.C2R
 	}
 
 	// Generate AES session key and store in the registry
-	aesKey, err := utils.DeriveECDHSharedSecret(serverPrivKey, agentPublicKey)
+	aesKey, err := utils.DeriveECDHSharedSecret(serverPrivKey, []byte(agentPublicKey))
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		return
@@ -175,6 +192,7 @@ func (cc *CheckInController) authenticate(ctx *gin.Context, c2request models.C2R
 
 	// Store the session token and map it to the AES key
 	KeyRegistry.writeKey(sessionToken, aesKey)
+
 	// Return the server public key and session token to the agent
 	ctx.JSON(http.StatusAccepted, gin.H{
 		"public_key":    base64.StdEncoding.EncodeToString(serverPublicKey),
@@ -310,7 +328,7 @@ func (cc *CheckInController) handleResponseRequest(ctx *gin.Context, c2request m
 }
 
 func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request models.C2Request) {
-	logger.Info(LogLevel, LogDetail, fmt.Sprintf("Received check-in request from agent: %s", c2request.AgentID))
+	logger.Info(LogLevel, LogDetail, fmt.Sprintf("Received register request from agent: %s", c2request.AgentID))
 
 	var agentInfo models.AgentInfo
 	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
