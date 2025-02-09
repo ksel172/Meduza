@@ -15,7 +15,7 @@ type IPayloadDAL interface {
 	GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error)
 	DeletePayload(ctx context.Context, payloadID string) error
 	DeleteAllPayloads(ctx context.Context) error
-	GetKeys(ctx context.Context, configID string) ([]byte, []byte, error)
+	GetKeys(ctx context.Context, authToken string) ([]byte, []byte, error)
 	GetToken(ctx context.Context, configID string) (string, error)
 }
 

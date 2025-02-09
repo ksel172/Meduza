@@ -191,7 +191,12 @@ func (m *MockPayloadDAL) DeleteAllPayloads(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (m *MockPayloadDAL) GetPayloadToken(ctx context.Context, configID string) (string, error) {
+func (m *MockPayloadDAL) GetKeys(ctx context.Context, authToken string) ([]byte, []byte, error) {
+	args := m.Called(authToken)
+	return args.Get(0).([]byte), args.Get(1).([]byte), args.Error(2)
+}
+
+func (m *MockPayloadDAL) GetToken(ctx context.Context, configID string) (string, error) {
 	args := m.Called(configID)
 	return args.String(0), args.Error(1)
 }

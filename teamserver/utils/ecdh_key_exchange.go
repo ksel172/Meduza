@@ -14,7 +14,6 @@ func GenerateECDHKeyPair() ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate private key: %v", err)
 	}
-	fmt.Printf("Public key: %+v", privKey.PublicKey().Bytes())
 	return privKey.Bytes(), privKey.PublicKey().Bytes(), nil
 }
 
@@ -34,7 +33,6 @@ func DeriveECDHSharedSecret(privKeyBytes []byte, peerPublicKeyBytes []byte) ([]b
 
 	// Hash the shared secret with SHA-256 to produce a 32-byte AES key
 	// Agent needs to do the same
-	//https://crypto.stackexchange.com/questions/57783/aes-encryption-using-a-diffie-hellman-question
 	aesKey := sha256.Sum256(sharedKey)
 	return aesKey[:], nil
 }

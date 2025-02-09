@@ -95,7 +95,7 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 		// The C2Request should not be encrypted at this point, only base64 encoded, unmarshal and use it to authenticate
 		// The c2 request should contain only a single message field with the agent public key:
 		// BASE 64 ENCODED REQUEST BODY:
-		// {"message": <AGENT_PUBLIC_KEY>}
+		// {"message": <BASE 64 ENCODED AGENT_PUBLIC_KEY>}
 		decodedC2Request, err := base64.StdEncoding.DecodeString(string(body))
 		if err != nil {
 			logger.Info(LogLevel, LogDetail, fmt.Sprintf("failed to base64 decode c2 request: %v, data: %v", err, decodedC2Request))
@@ -160,10 +160,16 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
 func (cc *CheckInController) authenticate(ctx *gin.Context, c2request models.C2Request, authToken string) {
 	// Get the agent public key from the request message
-	agentPublicKey := c2request.Message
-	if agentPublicKey == "" {
-		logger.Info("Authentication request sent with no public key")
-		ctx.Status(http.StatusBadRequest)
+	agentPublicKeyBase64 := c2request.Message
+	if agentPublicKeyBase64 == "" {
+		logger.Info(LogLevel, LogDetail, "Authentication request sent with no public key")
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "missing public key"})
+		return
+	}
+	agentPublicKey, err := base64.StdEncoding.DecodeString(agentPublicKeyBase64)
+	if err != nil {
+		logger.Info(LogLevel, LogDetail, "Public key not base64 encoded")
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "public key not encoded"})
 		return
 	}
 
@@ -176,14 +182,14 @@ func (cc *CheckInController) authenticate(ctx *gin.Context, c2request models.C2R
 			ctx.JSON(http.StatusNotFound, gin.H{"error": "No public key found for the given config ID"})
 			return
 		}
-		ctx.Status(http.StatusInternalServerError)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "no keys associated with provided token"})
 		return
 	}
 
 	// Generate AES session key and store in the registry
 	aesKey, err := utils.DeriveECDHSharedSecret(serverPrivKey, []byte(agentPublicKey))
 	if err != nil {
-		ctx.Status(http.StatusInternalServerError)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "failed to derive shared key"})
 		return
 	}
 
@@ -196,7 +202,7 @@ func (cc *CheckInController) authenticate(ctx *gin.Context, c2request models.C2R
 	// Return the server public key and session token to the agent
 	ctx.JSON(http.StatusAccepted, gin.H{
 		"public_key":    base64.StdEncoding.EncodeToString(serverPublicKey),
-		"session_token": sessionToken,
+		"session_token": base64.StdEncoding.EncodeToString([]byte(sessionToken)),
 	})
 }
 

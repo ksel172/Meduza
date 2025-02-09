@@ -2,8 +2,11 @@ package handler_tests
 
 import (
 	"bytes"
+	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,115 +15,235 @@ import (
 	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/tests/mocks"
+	"github.com/ksel172/Meduza/teamserver/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-func TestAgentAuthController(t *testing.T) {
-	mockPayloadDal := new(mocks.MockPayloadDAL)
-
-	// checkInController := services.NewCheckInController(mockCheckInDal, mockAgentDAL)
-	agentAuthController := services.NewAgentAuthController(mockPayloadDal)
+func TestAgentAuthRequest(t *testing.T) {
+	mockCheckInDal := new(mocks.MockCheckInDal)
+	mockAgentDAL := new(mocks.MockAgentDAL)
+	mockPayloaDAL := new(mocks.MockPayloadDAL)
+	controller := services.NewCheckInController(mockCheckInDal, mockAgentDAL, mockPayloaDAL)
 	gin.SetMode(gin.TestMode)
+
+	// Create a mock public key for the agent and server
+	_, agentPubKey, err := utils.GenerateECDHKeyPair()
+	if err != nil {
+		t.Fatal("failed to generate agent ecdh key pair")
+	}
+	agentPubKeyBase64 := base64.StdEncoding.EncodeToString(agentPubKey)
+	serverPrivKey, serverPubKey, err := utils.GenerateECDHKeyPair()
+	if err != nil {
+		t.Fatal("failed to generate server ecdh key pair")
+	}
+
+	prepareRequestBody := func(c2request models.C2Request, encode bool) []byte {
+		// Prepare request body by base64 encoding it entirely
+		bodyRawBytes, err := json.Marshal(c2request)
+		if err != nil {
+			t.Fatal("failed to marshal request c2request body")
+		}
+		if !encode {
+			return bodyRawBytes
+		}
+		encodedBodyString := base64.StdEncoding.EncodeToString(bodyRawBytes)
+		return []byte(encodedBodyString)
+	}
 
 	tests := []struct {
 		name           string
-		c2Request      models.C2Request
+		authToken      string
+		c2request      models.C2Request
+		encodeBody     bool
 		expectedStatus int
 	}{
 		{
-			name:           "agent auth: success",
-			c2Request:      models.C2Request{ConfigID: "test-config-id"},
-			expectedStatus: http.StatusOK,
+			name:           "agent authentication: success",
+			authToken:      base64.StdEncoding.EncodeToString([]byte("test-auth-token")),
+			c2request:      models.C2Request{Message: agentPubKeyBase64},
+			encodeBody:     true,
+			expectedStatus: http.StatusAccepted,
 		},
 		{
-			name:           "agent auth: fail get payload token",
-			c2Request:      models.NewC2Request(),
-			expectedStatus: http.StatusInternalServerError,
-		},
-		{
-			name:           "agent auth: stored token does not match provided token",
-			c2Request:      models.NewC2Request(),
+			name:           "agent authentication: missing Auth-Token header",
+			c2request:      models.C2Request{Message: agentPubKeyBase64},
+			encodeBody:     true,
 			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "agent authentication: Auth-Token header with no encoding",
+			authToken:      "test-auth-token",
+			c2request:      models.C2Request{Message: agentPubKeyBase64},
+			encodeBody:     true,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "agent authentication: request body with no encoding",
+			authToken:      base64.StdEncoding.EncodeToString([]byte("test-auth-token")),
+			c2request:      models.C2Request{Message: agentPubKeyBase64},
+			encodeBody:     false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "agent authentication: missing public key",
+			authToken:      base64.StdEncoding.EncodeToString([]byte("test-auth-token")),
+			c2request:      models.C2Request{},
+			encodeBody:     true,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "agent authentication: dal error: keys not found",
+			authToken:      base64.StdEncoding.EncodeToString([]byte("test-auth-token")),
+			c2request:      models.C2Request{Message: agentPubKeyBase64},
+			encodeBody:     true,
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "agent authentication: dal error: server error",
+			authToken:      base64.StdEncoding.EncodeToString([]byte("test-auth-token")),
+			c2request:      models.C2Request{Message: agentPubKeyBase64},
+			encodeBody:     true,
+			expectedStatus: http.StatusInternalServerError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
+			// Prepare mock DAL calls in order
 			switch tt.name {
-			case "agent auth: success":
-				mockPayloadDal.On("GetPayloadToken", mock.AnythingOfType("string")).Return("testPayloadToken", nil).Once()
-			case "agent auth: fail get payload token":
-				mockPayloadDal.On("GetPayloadToken", mock.AnythingOfType("string")).Return("", errors.New("failed")).Once()
-			case "agent auth: stored token does not match provided token":
-				mockPayloadDal.On("GetPayloadToken", mock.AnythingOfType("string")).Return("failTestPayloadToken", nil).Once()
+			case "agent authentication: success":
+				mockPayloaDAL.On("GetKeys", "test-auth-token").Return(serverPrivKey, serverPubKey, nil).Once()
+			case "agent authentication: dal error: keys not found":
+				mockPayloaDAL.On("GetKeys", "test-auth-token").Return(([]byte)(nil), ([]byte)(nil), sql.ErrNoRows).Once()
+			case "agent authentication: dal error: server error":
+				mockPayloaDAL.On("GetKeys", "test-auth-token").Return(([]byte)(nil), ([]byte)(nil), errors.New("dal error")).Once()
 			}
 
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
-			body, _ := json.Marshal(tt.c2Request)
+			// Create request body from the c2request, encode it or not, depending on the test
+			body := prepareRequestBody(tt.c2request, tt.encodeBody)
 			c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
-			c.Request.Header.Set("Authorization", "testPayloadToken")
 
-			// If Authorization header is provided, then request will be handled at encryption key request
-			// Otherwise, authentication will be skipped and agent/server communication will already be encrypted
-			agentAuthController.AuthenticateAgent(c)
+			// Add Auth-Token header
+			if tt.authToken != "" {
+				c.Request.Header.Add("Auth-Token", tt.authToken)
+			}
 
+			// Submit request
+			controller.Checkin(c)
+
+			// Verify expectations
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			mockPayloadDal.AssertExpectations(t)
+			mockCheckInDal.AssertExpectations(t)
+			mockAgentDAL.AssertExpectations(t)
+			mockPayloaDAL.AssertExpectations(t)
+
+			// Verify returned values
+			switch tt.name {
+			case "agent authentication: success":
+				serverResponse := struct {
+					PublicKey    string `json:"public_key"`
+					SessionToken string `json:"session_token"`
+				}{}
+				err := json.Unmarshal(w.Body.Bytes(), &serverResponse)
+				if assert.Nil(t, err) {
+					_, err = base64.StdEncoding.DecodeString(serverResponse.PublicKey)
+					assert.Nil(t, err)
+					_, err = base64.StdEncoding.DecodeString(serverResponse.SessionToken)
+					assert.Nil(t, err)
+				}
+			}
+
 		})
 	}
 }
 
-// From here below, all tests will assume agent authentication handler has already been called and the values have been set in the context
-// This is validated by test TestAgentAuthController
-
-func TestAgentEncryptionKeyRequest(t *testing.T) {
-	mockCheckInDal := new(mocks.MockCheckInDal)
+// Function to simulate agent authentication and retrieve sessiontoken + AES key for message encryption
+func authenticateAgent() (string, []byte, error) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
+	mockCheckInDal := new(mocks.MockCheckInDal)
+	mockPayloaDAL := new(mocks.MockPayloadDAL)
+	controller := services.NewCheckInController(mockCheckInDal, mockAgentDAL, mockPayloaDAL)
 
-	// checkInController := services.NewCheckInController(mockCheckInDal, mockAgentDAL)
-	checkInController := services.NewCheckInController(mockCheckInDal, mockAgentDAL)
-	gin.SetMode(gin.TestMode)
-
-	tests := []struct {
-		name           string
-		c2Request      models.C2Request
-		expectedStatus int
-	}{
-		{
-			name:           "encryption key request: success",
-			c2Request:      models.C2Request{ConfigID: "test-config-id"},
-			expectedStatus: http.StatusOK,
-		},
+	// Generates agent and server keys
+	agentPrivKey, agentPubKey, err := utils.GenerateECDHKeyPair()
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to generate agent keys: %v", err)
+	}
+	serverPrivKey, serverPubKey, err := utils.GenerateECDHKeyPair()
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to generate server keys: %v", err)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
+	// Create request body
+	c2request := models.C2Request{Message: base64.StdEncoding.EncodeToString(agentPubKey)}
+	bodyRawBytes, _ := json.Marshal(c2request)
+	encodedBodyString := base64.StdEncoding.EncodeToString(bodyRawBytes)
+	body := []byte(encodedBodyString)
 
-			body, _ := json.Marshal(tt.c2Request)
-			c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
+	// Agent prepares its authentication request
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
+	c.Request.Header.Add("Auth-Token", base64.RawStdEncoding.EncodeToString([]byte("test-auth-token")))
 
-			// Simulate the agentAuth handler, it sets 2 values in the request as below
-			c.Set(services.AuthToken, "testPayloadToken")
-			c.Set("c2request", tt.c2Request)
+	// Ensure auth-token is accepted using the payloadDAL mock, which will also return the server keys
+	mockPayloaDAL.On("GetKeys", "test-auth-token").Return(serverPrivKey, serverPubKey, nil).Once()
 
-			checkInController.Checkin(c)
+	// Submit request to server
+	controller.Checkin(c)
 
-			assert.Equal(t, tt.expectedStatus, w.Code)
-		})
+	fmt.Printf("response code: %v", w.Code)
+	if w.Code != http.StatusAccepted {
+		return "", nil, fmt.Errorf("agent auth failed")
 	}
+
+	// Receive server response
+	serverResponseBase64 := struct {
+		PublicKey    string `json:"public_key"`
+		SessionToken string `json:"session_token"`
+	}{}
+	if err := json.Unmarshal(w.Body.Bytes(), &serverResponseBase64); err != nil {
+		return "", nil, fmt.Errorf("invalid response body")
+	}
+	serverPublicKey, _ := base64.StdEncoding.DecodeString(serverResponseBase64.PublicKey)
+
+	// Use the server public key to derive the shared key
+	sharedKey, err := utils.DeriveECDHSharedSecret(agentPrivKey, serverPublicKey)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to derive shared key")
+	}
+
+	// SessionToken is sent in base64 in the requests anyway
+	return serverResponseBase64.SessionToken, sharedKey, nil
+}
+
+func encryptAgentRequest(c2request models.C2Request, key []byte) ([]byte, error) {
+	c2requestBytes, err := json.Marshal(c2request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal c2request")
+	}
+	encryptedc2request, err := utils.AesEncrypt(key, c2requestBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt message")
+	}
+	return encryptedc2request, nil
 }
 
 func TestAgentRegisterRequest(t *testing.T) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
 	mockCheckInDal := new(mocks.MockCheckInDal)
-	controller := services.NewCheckInController(mockCheckInDal, mockAgentDAL)
+	mockPayloaDAL := new(mocks.MockPayloadDAL)
+	controller := services.NewCheckInController(mockCheckInDal, mockAgentDAL, mockPayloaDAL)
 	gin.SetMode(gin.TestMode)
+
+	encodedSessionToken, aesKey, err := authenticateAgent()
+	if err != nil {
+		t.Fatalf("failed agent auth: %v", err)
+	}
 
 	c2request := models.C2Request{
 		Reason:  models.Register,
@@ -176,11 +299,12 @@ func TestAgentRegisterRequest(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
-			body, _ := json.Marshal(tt.c2Request)
+			body, err := encryptAgentRequest(c2request, aesKey)
+			if err != nil {
+				t.Fatal(err.Error())
+			}
 			c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
-
-			// Simulate the agentAuth handler, it sets the c2request in the request as below
-			c.Set("c2request", tt.c2Request)
+			c.Request.Header.Add("Session-Token", encodedSessionToken)
 
 			controller.Checkin(c)
 
@@ -194,8 +318,14 @@ func TestAgentRegisterRequest(t *testing.T) {
 func TestAgentTasksRequest(t *testing.T) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
 	mockCheckInDal := new(mocks.MockCheckInDal)
-	handler := services.NewCheckInController(mockCheckInDal, mockAgentDAL)
+	mockPayloaDAL := new(mocks.MockPayloadDAL)
+	controller := services.NewCheckInController(mockCheckInDal, mockAgentDAL, mockPayloaDAL)
 	gin.SetMode(gin.TestMode)
+
+	encodedSessionToken, aesKey, err := authenticateAgent()
+	if err != nil {
+		t.Fatalf("failed agent auth: %v", err)
+	}
 
 	c2request := models.C2Request{
 		Reason:  models.Task,
@@ -241,11 +371,14 @@ func TestAgentTasksRequest(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
-			body, _ := json.Marshal(tt.c2request)
+			body, err := encryptAgentRequest(c2request, aesKey)
+			if err != nil {
+				t.Fatal(err.Error())
+			}
 			c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
-			c.Set("c2request", tt.c2request)
+			c.Request.Header.Add("Session-Token", encodedSessionToken)
 
-			handler.Checkin(c)
+			controller.Checkin(c)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			mockCheckInDal.AssertExpectations(t)
@@ -257,8 +390,14 @@ func TestAgentTasksRequest(t *testing.T) {
 func TestAgentResponseRequest(t *testing.T) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
 	mockCheckInDal := new(mocks.MockCheckInDal)
-	handler := services.NewCheckInController(mockCheckInDal, mockAgentDAL)
+	mockPayloaDAL := new(mocks.MockPayloadDAL)
+	controller := services.NewCheckInController(mockCheckInDal, mockAgentDAL, mockPayloaDAL)
 	gin.SetMode(gin.TestMode)
+
+	encodedSessionToken, aesKey, err := authenticateAgent()
+	if err != nil {
+		t.Fatalf("failed agent auth: %v", err)
+	}
 
 	c2request := models.C2Request{
 		Reason:  models.Response,
@@ -295,11 +434,14 @@ func TestAgentResponseRequest(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
-			body, _ := json.Marshal(tt.c2request)
+			body, err := encryptAgentRequest(c2request, aesKey)
+			if err != nil {
+				t.Fatal(err.Error())
+			}
 			c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
-			c.Set("c2request", tt.c2request)
+			c.Request.Header.Add("Session-Token", encodedSessionToken)
 
-			handler.Checkin(c)
+			controller.Checkin(c)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			mockCheckInDal.AssertExpectations(t)

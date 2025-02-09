@@ -64,7 +64,7 @@ func TestAddUsers(t *testing.T) {
 		ID:           "test-user-id",
 		Username:     "testusername",
 		PasswordHash: "test-password",
-		Role:         "visitor",
+		Role:         "guest",
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
