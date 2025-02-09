@@ -57,8 +57,8 @@ export default function Payloads() {
   const [payloadName, setPayloadName] = useState("");
   const [payloadArchitecture, setPayloadArchitecture] = useState("win-x64"); //default
   const [selectedListener, setSelectedListener] = useState("");
-  const [sleepValue, setSleepValue] = useState("");
-  const [jitterValue, setJitterValue] = useState("");
+  const [sleepValue, setSleepValue] = useState(0);
+  const [jitterValue, setJitterValue] = useState(0);
 
   const [selfContained, setSelfContained] = useState(false);
   const [singleFile, setSingleFile] = useState(true);
@@ -94,8 +94,8 @@ export default function Payloads() {
       <TableCell>{payload.payloadArch}</TableCell>
       <TableCell>{getPayloadListenerType(payload.payloadListener)}</TableCell>
       <TableCell>{getPayloadListenerName(payload.payloadListener)}</TableCell>
-      {/* <TableCell>{format(payload.startTime, "Pp")}</TableCell> */}
-      <TableCell>{payload.startTime}</TableCell>
+      <TableCell>{format(payload.startTime, "Pp")}</TableCell>
+      {/* <TableCell>{payload.startTime}</TableCell> */}
       <TableCell className="text-right flex flex-row items-center justify-center gap-4">
 
         <Trash2 className="cursor-pointer" size={18} strokeWidth={1} onClick={() => deletePayload(payload)} />
@@ -377,12 +377,12 @@ export default function Payloads() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Sleep</Label>
-                  <Input id="email" type="email" placeholder="5" value={sleepValue} onChange={(e) => setSleepValue(e.target.value)} required />
+                  <Input id="email" type="email" placeholder="5" value={sleepValue} onChange={(e) => setSleepValue(parseInt(e.target.value))} required />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Jitter</Label>
-                  <Input id="email" type="email" placeholder="5" value={jitterValue} onChange={(e) => setJitterValue(e.target.value)} required />
+                  <Input id="email" type="email" placeholder="5" value={jitterValue} onChange={(e) => setJitterValue(parseInt(e.target.value))} required />
                 </div>
 
                 <div className="space-y-2">
