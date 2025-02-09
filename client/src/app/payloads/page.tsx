@@ -24,7 +24,7 @@ import axios from "axios";
 import { formatISO } from "date-fns";
 
 import { Label } from "@radix-ui/react-label";
-import { Pause, Play, PlayIcon, PlaySquare, PlaySquareIcon, Trash2 } from "lucide-react";
+import { Download, Pause, Play, PlayIcon, PlaySquare, PlaySquareIcon, Trash2 } from "lucide-react";
 
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem, CommandGroup } from "@/components/ui/command";
 import { Check, ChevronsUpDown, MoreHorizontal } from "lucide-react"
@@ -56,11 +56,12 @@ export default function Payloads() {
 
   const [payloadName, setPayloadName] = useState("");
   const [payloadArchitecture, setPayloadArchitecture] = useState("win-x64"); //default
+  const [selectedListener, setSelectedListener] = useState("");
   const [sleepValue, setSleepValue] = useState("");
   const [jitterValue, setJitterValue] = useState("");
 
   const [selfContained, setSelfContained] = useState(false);
-  const [singleFile, setSingleFile] = useState(false);
+  const [singleFile, setSingleFile] = useState(true);
 
   interface Listener {
     name: string;
@@ -68,6 +69,7 @@ export default function Payloads() {
     listenerType: string;
     listenerBind: string;
     startTime: string;
+    id: string;
   }
 
   interface Payload {
@@ -75,58 +77,32 @@ export default function Payloads() {
     payloadArch: string;
     payloadListener: string;
     startTime: string;
+    id: string;
   }
 
   const [listeners, setListeners] = useState<Listener[]>([]);
-  const [payloads, setPayloads] = useState<Listener[]>([]);
+  const [payloads, setPayloads] = useState<Payload[]>([]);
 
   const [cookies, setCookie, removeCookie] = useCookies(["cookie-name"]);
   const { toast } = useToast()
 
-  const agentHeaders = ["Name", "Status", "Listener Type", "Bind", "Start Time"];
+  const agentHeaders = ["Name", "Architecture", "Listener Type", "Listener Name", "Start Time"];
 
-  const renderRow = (listener: any) => (
+  const renderRow = (payload: any) => (
     <>
-      <TableCell>{listener.name}</TableCell>
-      <TableCell
-        className={`font-medium ${
-          listener.listenerStatus === "Stopped" || listener.listenerStatus === "Error" ? "text-red-600" : (listener.listenerStatus === "Paused" || listener.listenerStatus === "Processing" ? "text-orange-400" : "text-green-400")
-        }`}
-      >
-        {listener.listenerStatus}
-      </TableCell>
-      <TableCell>{listener.listenerType}</TableCell>
-      <TableCell>{listener.listenerBind}</TableCell>
-      <TableCell>{format(listener.startTime, "Pp")}</TableCell>
-      {console.log(listener.listenerStatus)}
-      <TableCell className="text-right flex flex-row items-center justify-center">
+      <TableCell>{payload.name}</TableCell>
+      <TableCell>{payload.payloadArch}</TableCell>
+      <TableCell>{getPayloadListenerType(payload.payloadListener)}</TableCell>
+      <TableCell>{getPayloadListenerName(payload.payloadListener)}</TableCell>
+      {/* <TableCell>{format(payload.startTime, "Pp")}</TableCell> */}
+      <TableCell>{payload.startTime}</TableCell>
+      <TableCell className="text-right flex flex-row items-center justify-center gap-4">
 
-        <Trash2 size={18} strokeWidth={1} />
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <Ellipsis className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleEdit(listener)}>Edit</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDetails(listener)}>Details</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => deletePayload(listener)}>Delete</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Trash2 className="cursor-pointer" size={18} strokeWidth={1} onClick={() => deletePayload(payload)} />
+        <Download className="cursor-pointer" size={18} strokeWidth={1} />
       </TableCell>
     </>
   )
-
-  const handleDetails = (listener: any) => {
-    console.log('Details', listener)
-  }
-  
-  const handleEdit = (listener: any) => {
-    console.log('Edit', listener)
-  }
 
   const axiosInstance = axios.create({
     baseURL: 'http://localhost:8080/api/v1', // Ensure this matches your API base URL
@@ -176,18 +152,18 @@ export default function Payloads() {
             headers: { authorization: `Bearer ${cookies.jwt}` }
           }
         );
-        console.log(payloadsData.data.data);
+        console.log(payloadsData.data);
 
-        if(payloadsData.data.data){
+        if(payloadsData.data){
           setPayloads((prevPayloads) => [
             ...prevPayloads,
-            ...payloadsData.data.data.map((payload : any) => (
+            ...payloadsData.data.map((payload : any) => (
               {
-              name: payload.name || "Unknown Listener",
+              name: payload.payload_name || "Unknown Listener",
               payloadArch: payload.architecture || "Unknown",
-              payloadListener: payload.listener,
+              payloadListener: payload.listener_id,
               startTime: payload.created_at || "N/A",
-              id: payload.id
+              id: payload.payload_id
             })),
           ]);
         }
@@ -200,6 +176,35 @@ export default function Payloads() {
     }
   };
 
+  const getPayloadListenerType = (listenerId: string) => {
+    let foundType = "";
+    listeners.map((listener) => {
+      if(listener.id === listenerId){
+        foundType = listener.listenerType;
+        return `${listener.listenerType}`;
+      }
+    })
+    if(foundType){
+      return foundType;
+    } else{
+      return "N/A";
+    }
+  }
+
+  const getPayloadListenerName = (listenerId: string) => {
+    let foundName = "";
+    listeners.map((listener) => {
+      if(listener.id === listenerId){
+        foundName = listener.name;
+      }
+    })
+    if(foundName){
+      return foundName;
+    } else{
+      return "N/A";
+    }
+  }
+
   const createPayload = async () => {
     try{
         const url = '/payloads/create';
@@ -207,16 +212,16 @@ export default function Payloads() {
             url,
             {
               "payload_name": payloadName,
-              "listener_id": "{{listener_id}}",
+              "listener_id": selectedListener,
               "architecture": payloadArchitecture,
               "self_contained": selfContained,
-              "publish_single_file": singleFile,
+              // "publish_single_file": singleFile,
               "sleep": sleepValue,
               "jitter": jitterValue,
-              "start_date": "",
-              "kill_date": "",
-              "working_hours_start": 9,
-              "working_hours_end": 17
+              // "start_date": "",
+              // "kill_date": "",
+              // "working_hours_start": 9,
+              // "working_hours_end": 17
             },            
             {
                 headers: { authorization: `Bearer ${cookies.jwt}` }
@@ -328,16 +333,21 @@ export default function Payloads() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Select Listener</Label>
-                  <Select onValueChange={setPayloadArchitecture}>
+                  <Select onValueChange={setSelectedListener}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select Payload Architecture"/>
+                      <SelectValue placeholder="Select Listener By Name"/>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectItem value="win-x64">win-x64</SelectItem>
+                        {/* <SelectItem value="win-x64">win-x64</SelectItem>
                         <SelectItem value="win-x86">win-x86</SelectItem>
                         <SelectItem value="linux-x64">linux-x64</SelectItem>
-                        <SelectItem value="linux-x86">linux-x86</SelectItem>
+                        <SelectItem value="linux-x86">linux-x86</SelectItem> */}
+                        {listeners.map((listener) => {
+                          return <SelectItem value={listener.id}>{listener.name}</SelectItem>
+                        })
+
+                        }
                       </SelectGroup>
                     </SelectContent>
                   </Select>
