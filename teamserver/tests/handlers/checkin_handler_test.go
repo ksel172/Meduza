@@ -188,7 +188,7 @@ func authenticateAgent() (string, []byte, error) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
-	c.Request.Header.Add("Auth-Token", base64.RawStdEncoding.EncodeToString([]byte("test-auth-token")))
+	c.Request.Header.Add("Auth-Token", base64.StdEncoding.EncodeToString([]byte("test-auth-token")))
 
 	// Ensure auth-token is accepted using the payloadDAL mock, which will also return the server keys
 	mockPayloaDAL.On("GetKeys", "test-auth-token").Return(serverPrivKey, serverPubKey, nil).Once()
@@ -196,7 +196,6 @@ func authenticateAgent() (string, []byte, error) {
 	// Submit request to server
 	controller.Checkin(c)
 
-	fmt.Printf("response code: %v", w.Code)
 	if w.Code != http.StatusAccepted {
 		return "", nil, fmt.Errorf("agent auth failed")
 	}
@@ -230,7 +229,7 @@ func encryptAgentRequest(c2request models.C2Request, key []byte) ([]byte, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt message")
 	}
-	return encryptedc2request, nil
+	return []byte(base64.StdEncoding.EncodeToString(encryptedc2request)), nil
 }
 
 func TestAgentRegisterRequest(t *testing.T) {

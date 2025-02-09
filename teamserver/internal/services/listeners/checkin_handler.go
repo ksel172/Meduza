@@ -98,7 +98,7 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 		// {"message": <BASE 64 ENCODED AGENT_PUBLIC_KEY>}
 		decodedC2Request, err := base64.StdEncoding.DecodeString(string(body))
 		if err != nil {
-			logger.Info(LogLevel, LogDetail, fmt.Sprintf("failed to base64 decode c2 request: %v, data: %v", err, decodedC2Request))
+			logger.Info(LogLevel, LogDetail, fmt.Sprintf("failed to decode c2request: %v, data: %v", err, decodedC2Request))
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid encrypted data"})
 			return
 		}
@@ -145,7 +145,7 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 	switch c2request.Reason {
 	case models.Task:
 		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling task request for agent %s", c2request.AgentID))
-		cc.handleTaskRequest(ctx, c2request, sessionToken)
+		cc.handleTaskRequest(ctx, c2request, string(sessionToken))
 		return
 	case models.Response:
 		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling response request for agent %s", c2request.AgentID))
