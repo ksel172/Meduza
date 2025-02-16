@@ -85,9 +85,9 @@ func (s *Server) PayloadV1(group *gin.RouterGroup) {
 		payloadsGroup.Use(s.UserMiddleware())
 		payloadsGroup.POST("/", s.dependencies.PayloadController.CreatePayload)
 		payloadsGroup.GET("/all", s.dependencies.PayloadController.GetAllPayloads)
-		payloadsGroup.DELETE("/delete/:id", s.dependencies.PayloadController.DeletePayload)
+		payloadsGroup.DELETE(fmt.Sprintf("/delete/:%s", models.ParamPayloadID), s.dependencies.PayloadController.DeletePayload)
 		payloadsGroup.DELETE("/delete/all", s.dependencies.PayloadController.DeleteAllPayloads)
-		payloadsGroup.GET("/download/:id", s.dependencies.PayloadController.DownloadPayload)
+		payloadsGroup.GET(fmt.Sprintf("/download/:%s", models.ParamPayloadID), s.dependencies.PayloadController.DownloadPayload)
 	}
 }
 

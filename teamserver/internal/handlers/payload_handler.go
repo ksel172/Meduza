@@ -168,7 +168,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 }
 
 func (h *PayloadHandler) DeletePayload(ctx *gin.Context) {
-	payloadId := ctx.Param("id")
+	payloadId := ctx.Param(models.ParamPayloadID)
 	filePath := "./teamserver/build/payload-" + payloadId
 
 	logger.Info(filePath)
@@ -239,7 +239,7 @@ func (h *PayloadHandler) DeleteAllPayloads(ctx *gin.Context) {
 }
 
 func (h *PayloadHandler) DownloadPayload(ctx *gin.Context) {
-	payloadId := ctx.Param("id")
+	payloadId := ctx.Param(models.ParamPayloadID)
 	extensions := []string{".exe", ".bin", ".dll", ""} // keeping extensions here for now,
 	// maybe later move them out to somewhere more modifiable like the .env file or at least the payload models
 	var executablePath string
