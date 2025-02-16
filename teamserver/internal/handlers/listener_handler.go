@@ -111,7 +111,7 @@ func (h *ListenerHandler) GetAllListeners(ctx *gin.Context) {
 }
 
 func (h *ListenerHandler) GetListenerById(ctx *gin.Context) {
-	id := ctx.Param("id")
+	id := ctx.Param(models.ParamListenerID)
 	listener, err := h.dal.GetListenerById(ctx.Request.Context(), id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
@@ -129,7 +129,7 @@ func (h *ListenerHandler) GetListenerById(ctx *gin.Context) {
 }
 
 func (h *ListenerHandler) DeleteListener(ctx *gin.Context) {
-	id := ctx.Param("id")
+	id := ctx.Param(models.ParamListenerID)
 	c := ctx.Request.Context()
 
 	_, err := h.dal.GetListenerById(c, id)
@@ -159,7 +159,7 @@ func (h *ListenerHandler) DeleteListener(ctx *gin.Context) {
 }
 
 func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
-	id := ctx.Param("id")
+	id := ctx.Param(models.ParamListenerID)
 	c := ctx.Request.Context()
 
 	var listener models.Listener
@@ -268,7 +268,7 @@ func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
 
 func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 	c := ctx.Request.Context()
-	id := ctx.Param("id")
+	id := ctx.Param(models.ParamListenerID)
 
 	// Retrieve the listener from the database
 	listener, err := h.dal.GetListenerById(c, id)
@@ -322,7 +322,7 @@ func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 
 func (h *ListenerHandler) StopListener(ctx *gin.Context) {
 	c := ctx.Request.Context()
-	id := ctx.Param("id")
+	id := ctx.Param(models.ParamListenerID)
 
 	// Try stopping the listener, service handles possible errors
 	if err := h.service.Stop(id, 10*time.Second); err != nil {
@@ -419,7 +419,7 @@ func (h *ListenerHandler) AutoStart(ctx context.Context) error {
 }
 
 func (h *ListenerHandler) CheckRunningListener(ctx *gin.Context) {
-	id := ctx.Param("id")
+	id := ctx.Param(models.ParamListenerID)
 
 	_, running := h.service.GetListener(id)
 	if !running {
