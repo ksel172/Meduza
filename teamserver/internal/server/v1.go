@@ -112,10 +112,10 @@ func (s *Server) TeamsV1(group *gin.RouterGroup) {
 		teamsGroup.Use(s.AdminMiddleware())
 
 		// Team operations
+		teamsGroup.GET("", s.UserMiddleware(), s.dependencies.TeamController.GetTeams)
 		teamsGroup.POST("", s.dependencies.TeamController.CreateTeam)
 		teamsGroup.PUT(fmt.Sprintf("/:%s", models.ParamTeamID), s.dependencies.TeamController.UpdateTeam)
 		teamsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamTeamID), s.dependencies.TeamController.DeleteTeam)
-		teamsGroup.GET("", s.UserMiddleware(), s.dependencies.TeamController.GetTeams)
 
 		membersGroup := teamsGroup.Group("/members")
 		{
