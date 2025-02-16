@@ -31,7 +31,6 @@ func (s *Server) UsersV1(group *gin.RouterGroup) {
 }
 
 func (s *Server) AgentsV1(group *gin.RouterGroup) {
-
 	agentsGroup := group.Group("/agents")
 	{
 		agentsGroup.Use(s.UserMiddleware())
@@ -42,24 +41,25 @@ func (s *Server) AgentsV1(group *gin.RouterGroup) {
 		agentsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamAgentID), s.dependencies.AgentController.DeleteAgent)
 
 		// Agent Tasks API
-		agentsGroup.GET("/tasks", s.dependencies.AgentController.GetAgentTasks)
-		agentsGroup.POST(fmt.Sprintf("/tasks/:%s", models.ParamAgentID), s.dependencies.AgentController.CreateAgentTask)
+		agentsGroup.GET(fmt.Sprintf("/:%s/tasks", models.ParamAgentID), s.dependencies.AgentController.GetAgentTasks)
+		agentsGroup.POST(fmt.Sprintf("/:%s/tasks", models.ParamAgentID), s.dependencies.AgentController.CreateAgentTask)
 		agentsGroup.DELETE(fmt.Sprintf("/:%s/tasks", models.ParamAgentID), s.dependencies.AgentController.DeleteAgentTasks)
 		agentsGroup.DELETE(fmt.Sprintf("/:%s/tasks/:%s", models.ParamAgentID, models.ParamTaskID), s.dependencies.AgentController.DeleteAgentTask)
 
 		// Agent config API
-		agentsGroup.POST(fmt.Sprintf("/config/:%s", models.ParamAgentID), s.dependencies.AgentController.CreateAgentConfig)
-		agentsGroup.PUT(fmt.Sprintf("/config/:%s", models.ParamAgentID), s.dependencies.AgentController.UpdateAgentConfig)
-		agentsGroup.GET(fmt.Sprintf("/config/:%s", models.ParamAgentID), s.dependencies.AgentController.GetAgentConfig)
-		agentsGroup.DELETE(fmt.Sprintf("/config/:%s", models.ParamAgentID), s.dependencies.AgentController.DeleteAgentConfig)
+		agentsGroup.POST(fmt.Sprintf("/:%s/config", models.ParamAgentID), s.dependencies.AgentController.CreateAgentConfig)
+		agentsGroup.PUT(fmt.Sprintf("/:%s/config", models.ParamAgentID), s.dependencies.AgentController.UpdateAgentConfig)
+		agentsGroup.GET(fmt.Sprintf("/:%s/config", models.ParamAgentID), s.dependencies.AgentController.GetAgentConfig)
+		agentsGroup.DELETE(fmt.Sprintf("/:%s/config", models.ParamAgentID), s.dependencies.AgentController.DeleteAgentConfig)
 
 		// Agent info API
-		agentsGroup.POST("/info", s.dependencies.AgentController.CreateAgentInfo)
-		agentsGroup.PUT(fmt.Sprintf("/info/:%s", models.ParamAgentID), s.dependencies.AgentController.UpdateAgentInfo)
-		agentsGroup.GET(fmt.Sprintf("/info/:%s", models.ParamAgentID), s.dependencies.AgentController.GetAgentInfo)
-		agentsGroup.DELETE(fmt.Sprintf("/info/:%s", models.ParamAgentID), s.dependencies.AgentController.DeleteAgentInfo)
+		agentsGroup.POST(fmt.Sprintf("/:%s/info", models.ParamAgentID), s.dependencies.AgentController.CreateAgentInfo)
+		agentsGroup.PUT(fmt.Sprintf("/:%s/info", models.ParamAgentID), s.dependencies.AgentController.UpdateAgentInfo)
+		agentsGroup.GET(fmt.Sprintf("/:%s/info", models.ParamAgentID), s.dependencies.AgentController.GetAgentInfo)
+		agentsGroup.DELETE(fmt.Sprintf("/:%s/info", models.ParamAgentID), s.dependencies.AgentController.DeleteAgentInfo)
 	}
 }
+
 func (s *Server) ListenersV1(group *gin.RouterGroup) {
 
 	listenersGroup := group.Group("/listeners")
