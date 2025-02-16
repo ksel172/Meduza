@@ -19,89 +19,56 @@ func NewUserController(dal dal.IUserDAL) *UserController {
 }
 
 func (uc *UserController) GetUsers(ctx *gin.Context) {
-
-	getUsers, err := uc.dal.GetUsers(ctx.Request.Context())
+	users, err := uc.dal.GetUsers(ctx.Request.Context())
 	if err != nil {
-		logger.Error("Error retrieving Users from GetUsers Function :", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "error retrieving users",
-		})
+		logger.Error("Error retrieving users:", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get users", err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"data":   getUsers,
-		"status": "success",
-	})
+	models.ResponseSuccess(ctx, http.StatusOK, "Users retrieved successfully", users)
 }
 
 func (uc *UserController) AddUsers(ctx *gin.Context) {
-
 	var user models.ResUser
 
 	if err := ctx.ShouldBindJSON(&user); err != nil {
-		logger.Error("Invalid Request error From AddUsers function: ", err)
-		ctx.JSONP(http.StatusConflict, gin.H{
-			"message": "invalid request error.",
-			"status":  "failed",
-		})
-		ctx.Abort()
+		logger.Error("Invalid request body:", err)
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
 
 	hashPassword, err := utils.HashPassword(user.PasswordHash)
 	if err != nil {
-		logger.Error("Invalid Request Error From hashing: ", err)
-		ctx.JSONP(http.StatusBadRequest, gin.H{
-			"message": "invalid request error.",
-			"status":  "error",
-		})
-		ctx.Abort()
+		logger.Error("Failed to hash password:", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to hash password", err.Error())
 		return
 	}
 	user.PasswordHash = hashPassword
 
 	validate := utils.NewValidatorService()
 	if err := validate.ValidateStruct(user); err != nil {
-		logger.Error("Format Validation Error while creating/adding users:", err)
-		ctx.JSONP(http.StatusBadRequest, gin.H{
-			"message": "format validation error.",
-			"status":  "failed",
-		})
-		ctx.Abort()
-		return
-	}
-	err = uc.dal.AddUsers(ctx.Request.Context(), &user)
-	if err != nil {
-		logger.Error("Error Adding Users :", err)
-		ctx.JSONP(http.StatusInternalServerError, gin.H{
-			"message": "error adding users.",
-			"status":  "failed",
-		})
-		ctx.Abort()
+		logger.Error("Validation error:", err)
+		models.ResponseError(ctx, http.StatusBadRequest, "Validation error", err.Error())
 		return
 	}
 
-	ctx.JSONP(http.StatusCreated, gin.H{
-		"message": "user created successfully.",
-		"status":  "success",
-	})
+	if err = uc.dal.AddUsers(ctx.Request.Context(), &user); err != nil {
+		logger.Error("Failed to add user:", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to add user", err.Error())
+		return
+	}
+
+	models.ResponseSuccess(ctx, http.StatusCreated, "User created successfully", user)
 }
 
 func (uc *UserController) GetUsersController(ctx *gin.Context) {
 	users, err := uc.dal.GetUsers(ctx.Request.Context())
 	if err != nil {
-		logger.Error("Error Retrieveing Users: ", err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "error retrieving users",
-		})
-		ctx.Abort()
+		logger.Error("Error retrieving users:", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get users", err.Error())
 		return
 	}
 
-	ctx.JSONP(http.StatusOK, gin.H{
-		"data":    users,
-		"status":  "success",
-		"message": "Users Fetched Successfully",
-	})
+	models.ResponseSuccess(ctx, http.StatusOK, "Users retrieved successfully", users)
 }
