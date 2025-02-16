@@ -55,7 +55,7 @@ func (tc *TeamController) UpdateTeam(ctx *gin.Context) {
 }
 
 func (tc *TeamController) DeleteTeam(ctx *gin.Context) {
-	teamID := ctx.Param("id")
+	teamID := ctx.Param(models.ParamTeamID)
 	if err := tc.dal.DeleteTeam(ctx.Request.Context(), teamID); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -96,7 +96,7 @@ func (tc *TeamController) AddTeamMember(ctx *gin.Context) {
 }
 
 func (tc *TeamController) RemoveTeamMember(ctx *gin.Context) {
-	memberID := ctx.Param("id")
+	memberID := ctx.Param(models.ParamMemberID)
 	if err := tc.dal.RemoveTeamMember(ctx.Request.Context(), memberID); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -106,7 +106,7 @@ func (tc *TeamController) RemoveTeamMember(ctx *gin.Context) {
 }
 
 func (tc *TeamController) GetTeamMembers(ctx *gin.Context) {
-	teamID := ctx.Param("id")
+	teamID := ctx.Param(models.ParamTeamID)
 	members, err := tc.dal.GetTeamMembers(ctx.Request.Context(), teamID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

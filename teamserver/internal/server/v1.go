@@ -109,11 +109,13 @@ func (s *Server) TeamsV1(group *gin.RouterGroup) {
 	{
 		teamsGroup.Use(s.AdminMiddleware())
 		teamsGroup.POST("", s.dependencies.TeamController.CreateTeam)
-		teamsGroup.PUT("/:id", s.dependencies.TeamController.UpdateTeam)
-		teamsGroup.DELETE("/:id", s.dependencies.TeamController.DeleteTeam)
+		teamsGroup.PUT(fmt.Sprintf("/:%s", models.ParamTeamID), s.dependencies.TeamController.UpdateTeam)
+		teamsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamTeamID), s.dependencies.TeamController.DeleteTeam)
 		teamsGroup.GET("", s.UserMiddleware(), s.dependencies.TeamController.GetTeams)
+
+		// Team members endpoints
 		teamsGroup.POST("/members", s.dependencies.TeamController.AddTeamMember)
-		teamsGroup.DELETE("/members/:id", s.dependencies.TeamController.RemoveTeamMember)
-		teamsGroup.GET("/:id/members", s.UserMiddleware(), s.dependencies.TeamController.GetTeamMembers)
+		teamsGroup.DELETE(fmt.Sprintf("/members/:%s", models.ParamMemberID), s.dependencies.TeamController.RemoveTeamMember)
+		teamsGroup.GET(fmt.Sprintf("/:%s/members", models.ParamTeamID), s.UserMiddleware(), s.dependencies.TeamController.GetTeamMembers)
 	}
 }

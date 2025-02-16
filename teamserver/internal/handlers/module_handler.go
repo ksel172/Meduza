@@ -93,7 +93,7 @@ func saveUploadedFile(file io.Reader, outPath string) error {
 }
 
 func (mc *ModuleController) DeleteModule(ctx *gin.Context) {
-	moduleId := ctx.Param("id")
+	moduleId := ctx.Param(models.ParamModuleID)
 	module, err := mc.ModuleDAL.GetModuleById(ctx.Request.Context(), moduleId)
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, fmt.Sprintf("get module by id err: %s", err.Error()))
@@ -150,7 +150,7 @@ func (mc *ModuleController) GetAllModules(ctx *gin.Context) {
 }
 
 func (mc *ModuleController) GetModuleById(ctx *gin.Context) {
-	moduleId := ctx.Param("id")
+	moduleId := ctx.Param(models.ParamModuleID)
 	module, err := mc.ModuleDAL.GetModuleById(ctx.Request.Context(), moduleId)
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, fmt.Sprintf("get module by id err: %s", err.Error()))
