@@ -8,8 +8,10 @@ import (
 )
 
 func (s *Server) AuthV1(group *gin.RouterGroup) {
+
 	authRoutes := group.Group("/auth")
 	{
+		// User authentication routes
 		authRoutes.POST("/register", s.AdminMiddleware(), s.dependencies.UserController.AddUsers)
 		authRoutes.POST("/login", s.dependencies.AuthController.LoginController)
 		authRoutes.GET("/refresh", s.dependencies.AuthController.RefreshTokenController)
@@ -21,6 +23,7 @@ func (s *Server) UsersV1(group *gin.RouterGroup) {
 
 	adminProtectedRoutes := group.Group("/users")
 	{
+		// Admin only routes
 		adminProtectedRoutes.Use(s.AdminMiddleware())
 		adminProtectedRoutes.GET("", s.dependencies.UserController.GetUsers)
 		adminProtectedRoutes.POST("", s.dependencies.UserController.AddUsers)
@@ -28,9 +31,9 @@ func (s *Server) UsersV1(group *gin.RouterGroup) {
 }
 
 func (s *Server) AgentsV1(group *gin.RouterGroup) {
+
 	agentsGroup := group.Group("/agents")
 	{
-		// Agents middleware
 		agentsGroup.Use(s.UserMiddleware())
 
 		// Base agent operations
@@ -61,7 +64,6 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 
 	listenersGroup := group.Group("/listeners")
 	{
-		// Listeners middleware
 		listenersGroup.Use(s.UserMiddleware())
 
 		// Listener CRUD operations and status info
@@ -94,6 +96,7 @@ func (s *Server) ModuleV1(group *gin.RouterGroup) {
 
 	moduleGroup := group.Group("/modules")
 	{
+		// Module CRUD operations and upload
 		moduleGroup.POST("/upload", s.dependencies.ModuleController.UploadModule)
 		moduleGroup.GET("/all", s.dependencies.ModuleController.GetAllModules)
 		moduleGroup.GET(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.ModuleController.GetModuleById)
@@ -103,9 +106,12 @@ func (s *Server) ModuleV1(group *gin.RouterGroup) {
 }
 
 func (s *Server) TeamsV1(group *gin.RouterGroup) {
+
 	teamsGroup := group.Group("/teams")
 	{
 		teamsGroup.Use(s.AdminMiddleware())
+
+		// Team operations
 		teamsGroup.POST("", s.dependencies.TeamController.CreateTeam)
 		teamsGroup.PUT(fmt.Sprintf("/:%s", models.ParamTeamID), s.dependencies.TeamController.UpdateTeam)
 		teamsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamTeamID), s.dependencies.TeamController.DeleteTeam)
@@ -113,6 +119,7 @@ func (s *Server) TeamsV1(group *gin.RouterGroup) {
 
 		membersGroup := teamsGroup.Group("/members")
 		{
+			// Team member operations
 			membersGroup.POST("", s.dependencies.TeamController.AddTeamMember)
 			membersGroup.DELETE(fmt.Sprintf("/:%s", models.ParamMemberID), s.dependencies.TeamController.RemoveTeamMember)
 			membersGroup.GET(fmt.Sprintf("/:%s", models.ParamTeamID), s.UserMiddleware(), s.dependencies.TeamController.GetTeamMembers)
