@@ -4,13 +4,10 @@ import (
 	"time"
 )
 
-// Agent parameter type
-type AgentParam = string
-
 const (
 	// URL parameter constants
-	ParamAgentID AgentParam = "agent_id"
-	ParamTaskID  AgentParam = "task_id"
+	ParamAgentID string = "agent_id"
+	ParamTaskID  string = "task_id"
 )
 
 // Contains all information required for controlling an agent.

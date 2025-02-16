@@ -2,12 +2,9 @@ package models
 
 import "time"
 
-// Payload parameter type
-type PayloadParam = string
-
 const (
 	// URL parameter constants
-	ParamPayloadID PayloadParam = "payload_id"
+	ParamPayloadID string = "payload_id"
 )
 
 type PayloadRequest struct {

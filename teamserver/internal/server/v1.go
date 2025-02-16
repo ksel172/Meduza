@@ -97,10 +97,10 @@ func (s *Server) ModuleV1(group *gin.RouterGroup) {
 	{
 		moduleGroup.Use(s.UserMiddleware())
 		moduleGroup.POST("/upload", s.dependencies.ModuleController.UploadModule)
-		moduleGroup.POST("/delete/:id", s.dependencies.ModuleController.DeleteModule)
-		moduleGroup.POST("/delete/all", s.dependencies.ModuleController.DeleteAllModules)
+		moduleGroup.DELETE(fmt.Sprintf("/delete/:%s", models.ParamModuleID), s.dependencies.ModuleController.DeleteModule)
+		moduleGroup.DELETE("/delete/all", s.dependencies.ModuleController.DeleteAllModules)
 		moduleGroup.GET("/all", s.dependencies.ModuleController.GetAllModules)
-		moduleGroup.GET("/:id", s.dependencies.ModuleController.GetModuleById)
+		moduleGroup.GET(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.ModuleController.GetModuleById)
 	}
 }
 
