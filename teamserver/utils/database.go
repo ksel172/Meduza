@@ -84,6 +84,7 @@ func WithTimeout(
 	if err != nil {
 		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
+	defer stmt.Close()
 
 	return fn(ctx, stmt)
 }
