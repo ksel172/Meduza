@@ -66,13 +66,13 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 
 		// Listener CRUD operations and status info
 		listenersGroup.POST("", s.dependencies.ListenerController.CreateListener)
-		listenersGroup.GET(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.GetListenerById)
 		listenersGroup.GET("/all", s.dependencies.ListenerController.GetAllListeners)
+		listenersGroup.GET(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.GetListenerById)
 		listenersGroup.PUT(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.UpdateListener)
 		listenersGroup.DELETE(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.DeleteListener)
-		listenersGroup.GET(fmt.Sprintf("/:%s/status", models.ParamListenerID), s.dependencies.ListenerController.CheckRunningListener)
 
-		// Listener operations
+		// Listener operations and status
+		listenersGroup.GET(fmt.Sprintf("/:%s/status", models.ParamListenerID), s.dependencies.ListenerController.CheckRunningListener)
 		listenersGroup.POST(fmt.Sprintf("/:%s/start", models.ParamListenerID), s.dependencies.ListenerController.StartListener)
 		listenersGroup.POST(fmt.Sprintf("/:%s/stop", models.ParamListenerID), s.dependencies.ListenerController.StopListener)
 	}
@@ -82,12 +82,11 @@ func (s *Server) PayloadV1(group *gin.RouterGroup) {
 	payloadsGroup := group.Group("/payloads")
 	{
 		// Payload CRUD operations and download
-		payloadsGroup.Use(s.UserMiddleware())
-		payloadsGroup.POST("/", s.dependencies.PayloadController.CreatePayload)
+		payloadsGroup.POST("", s.dependencies.PayloadController.CreatePayload)
 		payloadsGroup.GET("/all", s.dependencies.PayloadController.GetAllPayloads)
-		payloadsGroup.DELETE(fmt.Sprintf("/delete/:%s", models.ParamPayloadID), s.dependencies.PayloadController.DeletePayload)
-		payloadsGroup.DELETE("/delete/all", s.dependencies.PayloadController.DeleteAllPayloads)
-		payloadsGroup.GET(fmt.Sprintf("/download/:%s", models.ParamPayloadID), s.dependencies.PayloadController.DownloadPayload)
+		payloadsGroup.GET(fmt.Sprintf("/:%s/download", models.ParamPayloadID), s.dependencies.PayloadController.DownloadPayload)
+		payloadsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.PayloadController.DeletePayload)
+		payloadsGroup.DELETE("/all", s.dependencies.PayloadController.DeleteAllPayloads)
 	}
 }
 
@@ -95,12 +94,11 @@ func (s *Server) ModuleV1(group *gin.RouterGroup) {
 
 	moduleGroup := group.Group("/modules")
 	{
-		moduleGroup.Use(s.UserMiddleware())
 		moduleGroup.POST("/upload", s.dependencies.ModuleController.UploadModule)
-		moduleGroup.DELETE(fmt.Sprintf("/delete/:%s", models.ParamModuleID), s.dependencies.ModuleController.DeleteModule)
-		moduleGroup.DELETE("/delete/all", s.dependencies.ModuleController.DeleteAllModules)
 		moduleGroup.GET("/all", s.dependencies.ModuleController.GetAllModules)
 		moduleGroup.GET(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.ModuleController.GetModuleById)
+		moduleGroup.DELETE(fmt.Sprintf("/:%s", models.ParamModuleID), s.dependencies.ModuleController.DeleteModule)
+		moduleGroup.DELETE("/all", s.dependencies.ModuleController.DeleteAllModules)
 	}
 }
 
@@ -113,9 +111,11 @@ func (s *Server) TeamsV1(group *gin.RouterGroup) {
 		teamsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamTeamID), s.dependencies.TeamController.DeleteTeam)
 		teamsGroup.GET("", s.UserMiddleware(), s.dependencies.TeamController.GetTeams)
 
-		// Team members endpoints
-		teamsGroup.POST("/members", s.dependencies.TeamController.AddTeamMember)
-		teamsGroup.DELETE(fmt.Sprintf("/members/:%s", models.ParamMemberID), s.dependencies.TeamController.RemoveTeamMember)
-		teamsGroup.GET(fmt.Sprintf("/:%s/members", models.ParamTeamID), s.UserMiddleware(), s.dependencies.TeamController.GetTeamMembers)
+		membersGroup := teamsGroup.Group("/members")
+		{
+			membersGroup.POST("", s.dependencies.TeamController.AddTeamMember)
+			membersGroup.DELETE(fmt.Sprintf("/:%s", models.ParamMemberID), s.dependencies.TeamController.RemoveTeamMember)
+			membersGroup.GET(fmt.Sprintf("/:%s", models.ParamTeamID), s.UserMiddleware(), s.dependencies.TeamController.GetTeamMembers)
+		}
 	}
 }
