@@ -77,7 +77,7 @@ func (ac *AgentController) DeleteAgent(ctx *gin.Context) {
 /* Agent Task API */
 
 func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
-	agentID := ctx.Param("id")
+	agentID := ctx.Param(models.ParamAgentID)
 	if agentID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s is required", models.ParamAgentID)})
 		return
@@ -105,8 +105,8 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 }
 
 func (ac *AgentController) UpdateAgentTask(ctx *gin.Context) {
-	agentID := ctx.Param("id")
-	taskID := ctx.Param("task_id")
+	agentID := ctx.Param(models.ParamAgentID)
+	taskID := ctx.Param(models.ParamTaskID)
 	if agentID == "" || taskID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "agent_id and task_id are required"})
 		return
