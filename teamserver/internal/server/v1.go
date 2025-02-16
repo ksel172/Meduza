@@ -30,6 +30,7 @@ func (s *Server) UsersV1(group *gin.RouterGroup) {
 func (s *Server) AgentsV1(group *gin.RouterGroup) {
 	agentsGroup := group.Group("/agents")
 	{
+		// Agents middleware
 		agentsGroup.Use(s.UserMiddleware())
 
 		// Base agent operations
@@ -60,27 +61,33 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 
 	listenersGroup := group.Group("/listeners")
 	{
+		// Listeners middleware
 		listenersGroup.Use(s.UserMiddleware())
-		listenersGroup.POST("", s.dependencies.ListenerController.CreateListener) // pg
-		listenersGroup.GET("/:id", s.dependencies.ListenerController.GetListenerById)
+
+		// Listener CRUD operations and status info
+		listenersGroup.POST("", s.dependencies.ListenerController.CreateListener)
+		listenersGroup.GET(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.GetListenerById)
 		listenersGroup.GET("/all", s.dependencies.ListenerController.GetAllListeners)
-		listenersGroup.PUT("/:id", s.dependencies.ListenerController.UpdateListener)
-		listenersGroup.DELETE("/:id", s.dependencies.ListenerController.DeleteListener)
-		listenersGroup.POST("/:id/start", s.dependencies.ListenerController.StartListener)
-		listenersGroup.POST("/:id/stop", s.dependencies.ListenerController.StopListener)
-		listenersGroup.GET("/:id/status", s.dependencies.ListenerController.CheckRunningListener)
+		listenersGroup.PUT(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.UpdateListener)
+		listenersGroup.DELETE(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.DeleteListener)
+		listenersGroup.GET(fmt.Sprintf("/:%s/status", models.ParamListenerID), s.dependencies.ListenerController.CheckRunningListener)
+
+		// Listener operations
+		listenersGroup.POST(fmt.Sprintf("/:%s/start", models.ParamListenerID), s.dependencies.ListenerController.StartListener)
+		listenersGroup.POST(fmt.Sprintf("/:%s/stop", models.ParamListenerID), s.dependencies.ListenerController.StopListener)
 	}
 }
 func (s *Server) PayloadV1(group *gin.RouterGroup) {
 
 	payloadsGroup := group.Group("/payloads")
 	{
+		// Payload CRUD operations and download
 		payloadsGroup.Use(s.UserMiddleware())
-		payloadsGroup.POST("/create", s.dependencies.PayloadController.CreatePayload)
+		payloadsGroup.POST("/", s.dependencies.PayloadController.CreatePayload)
 		payloadsGroup.GET("/all", s.dependencies.PayloadController.GetAllPayloads)
-		payloadsGroup.POST("/delete/:id", s.dependencies.PayloadController.DeletePayload)
+		payloadsGroup.DELETE("/delete/:id", s.dependencies.PayloadController.DeletePayload)
+		payloadsGroup.DELETE("/delete/all", s.dependencies.PayloadController.DeleteAllPayloads)
 		payloadsGroup.GET("/download/:id", s.dependencies.PayloadController.DownloadPayload)
-		payloadsGroup.POST("/delete/all", s.dependencies.PayloadController.DeleteAllPayloads)
 	}
 }
 
