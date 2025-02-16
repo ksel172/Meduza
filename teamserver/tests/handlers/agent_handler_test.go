@@ -64,6 +64,7 @@ func TestGetAgent(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 			c.Params = gin.Params{{Key: models.ParamAgentID, Value: tt.agentID}}
 
 			handler.GetAgent(c)

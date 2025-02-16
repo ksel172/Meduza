@@ -69,14 +69,41 @@ func WithTransactionResultTimeout[T any](db *sql.DB, ctx context.Context, timeou
 	return result, nil
 }
 
-func WithTimeout(ctx context.Context, timeout int, fn func(context.Context) error) error {
+// For simple db operations that make only one query
+func WithTimeout(
+	ctx context.Context,
+	db *sql.DB,
+	query string,
+	timeout int,
+	fn func(context.Context, *sql.Stmt) error,
+) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
-	return fn(ctx)
+
+	stmt, err := db.PrepareContext(ctx, query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare statement: %w", err)
+	}
+
+	return fn(ctx, stmt)
 }
 
-func WithResultTimeout[T any](ctx context.Context, timeout int, fn func(context.Context) (T, error)) (T, error) {
+// For simple db operations that make only one query
+func WithResultTimeout[T any](
+	ctx context.Context,
+	db *sql.DB,
+	query string,
+	timeout int,
+	fn func(context.Context, *sql.Stmt) (T, error),
+) (T, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
-	return fn(ctx)
+
+	stmt, err := db.PrepareContext(ctx, query)
+	if err != nil {
+		var zero T
+		return zero, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+
+	return fn(ctx, stmt)
 }

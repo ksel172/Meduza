@@ -26,21 +26,21 @@ func NewUsersDAL(db *sql.DB, schema string) *UserDAL {
 }
 
 func (dal *UserDAL) AddUsers(ctx context.Context, user *models.ResUser) error {
-	logger.Debug(layer, "Adding user: "+user.ID)
+	logger.Debug(logLevel, "Adding user: "+user.ID)
 	query := fmt.Sprintf(`INSERT INTO %s.users(username,pw_hash,role) VALUES($1,$2,$3)`, dal.schema)
 	_, err := dal.db.ExecContext(ctx, query, user.Username, user.PasswordHash, user.Role)
 	if err != nil {
-		logger.Error(layer, "Unable to add user: ", err)
+		logger.Error(logLevel, "Unable to add user: ", err)
 		return fmt.Errorf("failed to add user: %v", err)
 	}
 	return err
 }
 
 func (dal *UserDAL) GetUsers(ctx context.Context) ([]models.User, error) {
-	logger.Debug(layer, "Fetching all users")
+	logger.Debug(logLevel, "Fetching all users")
 	rows, err := dal.db.QueryContext(ctx, fmt.Sprintf("SELECT id, username, pw_hash, role, created_at, updated_at FROM %s.users WHERE deleted_at IS NULL ORDER BY created_at DESC", dal.schema))
 	if err != nil {
-		logger.Error(layer, "Failed to fetch users: ", err)
+		logger.Error(logLevel, "Failed to fetch users: ", err)
 		return nil, fmt.Errorf("failed to fetch users: %w", err)
 	}
 	defer rows.Close()
@@ -49,7 +49,7 @@ func (dal *UserDAL) GetUsers(ctx context.Context) ([]models.User, error) {
 	for rows.Next() {
 		var user models.User
 		if err := rows.Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.UpdatedAt); err != nil {
-			logger.Error(layer, "Failed to scan user row: ", err)
+			logger.Error(logLevel, "Failed to scan user row: ", err)
 			return nil, fmt.Errorf("failed to fetch users: %w", err)
 		}
 		users = append(users, user)
@@ -59,7 +59,7 @@ func (dal *UserDAL) GetUsers(ctx context.Context) ([]models.User, error) {
 }
 
 func (dal *UserDAL) GetUserByUsername(ctx context.Context, username string) (*models.ResUser, error) {
-	logger.Debug(layer, "Fetching user by username: "+username)
+	logger.Debug(logLevel, "Fetching user by username: "+username)
 	query := fmt.Sprintf(`SELECT id , username , pw_hash, role FROM %s.users WHERE username = $1 AND deleted_at IS NULL`, dal.schema)
 	var user models.ResUser
 	err := dal.db.QueryRowContext(ctx, query, username).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role)
@@ -67,14 +67,14 @@ func (dal *UserDAL) GetUserByUsername(ctx context.Context, username string) (*mo
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
 		}
-		logger.Error(layer, "Failed to fetch user: ", err)
+		logger.Error(logLevel, "Failed to fetch user: ", err)
 		return nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
 	return &user, nil
 }
 
 func (dal *UserDAL) GetUserById(ctx context.Context, id string) (*models.ResUser, error) {
-	logger.Debug(layer, "Fetching user by id: "+id)
+	logger.Debug(logLevel, "Fetching user by id: "+id)
 	query := fmt.Sprintf(`SELECT id , username , pw_hash, role FROM %s.users WHERE id = $1 AND deleted_at IS NULL`, dal.schema)
 	var user models.ResUser
 	err := dal.db.QueryRowContext(ctx, query, id).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role)
@@ -82,7 +82,7 @@ func (dal *UserDAL) GetUserById(ctx context.Context, id string) (*models.ResUser
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
 		}
-		logger.Error(layer, "Failed to fetch user: ", err)
+		logger.Error(logLevel, "Failed to fetch user: ", err)
 		return nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
 	return &user, nil

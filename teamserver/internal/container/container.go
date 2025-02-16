@@ -40,7 +40,7 @@ func NewContainer() (*Container, error) {
 		return nil, err
 	}
 
-	logger.Info("Setting Up Data Access Layer")
+	logger.Info("Setting Up Data Access logLevel")
 	schema := conf.GetMeduzaDbSchema()
 	userDal := dal.NewUsersDAL(pgsql, schema)
 	teamDal := dal.NewTeamDAL(pgsql, schema)

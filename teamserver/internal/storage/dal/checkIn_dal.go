@@ -24,15 +24,17 @@ func NewCheckInDAL(db *sql.DB, schema string) *CheckInDAL {
 }
 
 func (dal *CheckInDAL) CreateAgent(ctx context.Context, agent models.Agent) error {
-	return utils.WithTimeout(ctx, 5, func(ctx context.Context) error {
-		agentQuery := fmt.Sprintf(`
-			INSERT INTO %s.agents (id, config_id, name, note, status, first_callback, last_callback, modified_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
-		_, err := dal.db.ExecContext(ctx, agentQuery, agent.AgentID, agent.ConfigID, agent.Name, agent.Note, agent.Status,
+
+	query := fmt.Sprintf(`
+		INSERT INTO %s.agents (id, config_id, name, note, status, first_callback, last_callback, modified_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
+
+	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		_, err := stmt.ExecContext(ctx, query, agent.AgentID, agent.ConfigID, agent.Name, agent.Note, agent.Status,
 			agent.FirstCallback, agent.LastCallback, agent.ModifiedAt)
 		if err != nil {
-			logger.Error(layer, fmt.Sprintf("failed to insert agent in database: %v", err))
-			return fmt.Errorf("failed to insert agent: %w", err)
+			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to create agent: %v", err))
+			return fmt.Errorf("failed to create agent: %w", err)
 		}
 		return nil
 	})

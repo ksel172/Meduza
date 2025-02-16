@@ -343,7 +343,7 @@ func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request m
 		return
 	}
 
-	if _, err := cc.agentDAL.GetAgent(agentInfo.AgentID); err == nil {
+	if _, err := cc.agentDAL.GetAgent(ctx.Request.Context(), agentInfo.AgentID); err == nil {
 		logger.Info(LogLevel, LogDetail, "Agent already exists:", c2request.AgentID)
 		ctx.JSON(http.StatusConflict, gin.H{"error": "agent already exists"})
 		return

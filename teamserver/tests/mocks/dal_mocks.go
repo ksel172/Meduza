@@ -11,7 +11,7 @@ type MockAgentDAL struct {
 	mock.Mock
 }
 
-func (m *MockAgentDAL) GetAgent(agentID string) (models.Agent, error) {
+func (m *MockAgentDAL) GetAgent(ctx context.Context, agentID string) (models.Agent, error) {
 	args := m.Called(agentID)
 	return args.Get(0).(models.Agent), args.Error(1)
 }

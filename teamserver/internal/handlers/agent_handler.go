@@ -32,7 +32,7 @@ func (ac *AgentController) GetAgent(ctx *gin.Context) {
 		return
 	}
 
-	agent, err := ac.dal.GetAgent(agentID)
+	agent, err := ac.dal.GetAgent(ctx.Request.Context(), agentID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
