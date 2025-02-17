@@ -45,6 +45,16 @@ func (ac *AgentController) GetAgent(ctx *gin.Context) {
 	models.ResponseSuccess(ctx, http.StatusOK, "Agent retrieved successfully", agent)
 }
 
+func (ac *AgentController) GetAgents(ctx *gin.Context) {
+	agents, err := ac.agentDal.GetAgents(ctx)
+	if err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get agents", err.Error())
+		return
+	}
+
+	models.ResponseSuccess(ctx, http.StatusOK, "Agents retrieved successfully", agents)
+}
+
 func (ac *AgentController) UpdateAgent(ctx *gin.Context) {
 	var agentUpdateRequest models.UpdateAgentRequest
 	if err := ctx.ShouldBindJSON(&agentUpdateRequest); err != nil {

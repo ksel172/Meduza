@@ -36,6 +36,7 @@ func (s *Server) AgentsV1(group *gin.RouterGroup) {
 		agentsGroup.Use(s.UserMiddleware())
 
 		// Base agent operations
+		agentsGroup.GET("", s.dependencies.AgentController.GetAgents)
 		agentsGroup.GET(fmt.Sprintf("/:%s", models.ParamAgentID), s.dependencies.AgentController.GetAgent)
 		agentsGroup.PUT(fmt.Sprintf("/:%s", models.ParamAgentID), s.dependencies.AgentController.UpdateAgent)
 		agentsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamAgentID), s.dependencies.AgentController.DeleteAgent)

@@ -13,6 +13,7 @@ import (
 
 type IAgentDAL interface {
 	GetAgent(ctx context.Context, agentID string) (models.Agent, error)
+	GetAgents(ctx context.Context) ([]models.Agent, error)
 	UpdateAgent(ctx context.Context, agent models.UpdateAgentRequest) (models.Agent, error)
 	DeleteAgent(ctx context.Context, agentID string) error
 	CreateAgentTask(ctx context.Context, task models.AgentTask) error
@@ -64,6 +65,42 @@ func (dal *AgentDAL) GetAgent(ctx context.Context, agentID string) (models.Agent
 		}
 
 		return agent, nil
+	})
+}
+
+func (dal *AgentDAL) GetAgents(ctx context.Context) ([]models.Agent, error) {
+	query := fmt.Sprintf(`
+			SELECT a.id, a.name, a.note, a.status, a.first_callback, a.last_callback, a.modified_at
+			FROM %s.agents a`, dal.schema)
+
+	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) ([]models.Agent, error) {
+		logger.Debug(logLevel, logDetailAgent, "Getting all agents")
+		rows, err := stmt.QueryContext(ctx)
+		if err != nil {
+			logger.Error(logLevel, logDetailAgent, fmt.Sprintf("failed to get agents: %v", err))
+			return nil, fmt.Errorf("failed to get agents: %w", err)
+		}
+		defer rows.Close()
+
+		var agents []models.Agent
+		for rows.Next() {
+			var agent models.Agent
+			if err := rows.Scan(
+				&agent.AgentID, &agent.Name, &agent.Note, &agent.Status,
+				&agent.FirstCallback, &agent.LastCallback, &agent.ModifiedAt,
+			); err != nil {
+				logger.Error(logLevel, logDetailAgent, fmt.Sprintf("failed to scan agent row: %v", err))
+				return nil, fmt.Errorf("failed to scan agent row: %w", err)
+			}
+			agents = append(agents, agent)
+		}
+
+		if err = rows.Err(); err != nil {
+			logger.Error(logLevel, logDetailAgent, fmt.Sprintf("failed to scan agents: %v", err))
+			return nil, fmt.Errorf("failed to scan agents: %w", err)
+		}
+
+		return agents, nil
 	})
 }
 
