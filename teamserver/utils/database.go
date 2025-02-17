@@ -105,6 +105,7 @@ func WithResultTimeout[T any](
 		var zero T
 		return zero, fmt.Errorf("failed to prepare statement: %w", err)
 	}
+	defer stmt.Close()
 
 	return fn(ctx, stmt)
 }
