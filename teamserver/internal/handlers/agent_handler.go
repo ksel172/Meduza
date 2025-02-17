@@ -16,12 +16,14 @@ import (
 )
 
 type AgentController struct {
-	dal dal.IAgentDAL
+	agentDal  dal.IAgentDAL
+	moduleDal dal.IModuleDAL
 }
 
-func NewAgentController(dal dal.IAgentDAL) *AgentController {
+func NewAgentController(agentDal dal.IAgentDAL, moduleDal dal.IModuleDAL) *AgentController {
 	return &AgentController{
-		dal: dal,
+		agentDal:  agentDal,
+		moduleDal: moduleDal,
 	}
 }
 
@@ -34,7 +36,7 @@ func (ac *AgentController) GetAgent(ctx *gin.Context) {
 		return
 	}
 
-	agent, err := ac.dal.GetAgent(ctx.Request.Context(), agentID)
+	agent, err := ac.agentDal.GetAgent(ctx.Request.Context(), agentID)
 	if err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get agent", err.Error())
 		return
@@ -52,7 +54,7 @@ func (ac *AgentController) UpdateAgent(ctx *gin.Context) {
 
 	agentUpdateRequest.ModifiedAt = time.Now()
 
-	updatedAgent, err := ac.dal.UpdateAgent(ctx, agentUpdateRequest)
+	updatedAgent, err := ac.agentDal.UpdateAgent(ctx, agentUpdateRequest)
 	if err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to update agent", err.Error())
 		return
@@ -68,7 +70,7 @@ func (ac *AgentController) DeleteAgent(ctx *gin.Context) {
 		return
 	}
 
-	if err := ac.dal.DeleteAgent(ctx, agentID); err != nil {
+	if err := ac.agentDal.DeleteAgent(ctx, agentID); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to delete agent", err.Error())
 		return
 	}
@@ -95,10 +97,39 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 	agentTask.AgentID = agentID
 
 	if agentTask.Type == models.HelpCommand {
-		// Placeholder for future help command logic
+
+		agentTask.Started = time.Now()
+
+		helpText := "Available commands:\n" +
+			"shell [command] - Execute a shell command\n" +
+			"help - brings up the help menu\n"
+
+		modules, err := ac.moduleDal.GetAllModules(ctx)
+		if err != nil {
+			models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get modules", err.Error())
+			return
+		}
+
+		if modules != nil {
+			helpText += "\nAvailable modules:\n"
+
+			for _, module := range modules {
+
+				helpText += fmt.Sprintf("\n%s\n", module.Name)
+
+				for _, command := range module.Commands {
+					helpText += fmt.Sprintf("- \t%s", command.Description)
+				}
+
+			}
+		}
+
+		agentTask.Status = models.TaskComplete
+		agentTask.Finished = time.Now()
+		agentTask.Command.Output = helpText
 	}
 
-	if err := ac.dal.CreateAgentTask(ctx, agentTask); err != nil {
+	if err := ac.agentDal.CreateAgentTask(ctx, agentTask); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create agent task", err.Error())
 		return
 	}
@@ -123,7 +154,7 @@ func (ac *AgentController) UpdateAgentTask(ctx *gin.Context) {
 	agentTask.AgentID = agentID
 	agentTask.TaskID = taskID
 
-	if err := ac.dal.UpdateAgentTask(ctx, agentTask); err != nil {
+	if err := ac.agentDal.UpdateAgentTask(ctx, agentTask); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to update agent task", err.Error())
 		return
 	}
@@ -138,7 +169,7 @@ func (ac *AgentController) GetAgentTasks(ctx *gin.Context) {
 		return
 	}
 
-	tasks, err := ac.dal.GetAgentTasks(ctx, agentID)
+	tasks, err := ac.agentDal.GetAgentTasks(ctx, agentID)
 	if err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get agent tasks", err.Error())
 		return
@@ -179,7 +210,7 @@ func (ac *AgentController) DeleteAgentTasks(ctx *gin.Context) {
 		return
 	}
 
-	if err := ac.dal.DeleteAgentTasks(ctx, agentID); err != nil {
+	if err := ac.agentDal.DeleteAgentTasks(ctx, agentID); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to delete agent tasks", err.Error())
 		return
 	}
@@ -195,7 +226,7 @@ func (ac *AgentController) DeleteAgentTask(ctx *gin.Context) {
 		return
 	}
 
-	if err := ac.dal.DeleteAgentTask(ctx, agentID, taskID); err != nil {
+	if err := ac.agentDal.DeleteAgentTask(ctx, agentID, taskID); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to delete agent task", err.Error())
 		return
 	}
@@ -210,7 +241,7 @@ func (ac *AgentController) CreateAgentConfig(ctx *gin.Context) {
 		return
 	}
 
-	if err := ac.dal.CreateAgentConfig(ctx, agentConfig); err != nil {
+	if err := ac.agentDal.CreateAgentConfig(ctx, agentConfig); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create agent config", err.Error())
 		return
 	}
@@ -225,7 +256,7 @@ func (ac *AgentController) GetAgentConfig(ctx *gin.Context) {
 		return
 	}
 
-	agentConfig, err := ac.dal.GetAgentConfig(ctx, agentID)
+	agentConfig, err := ac.agentDal.GetAgentConfig(ctx, agentID)
 	if err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get agent config", err.Error())
 		return
@@ -247,7 +278,7 @@ func (ac *AgentController) UpdateAgentConfig(ctx *gin.Context) {
 		return
 	}
 
-	if err := ac.dal.UpdateAgentConfig(ctx, agentID, agentConfig); err != nil {
+	if err := ac.agentDal.UpdateAgentConfig(ctx, agentID, agentConfig); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to update agent config", err.Error())
 		return
 	}
@@ -262,7 +293,7 @@ func (ac *AgentController) DeleteAgentConfig(ctx *gin.Context) {
 		return
 	}
 
-	if err := ac.dal.DeleteAgentConfig(ctx, agentID); err != nil {
+	if err := ac.agentDal.DeleteAgentConfig(ctx, agentID); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to delete agent config", err.Error())
 		return
 	}
@@ -277,7 +308,7 @@ func (ac *AgentController) CreateAgentInfo(ctx *gin.Context) {
 		return
 	}
 
-	if err := ac.dal.CreateAgentInfo(ctx, agentInfo); err != nil {
+	if err := ac.agentDal.CreateAgentInfo(ctx, agentInfo); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create agent info", err.Error())
 		return
 	}
@@ -292,7 +323,7 @@ func (ac *AgentController) UpdateAgentInfo(ctx *gin.Context) {
 		return
 	}
 
-	if err := ac.dal.UpdateAgentInfo(ctx, agentInfo); err != nil {
+	if err := ac.agentDal.UpdateAgentInfo(ctx, agentInfo); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to update agent info", err.Error())
 		return
 	}
@@ -307,7 +338,7 @@ func (ac *AgentController) GetAgentInfo(ctx *gin.Context) {
 		return
 	}
 
-	agentInfo, err := ac.dal.GetAgentInfo(ctx, agentID)
+	agentInfo, err := ac.agentDal.GetAgentInfo(ctx, agentID)
 	if err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get agent info", err.Error())
 		return
@@ -323,7 +354,7 @@ func (ac *AgentController) DeleteAgentInfo(ctx *gin.Context) {
 		return
 	}
 
-	if err := ac.dal.DeleteAgentInfo(ctx, agentID); err != nil {
+	if err := ac.agentDal.DeleteAgentInfo(ctx, agentID); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to delete agent info", err.Error())
 		return
 	}

@@ -70,7 +70,7 @@ func NewContainer() (*Container, error) {
 		AuthController:     handlers.NewAuthController(userDal, jwtService),
 		TeamController:     handlers.NewTeamController(teamDal),
 		JwtService:         jwtService,
-		AgentController:    handlers.NewAgentController(agentDal),
+		AgentController:    handlers.NewAgentController(agentDal, moduleDal),
 		ListenerController: handlers.NewListenersHandler(listenerDal, listenersService),
 		ListenerService:    listenersService,
 		ListenerDal:        autoStart,

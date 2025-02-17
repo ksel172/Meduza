@@ -35,10 +35,10 @@ func (dal *ModuleDAL) CreateModule(ctx context.Context, module *models.Module) e
 	}
 
 	query := fmt.Sprintf(`
-        INSERT INTO %s.modules (id, name, author, description, file_name, usage, commands)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO %s.modules (id, name, author, description, file_name, commands)
+        VALUES ($1, $2, $3, $4, $5, $6)
     `, dal.Schema)
-	_, err = dal.DB.ExecContext(ctx, query, module.Id, module.Name, module.Author, module.Description, module.FileName, module.Usage, commandsJSON)
+	_, err = dal.DB.ExecContext(ctx, query, module.Id, module.Name, module.Author, module.Description, module.FileName, commandsJSON)
 	if err != nil {
 		return fmt.Errorf("failed to insert module: %w", err)
 	}
@@ -56,7 +56,7 @@ func (dal *ModuleDAL) DeleteModule(ctx context.Context, moduleId string) error {
 }
 
 func (dal *ModuleDAL) GetAllModules(ctx context.Context) ([]models.Module, error) {
-	query := fmt.Sprintf(`SELECT id, name, author, description, file_name, usage, commands FROM %s.modules`, dal.Schema)
+	query := fmt.Sprintf(`SELECT id, name, author, description, file_name, commands FROM %s.modules`, dal.Schema)
 	rows, err := dal.DB.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all modules: %w", err)
@@ -67,7 +67,7 @@ func (dal *ModuleDAL) GetAllModules(ctx context.Context) ([]models.Module, error
 	for rows.Next() {
 		var module models.Module
 		var commandsJSON []byte
-		if err := rows.Scan(&module.Id, &module.Name, &module.Author, &module.Description, &module.FileName, &module.Usage, &commandsJSON); err != nil {
+		if err := rows.Scan(&module.Id, &module.Name, &module.Author, &module.Description, &module.FileName, &commandsJSON); err != nil {
 			return nil, fmt.Errorf("failed to scan module: %w", err)
 		}
 		if err := json.Unmarshal(commandsJSON, &module.Commands); err != nil {
@@ -79,12 +79,12 @@ func (dal *ModuleDAL) GetAllModules(ctx context.Context) ([]models.Module, error
 }
 
 func (dal *ModuleDAL) GetModuleById(ctx context.Context, moduleId string) (*models.Module, error) {
-	query := fmt.Sprintf(`SELECT id, name, author, description, file_name, usage, commands FROM %s.modules WHERE id = $1`, dal.Schema)
+	query := fmt.Sprintf(`SELECT id, name, author, description, file_name, commands FROM %s.modules WHERE id = $1`, dal.Schema)
 	row := dal.DB.QueryRowContext(ctx, query, moduleId)
 
 	var module models.Module
 	var commandsJSON []byte
-	if err := row.Scan(&module.Id, &module.Name, &module.Author, &module.Description, &module.FileName, &module.Usage, &commandsJSON); err != nil {
+	if err := row.Scan(&module.Id, &module.Name, &module.Author, &module.Description, &module.FileName, &commandsJSON); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}

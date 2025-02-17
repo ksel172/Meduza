@@ -122,8 +122,8 @@ func (dal *AgentDAL) DeleteAgent(ctx context.Context, agentID string) error {
 
 func (dal *AgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask) error {
 	query := fmt.Sprintf(`
-		INSERT INTO %s.agent_task (task_id, agent_id, type, status, module, command, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`, dal.schema)
+		INSERT INTO %s.agent_task (task_id, agent_id, type, status, module, command, created_at, started_at, finished_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, dal.schema)
 
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		commandJSON, err := json.Marshal(task.Command)
@@ -133,7 +133,7 @@ func (dal *AgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask)
 
 		logger.Debug(logLevel, logDetailAgent, fmt.Sprintf("Creating agent task: %s", task.TaskID))
 		_, err = stmt.ExecContext(ctx, task.TaskID, task.AgentID, task.Type, task.Status,
-			task.Module, commandJSON, task.Created)
+			task.Module, commandJSON, task.Created, task.Started, task.Finished)
 		if err != nil {
 			logger.Error(logLevel, logDetailAgent, fmt.Sprintf("failed to create agent task: %v", err))
 			return fmt.Errorf("failed to create agent task: %w", err)

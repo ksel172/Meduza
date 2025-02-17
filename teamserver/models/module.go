@@ -11,7 +11,6 @@ type Module struct {
 	Author      string    `json:"author"`
 	Description string    `json:"description"`
 	FileName    string    `json:"file_name"`
-	Usage       string    `json:"usage"`
 	Commands    []Command `json:"commands"`
 }
 

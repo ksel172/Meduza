@@ -30,7 +30,7 @@ func (dal *CheckInDAL) CreateAgent(ctx context.Context, agent models.Agent) erro
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
 
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
-		_, err := stmt.ExecContext(ctx, query, agent.AgentID, agent.ConfigID, agent.Name, agent.Note, agent.Status,
+		_, err := stmt.ExecContext(ctx, agent.AgentID, agent.ConfigID, agent.Name, agent.Note, agent.Status,
 			agent.FirstCallback, agent.LastCallback, agent.ModifiedAt)
 		if err != nil {
 			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to create agent: %v", err))

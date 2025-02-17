@@ -75,7 +75,7 @@ func (mc *ModuleController) UploadModule(ctx *gin.Context) {
 		return
 	}
 
-	models.ResponseSuccess(ctx, http.StatusOK, "Module uploaded successfully", moduleConfig.Module)
+	models.ResponseSuccess(ctx, http.StatusOK, "Module uploaded successfully", nil)
 }
 
 func saveUploadedFile(file io.Reader, outPath string) error {
