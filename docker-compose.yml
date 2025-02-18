@@ -83,9 +83,9 @@ services:
       CHOWN_HOME: "yes"
       CHOWN_HOME_OPTS: "-R"
     ports:
-      - "${JUPYTER_PORT}:8888"
+      - "${JUPYTER_BIND_LOCALHOST_ONLY:+127.0.0.1:}${JUPYTER_PORT}:8888"
     volumes:
-      - jupyter_data:/home/jovyan/.jupyter
+      - ${JUPYTER_USE_VOLUME:+jupyter_data:/home/jovyan/.jupyter}
       - ./teamserver/docker/jupyter/init_jupyter.sh:/docker-entrypoint.d/init_jupyter.sh
     command: >
       bash -c "chmod +x /docker-entrypoint.d/init_jupyter.sh &&
