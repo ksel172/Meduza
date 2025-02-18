@@ -72,7 +72,26 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
       - "${REDIS_PORT}:${REDIS_PORT}"
-
+  meduza_jupyter:
+    container_name: ${JUPYTER_HOST}
+    image: jupyter/datascience-notebook:latest
+    restart: unless-stopped
+    user: root
+    environment:
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN}
+      JUPYTER_ENABLE_LAB: "yes"
+      CHOWN_HOME: "yes"
+      CHOWN_HOME_OPTS: "-R"
+    ports:
+      - "${JUPYTER_PORT}:8888"
+    volumes:
+      - jupyter_data:/home/jovyan/.jupyter
+      - ./teamserver/docker/jupyter/init_jupyter.sh:/docker-entrypoint.d/init_jupyter.sh
+    command: >
+      bash -c "chmod +x /docker-entrypoint.d/init_jupyter.sh &&
+               /docker-entrypoint.d/init_jupyter.sh &&
+               start-notebook.sh --NotebookApp.token='${JUPYTER_TOKEN}' --LabApp.default_theme='Night'"
 volumes:
   meduza_volume:
+  jupyter_data:
 
