@@ -16,6 +16,11 @@ func (m *MockAgentDAL) GetAgent(ctx context.Context, agentID string) (models.Age
 	return args.Get(0).(models.Agent), args.Error(1)
 }
 
+func (m *MockAgentDAL) GetAgents(ctx context.Context) ([]models.Agent, error) {
+	args := m.Called()
+	return args.Get(0).([]models.Agent), args.Error(1)
+}
+
 func (m *MockAgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgentRequest) (models.Agent, error) {
 	args := m.Called(agent)
 	return args.Get(0).(models.Agent), args.Error(1)
