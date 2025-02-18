@@ -200,3 +200,35 @@ func (m *MockPayloadDAL) GetToken(ctx context.Context, configID string) (string,
 	args := m.Called(configID)
 	return args.String(0), args.Error(1)
 }
+
+type MockModuleDAL struct {
+	mock.Mock
+}
+
+func (m *MockModuleDAL) CreateModule(ctx context.Context, module *models.Module) error {
+	args := m.Called(module)
+	return args.Error(0)
+}
+
+func (m *MockModuleDAL) DeleteModule(ctx context.Context, moduleId string) error {
+	args := m.Called(moduleId)
+	return args.Error(0)
+}
+
+func (m *MockModuleDAL) GetAllModules(ctx context.Context) ([]models.Module, error) {
+	args := m.Called()
+	return args.Get(0).([]models.Module), args.Error(1)
+}
+
+func (m *MockModuleDAL) GetModuleById(ctx context.Context, moduleId string) (*models.Module, error) {
+	args := m.Called(moduleId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Module), args.Error(1)
+}
+
+func (m *MockModuleDAL) DeleteAllModules(ctx context.Context) error {
+	args := m.Called()
+	return args.Error(0)
+}
