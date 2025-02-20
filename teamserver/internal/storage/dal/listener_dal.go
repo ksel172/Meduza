@@ -121,7 +121,7 @@ func (dal *ListenerDAL) GetAllListeners(ctx context.Context) ([]models.Listener,
 
 	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) ([]models.Listener, error) {
 		logger.Debug(logLevel, logDetailListener, "Getting all listeners")
-		rows, err := stmt.QueryContext(ctx, query)
+		rows, err := stmt.QueryContext(ctx)
 		if err != nil {
 			logger.Error(logLevel, logDetailListener, "Failed to get listeners: %v", err)
 			return nil, fmt.Errorf("failed to get listeners: %w", err)
