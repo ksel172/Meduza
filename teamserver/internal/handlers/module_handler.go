@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -104,7 +105,7 @@ func (mc *ModuleController) DeleteModule(ctx *gin.Context) {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get module", err.Error())
 		return
 	}
-	if module == nil {
+	if errors.Is(err, sql.ErrNoRows) {
 		models.ResponseError(ctx, http.StatusNotFound, "Module not found", nil)
 		return
 	}
@@ -163,7 +164,7 @@ func (mc *ModuleController) GetModuleById(ctx *gin.Context) {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get module", err.Error())
 		return
 	}
-	if module == nil {
+	if errors.Is(err, sql.ErrNoRows) {
 		models.ResponseError(ctx, http.StatusNotFound, "Module not found", nil)
 		return
 	}

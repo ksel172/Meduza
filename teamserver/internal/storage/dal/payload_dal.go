@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -41,6 +41,7 @@ func (dal *PayloadDAL) CreatePayload(ctx context.Context, config models.PayloadC
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		listenerConfigJSON, err := json.Marshal(config.ListenerConfig)
 		if err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to marshal listener config: %v", err))
 			return fmt.Errorf("failed to marshal listener config to JSON: %w", err)
 		}
 
@@ -49,7 +50,8 @@ func (dal *PayloadDAL) CreatePayload(ctx context.Context, config models.PayloadC
 			config.Sleep, config.Jitter, config.StartDate, config.KillDate, config.WorkingHoursStart,
 			config.WorkingHoursEnd, config.CreatedAt)
 		if err != nil {
-			return fmt.Errorf("failed to insert payload: %w", err)
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to create payload: %v", err))
+			return fmt.Errorf("failed to create payload: %w", err)
 		}
 
 		return nil
@@ -64,6 +66,7 @@ func (dal *PayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConf
 	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) ([]models.PayloadConfig, error) {
 		rows, err := stmt.QueryContext(ctx)
 		if err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to get all payloads: %v", err))
 			return nil, fmt.Errorf("failed to get all payloads: %w", err)
 		}
 		defer rows.Close()
@@ -73,12 +76,14 @@ func (dal *PayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConf
 			var config models.PayloadConfig
 			err := rows.Scan(&config.PayloadID, &config.PayloadName, &config.ConfigID, &config.ListenerID, &config.Arch, &config.ListenerConfig, &config.Sleep, &config.Jitter, &config.StartDate, &config.KillDate, &config.WorkingHoursStart, &config.WorkingHoursEnd, &config.CreatedAt)
 			if err != nil {
+				logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan payload: %v", err))
 				return nil, fmt.Errorf("failed to scan payload: %w", err)
 			}
 			configs = append(configs, config)
 		}
 
 		if err := rows.Err(); err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("rows iteration error: %v", err))
 			return nil, fmt.Errorf("rows iteration error: %w", err)
 		}
 
@@ -92,6 +97,7 @@ func (dal *PayloadDAL) DeletePayload(ctx context.Context, payloadID string) erro
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		_, err := stmt.ExecContext(ctx, payloadID)
 		if err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to delete payload: %v", err))
 			return fmt.Errorf("failed to delete payload: %w", err)
 		}
 		return nil
@@ -104,6 +110,7 @@ func (dal *PayloadDAL) DeleteAllPayloads(ctx context.Context) error {
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		_, err := stmt.ExecContext(ctx)
 		if err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to delete all payloads: %v", err))
 			return fmt.Errorf("failed to delete all payloads: %w", err)
 		}
 		return nil
@@ -117,14 +124,14 @@ func (dal *PayloadDAL) GetKeys(ctx context.Context, authToken string) ([]byte, [
 
 	stmt, err := dal.db.PrepareContext(ctx, query)
 	if err != nil {
-		log.Printf("Failed to prepare statement: %v", err)
+		logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to prepare statement: %v", err))
 		return nil, nil, fmt.Errorf("failed to prepare statement: %w", err)
 	}
 
 	var publicKey []byte
 	var privateKey []byte
 	if err := stmt.QueryRowContext(ctx, authToken).Scan(&privateKey, &publicKey); err != nil {
-		log.Printf("Failed to scan keys: %v", err)
+		logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan keys: %v", err))
 		return nil, nil, fmt.Errorf("failed to scan keys: %w", err)
 	}
 
@@ -141,8 +148,8 @@ func (dal *PayloadDAL) GetToken(ctx context.Context, configID string) (string, e
 	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) (string, error) {
 		var payloadToken string
 		if err := stmt.QueryRowContext(ctx, configID).Scan(&payloadToken); err != nil {
-			log.Printf("Failed to scan payload token: %v", err)
-			return "", fmt.Errorf("failed to scan payload token: %w", err)
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to get payload token for configID '%s': %v", configID, err))
+			return "", fmt.Errorf("failed to get payload token: %w", err)
 		}
 
 		return payloadToken, nil

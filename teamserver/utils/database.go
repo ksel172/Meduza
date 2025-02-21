@@ -7,8 +7,14 @@ import (
 	"time"
 )
 
-func WithTransactionTimeout(db *sql.DB, ctx context.Context, timeout int, fn func(context.Context, *sql.Tx) error) error {
-	tx, err := db.BeginTx(ctx, nil)
+func WithTransactionTimeout(
+	ctx context.Context,
+	db *sql.DB,
+	timeout int,
+	txOpts sql.TxOptions,
+	fn func(context.Context, *sql.Tx) error,
+) error {
+	tx, err := db.BeginTx(ctx, &txOpts)
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
@@ -37,7 +43,13 @@ func WithTransactionTimeout(db *sql.DB, ctx context.Context, timeout int, fn fun
 	return nil
 }
 
-func WithTransactionResultTimeout[T any](db *sql.DB, ctx context.Context, timeout int, fn func(context.Context, *sql.Tx) (T, error)) (T, error) {
+func WithTransactionResultTimeout[T any](
+	ctx context.Context,
+	db *sql.DB,
+	timeout int,
+	txOpts sql.TxOptions,
+	fn func(context.Context, *sql.Tx) (T, error),
+) (T, error) {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		var zero T
