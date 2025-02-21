@@ -9,6 +9,11 @@ import (
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 )
 
+const (
+	// URL parameter constants
+	ParamListenerID string = "listener_id"
+)
+
 // Listener Statuses (Enum)
 type status uint8
 

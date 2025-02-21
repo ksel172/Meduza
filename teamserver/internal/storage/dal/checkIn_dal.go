@@ -7,6 +7,7 @@ import (
 
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
+	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 type ICheckInDAL interface {
@@ -23,26 +24,18 @@ func NewCheckInDAL(db *sql.DB, schema string) *CheckInDAL {
 }
 
 func (dal *CheckInDAL) CreateAgent(ctx context.Context, agent models.Agent) error {
-	tx, err := dal.db.Begin()
-	if err != nil {
-		return fmt.Errorf("failed to start transaction: %w", err)
-	}
-	defer tx.Rollback()
 
-	// Insert agent
-	logger.Debug(layer, "Creating agent: "+agent.AgentID)
-	agentQuery := fmt.Sprintf(`
-        INSERT INTO %s.agents (id, config_id, name, note, status, first_callback, last_callback, modified_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
+	query := fmt.Sprintf(`
+		INSERT INTO %s.agents (id, config_id, name, note, status, first_callback, last_callback, modified_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
 
-	fmt.Printf("agent-info: %+v, ID: %+v", agent.ConfigID, agent.AgentID)
-
-	_, err = tx.Exec(agentQuery, agent.AgentID, agent.ConfigID, agent.Name, agent.Note, agent.Status,
-		agent.FirstCallback, agent.LastCallback, agent.ModifiedAt)
-	if err != nil {
-		logger.Error(layer, fmt.Sprintf("failed to insert agent in database: %v", err))
-		return fmt.Errorf("failed to insert agent: %w", err)
-	}
-
-	return tx.Commit()
+	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		_, err := stmt.ExecContext(ctx, agent.AgentID, agent.ConfigID, agent.Name, agent.Note, agent.Status,
+			agent.FirstCallback, agent.LastCallback, agent.ModifiedAt)
+		if err != nil {
+			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to create agent: %v", err))
+			return fmt.Errorf("failed to create agent: %w", err)
+		}
+		return nil
+	})
 }

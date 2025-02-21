@@ -4,6 +4,5 @@ CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.{TABLE_NAME} (
     author VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     file_name VARCHAR(255) NOT NULL,
-    usage TEXT NOT NULL,
     commands JSONB NOT NULL
 );

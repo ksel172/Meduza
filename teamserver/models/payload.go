@@ -2,6 +2,11 @@ package models
 
 import "time"
 
+const (
+	// URL parameter constants
+	ParamPayloadID string = "payload_id"
+)
+
 type PayloadRequest struct {
 	PayloadName       string    `json:"payload_name" validate:"required"`
 	ListenerID        string    `json:"listener_id" validate:"required"`

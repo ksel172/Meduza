@@ -214,8 +214,17 @@ func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request model
 		return
 	}
 
-	for i, task := range tasks {
-		if task.Type == models.ModuleCommand && task.Status != models.TaskComplete {
+	// Create a new slice for pending tasks
+	pendingTasks := make([]models.AgentTask, 0)
+
+	// Only process non-completed tasks
+	for _, task := range tasks {
+		if task.Status == models.TaskComplete {
+			continue
+		}
+
+		// Handle module commands
+		if task.Type == models.ModuleCommand {
 			moduleDirPath := filepath.Join(conf.GetModuleUploadPath(), task.Module)
 			moduleName := task.Command.Name
 
@@ -261,10 +270,12 @@ func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request model
 			}
 
 			task.Module = base64.StdEncoding.EncodeToString(moduleBytesJSON)
-			tasks[i] = task
 		}
 
+		// Add non-completed task to pending tasks
+		pendingTasks = append(pendingTasks, task)
 	}
+
 	// Update the agent's last callback time
 	lastCallback := time.Now().Format(time.RFC3339)
 	if err := cc.agentDAL.UpdateAgentLastCallback(ctx.Request.Context(), c2request.AgentID, lastCallback); err != nil {
@@ -273,7 +284,8 @@ func (cc *CheckInController) handleTaskRequest(ctx *gin.Context, c2request model
 		return
 	}
 
-	tasksJSON, err := json.Marshal(tasks)
+	// Use pendingTasks instead of tasks for the response
+	tasksJSON, err := json.Marshal(pendingTasks)
 	if err != nil {
 		logger.Error(LogLevel, LogDetail, fmt.Sprintf("Failed to marshal tasks to JSON: %v", err))
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to marshal tasks to JSON"})
@@ -343,7 +355,7 @@ func (cc *CheckInController) handleRegisterRequest(ctx *gin.Context, c2request m
 		return
 	}
 
-	if _, err := cc.agentDAL.GetAgent(agentInfo.AgentID); err == nil {
+	if _, err := cc.agentDAL.GetAgent(ctx.Request.Context(), agentInfo.AgentID); err == nil {
 		logger.Info(LogLevel, LogDetail, "Agent already exists:", c2request.AgentID)
 		ctx.JSON(http.StatusConflict, gin.H{"error": "agent already exists"})
 		return

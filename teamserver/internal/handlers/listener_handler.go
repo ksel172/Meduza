@@ -34,26 +34,17 @@ func NewListenersHandler(dal dal.IListenerDAL, service *services.ListenersServic
 func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 	var listener models.Listener
 	if err := ctx.ShouldBindJSON(&listener); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"message": "Invalid request payload",
-			"status":  utils.Status.ERROR,
-		})
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
 
 	existingListener, err := h.dal.GetListenerByName(ctx.Request.Context(), listener.Name)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Internal server error",
-			"status":  utils.Status.ERROR,
-		})
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to check listener existence", err.Error())
 		return
 	}
 	if existingListener.ID != uuid.Nil {
-		ctx.JSON(http.StatusConflict, gin.H{
-			"message": "Listener with the same name already exists",
-			"status":  utils.Status.ERROR,
-		})
+		models.ResponseError(ctx, http.StatusConflict, "Failed to create listener", "Listener with the same name already exists")
 		return
 	}
 
@@ -62,138 +53,92 @@ func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
 	case models.ListenerTypeHTTP:
 		var httpConfig models.HTTPListenerConfig
 		if err := utils.MapToStruct(listener.Config, &httpConfig); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"message": "Invalid configuration for HTTP listener",
-				"status":  utils.Status.ERROR,
-			})
+			models.ResponseError(ctx, http.StatusBadRequest, "Failed to validate listener config", "Invalid configuration for HTTP listener")
 			return
 		}
 		if err := httpConfig.Validate(); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"message": err.Error(),
-				"status":  utils.Status.ERROR,
-			})
+			models.ResponseError(ctx, http.StatusBadRequest, "Failed to validate listener config", err.Error())
 			return
 		}
 		listener.Config = httpConfig
 	}
 
-	// Create the listener in the database
 	err = h.dal.CreateListener(ctx.Request.Context(), &listener)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"status":  utils.Status.ERROR,
-			"message": "Unable to create a listener.",
-		})
+		models.ResponseError(ctx, http.StatusBadRequest, "Failed to create listener", err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{
-		"status":  utils.Status.SUCCESS,
-		"message": "Listener created successfully",
-	})
+	models.ResponseSuccess(ctx, http.StatusCreated, "Listener created successfully", nil)
 }
 
 func (h *ListenerHandler) GetAllListeners(ctx *gin.Context) {
 	lists, err := h.dal.GetAllListeners(ctx.Request.Context())
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  utils.Status.FAILED,
-			"message": "Unable to process the request",
-		})
-		logger.Error("Error Unable to get all the listeners", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get listeners", err.Error())
+		logger.Error("Error getting all listeners:", err)
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{
-		"status": utils.Status.SUCCESS,
-		"data":   lists,
-	})
+	models.ResponseSuccess(ctx, http.StatusOK, "Listeners retrieved successfully", lists)
 }
 
 func (h *ListenerHandler) GetListenerById(ctx *gin.Context) {
-	id := ctx.Param("id")
+	id := ctx.Param(models.ParamListenerID)
 	listener, err := h.dal.GetListenerById(ctx.Request.Context(), id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{
-			"status":  utils.Status.FAILED,
-			"message": "Listener Does Not exists",
-		})
-		logger.Error("Error Unable to get the listener", err)
+		models.ResponseError(ctx, http.StatusNotFound, "Failed to get listener", "Listener does not exist")
+		logger.Error("Error getting listener:", err)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"status": utils.Status.SUCCESS,
-		"data":   listener,
-	})
+	models.ResponseSuccess(ctx, http.StatusOK, "Listener retrieved successfully", listener)
 }
 
 func (h *ListenerHandler) DeleteListener(ctx *gin.Context) {
-	id := ctx.Param("id")
+	id := ctx.Param(models.ParamListenerID)
 	c := ctx.Request.Context()
 
 	_, err := h.dal.GetListenerById(c, id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{
-			"status":  utils.Status.FAILED,
-			"message": "listener does not exists",
-		})
-		logger.Error("Error Unable to get the listener", err)
-		return
-	}
-	err = h.dal.DeleteListener(c, id)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"status":  utils.Status.FAILED,
-			"message": "unable to delete listener",
-		})
-		logger.Error("Error Delete listener", err)
+		models.ResponseError(ctx, http.StatusNotFound, "Failed to get listener", "Listener does not exist")
+		logger.Error("Error getting listener:", err)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"status":  utils.Status.SUCCESS,
-		"message": "listener deleted successfully",
-		"id":      id,
-	})
+	err = h.dal.DeleteListener(c, id)
+	if err != nil {
+		models.ResponseError(ctx, http.StatusBadRequest, "Failed to delete listener", err.Error())
+		logger.Error("Error deleting listener:", err)
+		return
+	}
+
+	models.ResponseSuccess(ctx, http.StatusOK, "Listener deleted successfully", gin.H{"id": id})
 }
 
 func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
-	id := ctx.Param("id")
+	id := ctx.Param(models.ParamListenerID)
 	c := ctx.Request.Context()
 
 	var listener models.Listener
-
 	if err := ctx.ShouldBindJSON(&listener); err != nil {
-		ctx.JSON(http.StatusConflict, gin.H{
-			"message": "invalid request body. please type correct input",
-			"status":  utils.Status.ERROR,
-		})
-		logger.Error("Request Body Error while bind the json:\n", err)
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request format", err.Error())
+		logger.Error("Request body error:", err)
 		return
 	}
 
 	exists, err := h.dal.GetListenerById(c, id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{
-			"status":  utils.Status.FAILED,
-			"message": "Listener Does Not exists",
-		})
-		logger.Error("Error Unable to get the listener", err)
+		models.ResponseError(ctx, http.StatusNotFound, "Failed to get listener", "Listener does not exist")
+		logger.Error("Error getting listener:", err)
 		return
 	}
 
-	// This check make sure that type cannot be changed
 	if listener.Type != "" && listener.Type != exists.Type {
-		ctx.JSON(http.StatusForbidden, gin.H{
-			"status":  utils.Status.ERROR,
-			"message": "Updating the 'type' field is not allowed",
-		})
-		logger.Warn("Unauthorized attempt to update 'type' field.")
+		models.ResponseError(ctx, http.StatusForbidden, "Failed to update listener", "Updating the 'type' field is not allowed")
+		logger.Warn("Unauthorized attempt to update 'type' field")
 		return
 	}
 
-	// Updates stores all of the updated queries
 	updates := make(map[string]any)
 
 	if listener.Name != "" && listener.Name != exists.Name {
@@ -206,159 +151,122 @@ func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
 		updates["description"] = listener.Description
 	}
 
-	//TODO: implement a functionality for config updated based on the type.
 	if listener.Config != nil && !reflect.DeepEqual(listener.Config, exists.Config) {
 		parsedConfig, err := services.ValidateAndParseConfig(exists.Type, listener.Config)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"status":  utils.Status.ERROR,
-				"message": fmt.Sprintf("Invalid config for listener type '%s': %v", exists.Type, err),
-			})
+			models.ResponseError(ctx, http.StatusBadRequest, "Failed to validate listener config",
+				fmt.Sprintf("Invalid config for listener type '%s': %v", exists.Type, err))
 			logger.Warn("Invalid config for listener type:", exists.Type, err)
 			return
 		}
 		configJson, err := json.Marshal(parsedConfig)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"status":  utils.Status.FAILED,
-				"message": "Failed to marshal config field",
-			})
+			models.ResponseError(ctx, http.StatusInternalServerError, "Failed to process listener config", "Failed to marshal config field")
 			return
 		}
 		updates["config"] = configJson
 	}
+
 	if listener.Logging != (models.Logging{}) && !reflect.DeepEqual(listener.Logging, exists.Logging) {
-		// Marshal the Logging field only if it has changed
 		logJson, err := json.Marshal(&listener.Logging)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"status":  utils.Status.FAILED,
-				"message": "Failed to marshal logging field",
-			})
+			models.ResponseError(ctx, http.StatusInternalServerError, "Failed to process listener logging", "Failed to marshal logging field")
 			return
 		}
 		updates["logging"] = logJson
 	}
+
 	if listener.LoggingEnabled != exists.LoggingEnabled {
 		updates["logging_enabled"] = listener.LoggingEnabled
 	}
 
-	// Only update the fields that are present in the 'updates' map
 	if len(updates) > 0 {
-		updates["updated_at"] = time.Now().UTC() // Always update the 'updated_at' field
+		updates["updated_at"] = time.Now().UTC()
 		if err := h.dal.UpdateListener(c, id, updates); err != nil {
-			logger.Error("Failed to update listener\n", err)
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"status":  utils.Status.FAILED,
-				"message": "Unable to update listener. Please try again later",
-			})
+			logger.Error("Failed to update listener:", err)
+			models.ResponseError(ctx, http.StatusBadRequest, "Failed to update listener", err.Error())
 			return
 		}
-		ctx.JSON(http.StatusOK, gin.H{
-			"status":  utils.Status.SUCCESS,
-			"message": "Listener Updated Successfully",
-		})
+		models.ResponseSuccess(ctx, http.StatusOK, "Listener updated successfully", nil)
 	} else {
-		ctx.JSON(http.StatusOK, gin.H{
-			"status":  utils.Status.SUCCESS,
-			"message": "No fields to update",
-		})
+		models.ResponseSuccess(ctx, http.StatusOK, "No listener fields to update", nil)
 	}
 }
 
 func (h *ListenerHandler) StartListener(ctx *gin.Context) {
 	c := ctx.Request.Context()
-	id := ctx.Param("id")
+	id := ctx.Param(models.ParamListenerID)
 
-	// Retrieve the listener from the database
 	listener, err := h.dal.GetListenerById(c, id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{
-			"status":  utils.Status.FAILED,
-			"message": "Listener does not exist",
-		})
+		models.ResponseError(ctx, http.StatusNotFound, "Failed to get listener", "Listener does not exist")
 		logger.Error("Failed to retrieve listener from database:", err)
 		return
 	}
 
-	// Create a new listener controller instance
 	logger.Info("Attempting to create listener of type:", listener.Type)
 	if err := h.service.CreateListenerController(listener.Type, listener.Config); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  utils.Status.ERROR,
-			"message": "Failed to create listener controller",
-		})
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create listener controller", err.Error())
 		logger.Error("Failed to create listener controller:", err)
 		return
 	}
 
-	// Start the listener, service handles registry addition
 	logger.Info("Starting listener with ID:", id)
 	if err := h.service.Start(listener); err != nil {
 		logger.Error("Failed to start the listener:", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  utils.Status.FAILED,
-			"message": "Failed to start listener",
-		})
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to start listener", err.Error())
 		return
 	}
 
 	err = h.dal.UpdateListener(c, id, map[string]any{"status": 1})
 	if err != nil {
 		logger.Error("Failed to update listener status:", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  utils.Status.FAILED,
-			"message": "Failed to update listener status",
-		})
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to update listener status", err.Error())
 		return
 	}
-	// Send a success response
-	ctx.JSON(http.StatusOK, gin.H{
-		"status":  utils.Status.SUCCESS,
-		"message": "listener started successfully",
-		"id":      id,
-	})
+
+	models.ResponseSuccess(ctx, http.StatusOK, "Listener started successfully", gin.H{"id": id})
 }
 
 func (h *ListenerHandler) StopListener(ctx *gin.Context) {
 	c := ctx.Request.Context()
-	id := ctx.Param("id")
+	id := ctx.Param(models.ParamListenerID)
 
-	// Try stopping the listener, service handles possible errors
 	if err := h.service.Stop(id, 10*time.Second); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": "failed to stop listener",
-			"status":  utils.Status.FAILED,
-		})
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to stop listener", err.Error())
 		return
 	}
 
 	err := h.dal.UpdateListener(c, id, map[string]any{"status": 2})
 	if err != nil {
 		logger.Error("Failed to update listener status:", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"status":  utils.Status.FAILED,
-			"message": "Failed to update listener status",
-		})
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to update listener status", err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"message": "listener stopped",
-		"status":  utils.Status.SUCCESS,
-	})
+	models.ResponseSuccess(ctx, http.StatusOK, "Listener stopped successfully", nil)
+}
+
+func (h *ListenerHandler) CheckRunningListener(ctx *gin.Context) {
+	id := ctx.Param(models.ParamListenerID)
+
+	_, running := h.service.GetListener(id)
+	if !running {
+		models.ResponseError(ctx, http.StatusNotFound, "Failed to check listener status", "Listener is not running")
+		return
+	}
+
+	models.ResponseSuccess(ctx, http.StatusOK, "Listener is running", nil)
 }
 
 func (h *ListenerHandler) AutoStart(ctx context.Context) error {
-	// Fetch active listeners
 	activeListeners, err := h.dal.GetActiveListeners(ctx)
 	if err != nil {
-		logger.Error("Error fetching active listeners...", err)
-		return err
+		logger.Error("Error fetching active listeners:", err)
+		return fmt.Errorf("failed to fetch active listeners: %w", err)
 	}
 
 	totalActiveListeners := len(activeListeners)
-
 	if totalActiveListeners == 0 {
 		logger.Info("No active listeners found to start.")
 		return nil
@@ -370,7 +278,7 @@ func (h *ListenerHandler) AutoStart(ctx context.Context) error {
 	errChan := make(chan error, totalActiveListeners)
 
 	if h.service == nil {
-		return fmt.Errorf("Listener service is nil")
+		return fmt.Errorf("listener service is nil")
 	}
 
 	for _, listener := range activeListeners {
@@ -381,17 +289,15 @@ func (h *ListenerHandler) AutoStart(ctx context.Context) error {
 			id := listener.ID.String()
 			logger.Info("Starting listener:", id)
 
-			// Create listener controller
 			if err := h.service.CreateListenerController(listener.Type, listener.Config); err != nil {
 				logger.Error("Error creating listener controller", id, err)
-				errChan <- fmt.Errorf("Failed to create listener controller %s: %w", id, err)
+				errChan <- fmt.Errorf("failed to create listener controller %s: %w", id, err)
 				return
 			}
 
-			// Start the listener
 			if err := h.service.Start(listener); err != nil {
 				logger.Error("Error starting listener", id, err)
-				errChan <- fmt.Errorf("Failed to start listener %s: %w", id, err)
+				errChan <- fmt.Errorf("failed to start listener %s: %w", id, err)
 			} else {
 				logger.Info("Listener started successfully:", id)
 			}
@@ -411,27 +317,9 @@ func (h *ListenerHandler) AutoStart(ctx context.Context) error {
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("AutoStart encountered errors:\n%s", strings.Join(errors, "\n"))
+		return fmt.Errorf("autostart encountered errors:\n%s", strings.Join(errors, "\n"))
 	}
 
 	logger.Info("All listeners started successfully.")
 	return nil
-}
-
-func (h *ListenerHandler) CheckRunningListener(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	_, running := h.service.GetListener(id)
-	if !running {
-		ctx.JSON(http.StatusNotFound, gin.H{
-			"message": "listener is not running",
-			"status":  utils.Status.FAILED,
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"message": "listener is running",
-		"status":  utils.Status.SUCCESS,
-	})
 }
