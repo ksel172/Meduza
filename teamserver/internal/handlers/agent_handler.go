@@ -51,7 +51,6 @@ func (ac *AgentController) GetAgents(ctx *gin.Context) {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get agents", err.Error())
 		return
 	}
-
 	models.ResponseSuccess(ctx, http.StatusOK, "Agents retrieved successfully", agents)
 }
 

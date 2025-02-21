@@ -5,14 +5,14 @@ import (
 )
 
 type ServerResponse struct {
-	Status  int         `json:"status"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   interface{} `json:"error,omitempty"`
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
+	Error   any    `json:"error,omitempty"`
 }
 
 // Success sends a successful response
-func ResponseSuccess(ctx *gin.Context, status int, message string, data interface{}) {
+func ResponseSuccess(ctx *gin.Context, status int, message string, data any) {
 	ctx.JSON(status, ServerResponse{
 		Status:  status,
 		Message: message,
@@ -21,7 +21,7 @@ func ResponseSuccess(ctx *gin.Context, status int, message string, data interfac
 }
 
 // Error sends an error response
-func ResponseError(ctx *gin.Context, status int, message string, err interface{}) {
+func ResponseError(ctx *gin.Context, status int, message string, err any) {
 	ctx.JSON(status, ServerResponse{
 		Status:  status,
 		Message: message,
