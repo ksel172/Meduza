@@ -12,7 +12,6 @@ import (
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
-	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
 type AgentController struct {
@@ -194,15 +193,12 @@ func (ac *AgentController) GetAgentTasks(ctx *gin.Context) {
 			models.ResponseError(ctx, http.StatusInternalServerError, "Failed to load module configuration", err.Error())
 			return
 		}
-		logger.Info(moduleConfig) //
 
 		moduleBytes, err := json.Marshal(moduleConfig.Module)
 		if err != nil {
 			models.ResponseError(ctx, http.StatusInternalServerError, "Failed to process module configuration", err.Error())
 			return
 		}
-
-		logger.Info(moduleBytes)
 
 		task.Module = base64.StdEncoding.EncodeToString(moduleBytes)
 		tasks[i] = task
