@@ -41,6 +41,8 @@ const (
 	ModuleUploadPathDefault     = "./teamserver/modules"
 	ListenPortRangeStartEnvVar  = "LISTENER_PORT_RANGE_START"
 	ListenPortRangeEndEnvVar    = "LISTENER_PORT_RANGE_END"
+	MeduzaCertUploadPathEnvVar  = "CERT_UPLOAD_PATH"
+	MeduzaCertUploadPathDefault = "./teamserver/certs"
 )
 
 func GetMeduzaServerHostname() string {
@@ -103,6 +105,10 @@ func GetBaseConfPath() string {
 
 func GetModuleUploadPath() string {
 	return utils.GetEnvString(ModuleUploadPathEnvVar, ModuleUploadPathDefault)
+}
+
+func GetCertUploadPath() string {
+	return utils.GetEnvString(MeduzaCertUploadPathEnvVar, MeduzaCertUploadPathDefault)
 }
 
 func GetProjectRootPath() string {

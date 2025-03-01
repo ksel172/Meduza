@@ -127,3 +127,15 @@ func (s *Server) TeamsV1(group *gin.RouterGroup) {
 		}
 	}
 }
+
+func (s *Server) CertificatesV1(group *gin.RouterGroup) {
+	certsGroup := group.Group("/certificates")
+	{
+		certsGroup.Use(s.UserMiddleware()) // Require authentication
+
+		// Certificate CRUD operations
+		certsGroup.POST("/:type", s.AdminMiddleware(), s.dependencies.CertificateController.UploadCertificate)
+		certsGroup.GET("", s.dependencies.CertificateController.GetCertificates)
+		certsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamCertificateID), s.AdminMiddleware(), s.dependencies.CertificateController.DeleteCertificate)
+	}
+}

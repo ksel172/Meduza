@@ -7,6 +7,7 @@ const (
 	logDetailListener = "[Listener]"
 	logDetailModule   = "[Module]"
 	logDetailPayload  = "[Payload]"
+	logDetailCert     = "[Certificate]"
 	logDetailTeam     = "[Team]"
 	logDetailUser     = "[User]"
 )
