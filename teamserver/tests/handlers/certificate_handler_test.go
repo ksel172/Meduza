@@ -73,26 +73,39 @@ func TestUploadCertificate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.expectedStatus == http.StatusOK {
+			mockCertDAL.ExpectedCalls = nil
+
+			if (tt.certType == "cert" || tt.certType == "key") &&
+				(tt.fileName == "test-cert.crt" || tt.fileName == "test-key.key") {
 				mockCertDAL.On("SaveCertificate", mock.Anything, tt.certType, mock.Anything, tt.fileName).Return(tt.mockError).Once()
 			}
 
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-
-			body := new(bytes.Buffer)
+			body := &bytes.Buffer{}
 			writer := multipart.NewWriter(body)
-			part, _ := writer.CreateFormFile("file", tt.fileName)
+			part, err := writer.CreateFormFile("file", tt.fileName)
+			if err != nil {
+				t.Fatal(err)
+			}
 			part.Write(tt.fileContent)
 			writer.Close()
 
-			c.Request = httptest.NewRequest(http.MethodPost, "/certificates/"+tt.certType, body)
-			c.Request.Header.Set("Content-Type", writer.FormDataContentType())
+			req, _ := http.NewRequest(http.MethodPost, "/certificates", body)
+			req.Header.Set("Content-Type", writer.FormDataContentType())
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+
+			c.Params = gin.Params{{Key: "type", Value: tt.certType}}
 
 			handler.UploadCertificate(c)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			mockCertDAL.AssertExpectations(t)
+
+			if (tt.certType == "cert" || tt.certType == "key") &&
+				(tt.fileName == "test-cert.crt" || tt.fileName == "test-key.key") {
+				mockCertDAL.AssertExpectations(t)
+			}
 		})
 	}
 }
