@@ -37,12 +37,12 @@ type AgentConfig struct {
 	ConfigID          string    `json:"config_id"`
 	ListenerID        string    `json:"listener_id"`
 	Arch              string    `json:"architecture"`
-	Sleep             int       `json:"sleep"`
-	Jitter            int       `json:"jitter"` // Jitter as a percentage
+	Sleep             uint      `json:"sleep"`
+	Jitter            uint      `json:"jitter"` // Jitter as a percentage
 	StartDate         time.Time `json:"start_date"`
 	KillDate          time.Time `json:"kill_date"`
-	WorkingHoursStart int       `json:"working_hours_start"`
-	WorkingHoursEnd   int       `json:"working_hours_end"`
+	WorkingHoursStart uint8     `json:"working_hours_start"`
+	WorkingHoursEnd   uint8     `json:"working_hours_end"`
 }
 
 // AgentTask represents the information of a task sent to an Agent

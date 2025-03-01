@@ -18,12 +18,12 @@ type UpdateAgentRequest struct {
 
 // Contains only the fields that can be updated for any given agent configuration
 type UpdateAgentConfigRequest struct {
-	Sleep             int       `json:"sleep"`
-	Jitter            int       `json:"jitter"`
+	Sleep             uint      `json:"sleep"`
+	Jitter            uint      `json:"jitter"`
 	StartDate         time.Time `json:"start_date"`
 	KillDate          time.Time `json:"kill_date"`
-	WorkingHoursStart int       `json:"working_hours_start"`
-	WorkingHoursEnd   int       `json:"working_hours_end"`
+	WorkingHoursStart uint8     `json:"working_hours_start"`
+	WorkingHoursEnd   uint8     `json:"working_hours_end"`
 }
 
 // AgentTask request

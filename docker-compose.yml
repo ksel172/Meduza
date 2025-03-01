@@ -29,7 +29,6 @@ services:
       MODULE_UPLOAD_PATH: ${MODULE_UPLOAD_PATH}
     volumes:
       - ./teamserver:/app/teamserver
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./agent:/app/agent
       - ./teamserver/build:/app/build
     depends_on:
