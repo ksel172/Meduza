@@ -3,7 +3,8 @@ package models
 import "time"
 
 const (
-	ParamCertificateID = "certificateID"
+	ParamCertificateID   = "certificateID"
+	ParamCertificateType = "type"
 )
 
 // Certificate represents an SSL/TLS certificate or key

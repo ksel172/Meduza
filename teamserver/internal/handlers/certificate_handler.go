@@ -34,7 +34,7 @@ func NewCertificateHandler(certDAL dal.CertificateDAL) *CertificateHandler {
 
 // UploadCertificate handles the certificate upload
 func (h *CertificateHandler) UploadCertificate(ctx *gin.Context) {
-	certType := ctx.Param("type")
+	certType := ctx.Param(models.ParamCertificateType)
 
 	// Validate certificate type
 	if certType != "cert" && certType != "key" {
