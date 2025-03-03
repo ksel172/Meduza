@@ -36,7 +36,7 @@ func (r C2Request) IntoNewAgent() Agent {
 	}
 }
 
-type RequestReason uint16
+type RequestReason uint8
 
 const (
 	Register RequestReason = iota

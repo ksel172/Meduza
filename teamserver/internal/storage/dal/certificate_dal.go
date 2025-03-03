@@ -36,39 +36,26 @@ func NewCertificateDAL(db *sql.DB, schema string) CertificateDAL {
 
 // SaveCertificate saves a certificate to the database
 func (d *CertificateDALImpl) SaveCertificate(ctx context.Context, certType, path, filename string) error {
-	// First check if certificate of this type already exists
-	existing, err := d.GetCertificateByType(ctx, certType)
-	if err != nil && err != sql.ErrNoRows {
-		logger.Error(logLevel, logDetailCert, fmt.Sprintf("Error checking for existing certificate: %v", err))
-		return fmt.Errorf("failed to check for existing certificate: %w", err)
-	}
-
 	now := time.Now()
+	id := uuid.New().String()
 
-	// If certificate exists, update it
-	if existing != nil {
-		query := fmt.Sprintf(`UPDATE "%s"."certificates" SET path = $1, filename = $2, updated_at = $3 WHERE type = $4`, d.schema)
-
-		return utils.WithTimeout(ctx, d.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
-			logger.Debug(logLevel, logDetailCert, fmt.Sprintf("Updating certificate of type: %s", certType))
-			_, err = stmt.ExecContext(ctx, path, filename, now, certType)
-			if err != nil {
-				logger.Error(logLevel, logDetailCert, fmt.Sprintf("Failed to update certificate: %v", err))
-				return fmt.Errorf("failed to update certificate: %w", err)
-			}
-			return nil
-		})
-	}
-
-	// Otherwise, create a new one
-	query := fmt.Sprintf(`INSERT INTO "%s"."certificates" (id, type, path, filename, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`, d.schema)
+	// Used upsert: https://neon.tech/postgresql/postgresql-tutorial/postgresql-upsert
+	query := fmt.Sprintf(`
+        INSERT INTO "%s"."certificates" (id, type, path, filename, created_at, updated_at) 
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (type) 
+        DO UPDATE SET 
+            path = $3,
+            filename = $4,
+            updated_at = $6
+    `, d.schema)
 
 	return utils.WithTimeout(ctx, d.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
-		logger.Debug(logLevel, logDetailCert, fmt.Sprintf("Creating new certificate of type: %s", certType))
-		_, err = stmt.ExecContext(ctx, uuid.New().String(), certType, path, filename, now, now)
+		logger.Debug(logLevel, logDetailCert, fmt.Sprintf("Upserting certificate of type: %s", certType))
+		_, err := stmt.ExecContext(ctx, id, certType, path, filename, now, now)
 		if err != nil {
-			logger.Error(logLevel, logDetailCert, fmt.Sprintf("Failed to create certificate: %v", err))
-			return fmt.Errorf("failed to create certificate: %w", err)
+			logger.Error(logLevel, logDetailCert, fmt.Sprintf("Failed to upsert certificate: %v", err))
+			return fmt.Errorf("failed to upsert certificate: %w", err)
 		}
 		return nil
 	})

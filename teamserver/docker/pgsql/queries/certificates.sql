@@ -4,5 +4,6 @@ CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.{TABLE_NAME} (
     "path" VARCHAR(255) NOT NULL,
     "filename" VARCHAR(255) NOT NULL,
     "created_at" TIMESTAMPTZ NOT NULL,
-    "updated_at" TIMESTAMPTZ NOT NULL
+    "updated_at" TIMESTAMPTZ NOT NULL,
+    UNIQUE ("type")
 );
