@@ -237,3 +237,30 @@ func (m *MockModuleDAL) DeleteAllModules(ctx context.Context) error {
 	args := m.Called()
 	return args.Error(0)
 }
+
+type MockCertificateDAL struct {
+	mock.Mock
+}
+
+func (m *MockCertificateDAL) SaveCertificate(ctx context.Context, certType, path, filename string) error {
+	args := m.Called(ctx, certType, path, filename)
+	return args.Error(0)
+}
+
+func (m *MockCertificateDAL) GetAllCertificates(ctx context.Context) ([]models.Certificate, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]models.Certificate), args.Error(1)
+}
+
+func (m *MockCertificateDAL) GetCertificateByType(ctx context.Context, certType string) (*models.Certificate, error) {
+	args := m.Called(ctx, certType)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Certificate), args.Error(1)
+}
+
+func (m *MockCertificateDAL) DeleteCertificate(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}

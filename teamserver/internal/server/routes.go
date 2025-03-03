@@ -23,4 +23,5 @@ func (s *Server) RegisterRoutes() {
 	s.PayloadV1(v1Group)
 	s.ModuleV1(v1Group)
 	s.TeamsV1(v1Group)
+	s.CertificatesV1(v1Group)
 }

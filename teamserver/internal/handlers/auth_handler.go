@@ -1,14 +1,13 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
-
-	"github.com/gin-gonic/gin"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -47,14 +46,14 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 	}
 
 	if !utils.CheckPasswordHash(loginR.Password, user.PasswordHash) {
-		log.Print("failed password check: ", loginR.Password, user.PasswordHash)
+		logger.Error("Failed password check:", loginR.Username)
 		models.ResponseError(ctx, http.StatusUnauthorized, "Failed to authenticate user", "Invalid credentials")
 		return
 	}
 
 	tokens, err := ac.jwtS.GenerateTokens(user.ID, user.Role)
-	log.Printf("token errors: %v", err)
 	if err != nil {
+		logger.Error("Failed to generate tokens:", err)
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to generate authentication tokens", err.Error())
 		return
 	}
@@ -88,7 +87,7 @@ func (ac *AuthController) LogoutController(ctx *gin.Context) {
 			expiry := time.Unix(claims.ExpiresAt.Unix(), 0)
 			ac.jwtS.RevokeToken(accessToken, expiry)
 		} else {
-			log.Printf("Access token invalid or already expired: %v", err)
+			logger.Debug("Access token invalid or already expired:", err)
 		}
 	}
 
@@ -98,7 +97,7 @@ func (ac *AuthController) LogoutController(ctx *gin.Context) {
 			expiry := time.Unix(claims.ExpiresAt.Unix(), 0)
 			ac.jwtS.RevokeToken(refreshToken, expiry)
 		} else {
-			log.Printf("Refresh token invalid or already expired: %v", err)
+			logger.Debug("Refresh token invalid or already expired:", err)
 		}
 	}
 
