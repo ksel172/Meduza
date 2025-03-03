@@ -30,6 +30,7 @@ type Container struct {
 	PayloadController     *handlers.PayloadHandler
 	ModuleController      *handlers.ModuleController
 	CertificateController *handlers.CertificateHandler
+	ControllerHandler     *handlers.ControllerHandler
 	ListenerContainer
 }
 
@@ -51,6 +52,7 @@ func NewContainer() (*Container, error) {
 	payloadDal := dal.NewPayloadDAL(pgsql, schema)
 	moduleDal := dal.NewModuleDAL(pgsql, schema)
 	certificateDal := dal.NewCertificateDAL(pgsql, schema)
+	controllerDal := dal.NewControllerDAL(pgsql, schema)
 
 	// CheckInController is owned by the listener server
 	checkInController := services.NewCheckInController(checkInDal, agentDal, payloadDal)
@@ -79,6 +81,7 @@ func NewContainer() (*Container, error) {
 		PayloadController:     handlers.NewPayloadHandler(agentDal, listenerDal, payloadDal),
 		ModuleController:      handlers.NewModuleController(moduleDal),
 		CertificateController: handlers.NewCertificateHandler(certificateDal),
+		ControllerHandler:     handlers.NewControllerHandler(controllerDal),
 		ListenerContainer: ListenerContainer{
 			CheckInController: checkInController,
 		},

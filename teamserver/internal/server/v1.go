@@ -139,3 +139,14 @@ func (s *Server) CertificatesV1(group *gin.RouterGroup) {
 		certsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamCertificateID), s.AdminMiddleware(), s.dependencies.CertificateController.DeleteCertificate)
 	}
 }
+
+func (s *Server) ControllersV1(group *gin.RouterGroup) {
+	controllersGroup := group.Group("/controllers")
+	{
+		controllersGroup.Use(s.UserMiddleware())
+
+		controllersGroup.POST("", s.dependencies.ControllerHandler.RegisterController)
+		controllersGroup.GET(fmt.Sprintf("/:%s/keypair", models.ParamControllerID), s.dependencies.ControllerHandler.GetKeyPair)
+		controllersGroup.POST(fmt.Sprintf("/:%s/heartbeat", models.ParamControllerID), s.dependencies.ControllerHandler.ReceiveHeartbeat)
+	}
+}
