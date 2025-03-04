@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -31,80 +32,65 @@ func (s *Server) HandleCors() gin.HandlerFunc {
 }
 
 func (s *Server) UserMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
+	return func(ctx *gin.Context) {
+		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is missing"})
-			c.Abort()
+			models.ResponseError(ctx, http.StatusUnauthorized, "Authorization header is missing", nil)
+			ctx.Abort()
 			return
 		}
 
 		bearerToken := strings.Split(authHeader, " ")
 		if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
-			c.Abort()
+			models.ResponseError(ctx, http.StatusUnauthorized, "Invalid authorization format", nil)
+			ctx.Abort()
 			return
 		}
 
 		tokenString := bearerToken[1]
 		claims, err := s.dependencies.JwtService.ValidateToken(tokenString)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid claims"})
-			c.Abort()
+			models.ResponseError(ctx, http.StatusUnauthorized, "Invalid claims", err)
+			ctx.Abort()
 			return
 		}
 
-		c.Set("claims", claims)
-		c.Next()
+		ctx.Set("claims", claims)
+		ctx.Next()
 	}
 }
 
 func (s *Server) AdminMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
+	return func(ctx *gin.Context) {
+		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"Message": "Authorization header Error",
-				"error":   "Authorization is empty",
-				"Status":  "Empty",
-			})
-			c.Abort()
+			models.ResponseError(ctx, http.StatusUnauthorized, "Authorization header is missing", nil)
+			ctx.Abort()
 			return
 		}
 
 		bearerToken := strings.Split(authHeader, " ")
 		if len(bearerToken) != 2 || bearerToken[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"Message": "Invalid authorization format",
-				"error":   "It should be a bearer token",
-				"Status":  "Failed",
-			})
-			c.Abort()
+			models.ResponseError(ctx, http.StatusUnauthorized, "Invalid authorization format", nil)
+			ctx.Abort()
 			return
 		}
 
 		tokenString := bearerToken[1]
 		claims, err := s.dependencies.JwtService.ValidateToken(tokenString)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"Message": "Invalid claims",
-				"Error":   err.Error(),
-				"Status":  "Failed",
-			})
-			c.Abort()
+			models.ResponseError(ctx, http.StatusUnauthorized, "Invalid claims", err)
+			ctx.Abort()
 			return
 		}
 
-		c.Set("claims", claims)
+		ctx.Set("claims", claims)
 
 		if claims.Role != "admin" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"Message": "Restricted Route. Only Admins are allowed.",
-				"Status":  "Failed",
-			})
-			c.Abort()
+			models.ResponseError(ctx, http.StatusUnauthorized, "Restricted Route. Only Admins are allowed.", nil)
+			ctx.Abort()
 			return
 		}
-		c.Next()
+		ctx.Next()
 	}
 }

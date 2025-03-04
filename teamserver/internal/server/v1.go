@@ -147,6 +147,6 @@ func (s *Server) ControllersV1(group *gin.RouterGroup) {
 
 		controllersGroup.POST("", s.dependencies.ControllerHandler.RegisterController)
 		controllersGroup.GET(fmt.Sprintf("/:%s/keypair", models.ParamControllerID), s.dependencies.ControllerHandler.GetKeyPair)
-		controllersGroup.POST(fmt.Sprintf("/:%s/heartbeat", models.ParamControllerID), s.dependencies.ControllerHandler.ReceiveHeartbeat)
+		controllersGroup.PUT(fmt.Sprintf("/:%s/heartbeat", models.ParamControllerID), s.dependencies.ControllerHandler.ReceiveHeartbeat)
 	}
 }
