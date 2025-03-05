@@ -146,7 +146,7 @@ func (s *Server) ControllersV1(group *gin.RouterGroup) {
 		controllersGroup.Use(s.UserMiddleware())
 
 		controllersGroup.POST("", s.dependencies.ControllerHandler.RegisterController)
-		controllersGroup.GET(fmt.Sprintf("/:%s/keypair", models.ParamControllerID), s.dependencies.ControllerHandler.GetKeyPair)
-		controllersGroup.PUT(fmt.Sprintf("/:%s/heartbeat", models.ParamControllerID), s.dependencies.ControllerHandler.ReceiveHeartbeat)
+		controllersGroup.GET(fmt.Sprintf("/:%s", models.ParamControllerID), s.dependencies.ControllerHandler.GetKeyPair)
+		controllersGroup.PUT(fmt.Sprintf("/:%s", models.ParamControllerID), s.dependencies.ControllerHandler.ReceiveHeartbeat)
 	}
 }
