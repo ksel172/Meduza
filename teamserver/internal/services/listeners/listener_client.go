@@ -28,11 +28,11 @@ func NewListenerClient(baseURL string) *ListenerClient {
 	}
 }
 
-// Response represents a generic API response
-type ApiResponse struct {
+type ControllerResponse struct {
 	Status  int    `json:"status"`
 	Message string `json:"message"`
 	Data    any    `json:"data,omitempty"`
+	// err error `json:"-"`
 }
 
 // AddListener deploys a new listener
@@ -55,7 +55,7 @@ func (c *ListenerClient) AddListener(ctx context.Context, config ListenerConfig)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		var errResp ApiResponse
+		var errResp ControllerResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
 			return fmt.Errorf("request failed with status %d", resp.StatusCode)
 		}
@@ -79,7 +79,7 @@ func (c *ListenerClient) StartListener(ctx context.Context, listenerID string) e
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		var errResp ApiResponse
+		var errResp ControllerResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
 			return fmt.Errorf("request failed with status %d", resp.StatusCode)
 		}
@@ -103,7 +103,7 @@ func (c *ListenerClient) StopListener(ctx context.Context, listenerID string) er
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		var errResp ApiResponse
+		var errResp ControllerResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
 			return fmt.Errorf("request failed with status %d", resp.StatusCode)
 		}
@@ -127,7 +127,7 @@ func (c *ListenerClient) TerminateListener(ctx context.Context, listenerID strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		var errResp ApiResponse
+		var errResp ControllerResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
 			return fmt.Errorf("request failed with status %d", resp.StatusCode)
 		}
@@ -157,7 +157,7 @@ func (c *ListenerClient) UpdateListener(ctx context.Context, config ListenerConf
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		var errResp ApiResponse
+		var errResp ControllerResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
 			return fmt.Errorf("request failed with status %d", resp.StatusCode)
 		}
@@ -181,7 +181,7 @@ func (c *ListenerClient) GetListenerConfig(ctx context.Context, listenerID strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		var errResp ApiResponse
+		var errResp ControllerResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
 			return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
 		}
