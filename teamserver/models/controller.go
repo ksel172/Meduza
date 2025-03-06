@@ -19,3 +19,10 @@ type HeartbeatRequest struct {
 	Timestamp int64             `json:"timestamp"`
 	Listeners map[string]string `json:"listeners"`
 }
+
+type Controller struct {
+	ID         string `json:"id"`
+	Endpoint   string `json:"endpoint"`
+	PublicKey  string `json:"PublicKey"`
+	PrivateKey string `json:"PrivateKey"`
+}
