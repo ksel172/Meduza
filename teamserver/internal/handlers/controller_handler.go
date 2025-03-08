@@ -85,6 +85,7 @@ func (h *ControllerHandler) RegisterController(ctx *gin.Context) {
 
 func (h *ControllerHandler) GetKeyPair(ctx *gin.Context) {
 	// Not sure where the keys are coming from yet, auth needs to be discussed.
+
 }
 
 func (h *ControllerHandler) ReceiveHeartbeat(ctx *gin.Context) {
@@ -96,7 +97,6 @@ func (h *ControllerHandler) ReceiveHeartbeat(ctx *gin.Context) {
 	}
 
 	// Binding the heartbeat here:
-	// Timestamp int64             `json:"timestamp"`
 	// Listeners map[string]string `json:"listeners"`
 
 	var heartbeat models.HeartbeatRequest
@@ -106,17 +106,17 @@ func (h *ControllerHandler) ReceiveHeartbeat(ctx *gin.Context) {
 		return
 	}
 
-	exists, err := h.controllerDal.ControllerExists(ctx, controllerID)
-	if err != nil {
-		logger.Error("Error checking controller existence:", err)
-		models.ResponseError(ctx, http.StatusInternalServerError, "Server error", "Failed to verify controller")
-		return
-	}
+	// exists, err := h.controllerDal.ControllerExists(ctx, controllerID)
+	// if err != nil {
+	// 	logger.Error("Error checking controller existence:", err)
+	// 	models.ResponseError(ctx, http.StatusInternalServerError, "Server error", "Failed to verify controller")
+	// 	return
+	// }
 
-	if !exists {
-		models.ResponseError(ctx, http.StatusNotFound, "Not found", "Controller not registered")
-		return
-	}
+	// if !exists {
+	// 	models.ResponseError(ctx, http.StatusNotFound, "Not found", "Controller not registered")
+	// 	return
+	// }
 
 	// Update the heartbeat for the listeners in the database
 	if err := h.controllerDal.UpdateHeartbeat(ctx, controllerID, heartbeat); err != nil {

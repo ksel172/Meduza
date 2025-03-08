@@ -3,9 +3,8 @@ package dal
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"time"
+	"strings"
 
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
@@ -13,8 +12,7 @@ import (
 )
 
 type IControllerDAL interface {
-	RegisterController(ctx context.Context, registration models.Controller) error
-	ControllerExists(ctx context.Context, controllerID string) (bool, error)
+	RegisterController(ctx context.Context, registration models.ControllerRegistration) error
 	UpdateHeartbeat(ctx context.Context, controllerID string, heartbeat models.HeartbeatRequest) error
 }
 
@@ -27,11 +25,11 @@ func NewControllerDAL(db *sql.DB, schema string) IControllerDAL {
 	return &ControllerDAL{db: db, schema: schema}
 }
 
-func (dal *ControllerDAL) RegisterController(ctx context.Context, controller models.Controller) error {
+func (dal *ControllerDAL) RegisterController(ctx context.Context, controller models.ControllerRegistration) error {
 	query := fmt.Sprintf(`
         INSERT INTO %s.controllers (
-            id, endpoint, public_key, private_key, created_at, updated_at
-        ) VALUES($1, $2, $3, $4, $5, $5)
+            id, endpoint
+        ) VALUES($1, $2)
     `, dal.schema)
 
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
@@ -41,9 +39,6 @@ func (dal *ControllerDAL) RegisterController(ctx context.Context, controller mod
 			ctx,
 			controller.ID,
 			controller.Endpoint,
-			controller.PublicKey,
-			controller.PrivateKey,
-			time.Now().UTC(),
 		)
 
 		if err != nil {
@@ -54,58 +49,81 @@ func (dal *ControllerDAL) RegisterController(ctx context.Context, controller mod
 	})
 }
 
-func (dal *ControllerDAL) ControllerExists(ctx context.Context, controllerID string) (bool, error) {
-	query := fmt.Sprintf(`
-        SELECT EXISTS(
-            SELECT 1 FROM %s.controllers WHERE id = $1
-        )
-    `, dal.schema)
-
-	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) (bool, error) {
-		logger.Debug(logLevel, logDetailController, fmt.Sprintf("Checking if controller exists: %s", controllerID))
-
-		var exists bool
-		err := stmt.QueryRowContext(ctx, controllerID).Scan(&exists)
-		if err != nil {
-			logger.Error(logLevel, logDetailController, "Error checking controller existence: ", err)
-			return false, fmt.Errorf("failed to check controller existence: %w", err)
-		}
-
-		return exists, nil
-	})
-}
-
 func (dal *ControllerDAL) UpdateHeartbeat(ctx context.Context, controllerID string, heartbeat models.HeartbeatRequest) error {
-	// First convert the listeners map to JSON for storage
-	listenersJSON, err := json.Marshal(heartbeat.Listeners)
-	if err != nil {
-		logger.Error(logLevel, logDetailController, "Failed to marshal listeners to JSON: ", err)
-		return fmt.Errorf("failed to marshal listeners to JSON: %v", err)
+
+	// Map of status to UUIDs with the same status
+	statuses := map[string][]string{}
+	for id, status := range heartbeat.Listeners {
+		statuses[status] = append(statuses[status], id)
 	}
 
-	query := fmt.Sprintf(`
-        UPDATE %s.controllers
-        SET updated_at = $1,
-            heartbeat_timestamp = $2,
-            listeners_status = $3
-        WHERE id = $4
-    `, dal.schema)
+	selectQuery := fmt.Sprintf(`SELECT EXISTS(SELECT 1 FROM %s.listeners WHERE id = $1)`, dal.schema)
+	updateHeartbeatQuery := fmt.Sprintf(`UPDATE %s.controllers SET updated_at = CURRENT_TIMESTAMP WHERE id = $1`, dal.schema)
 
-	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+	// updateListenersQuery := fmt.Sprintf(`UPDATE %s.listeners SET status = $1 WHERE id IN $2`, dal.schema)
+
+	return utils.WithTransactionTimeout(ctx, dal.db, 5, sql.TxOptions{}, func(ctx context.Context, tx *sql.Tx) error {
 		logger.Debug(logLevel, logDetailController, fmt.Sprintf("Updating heartbeat for controller: %s", controllerID))
 
-		_, err := stmt.ExecContext(
-			ctx,
-			time.Now().UTC(),
-			time.Unix(heartbeat.Timestamp, 0).UTC(),
-			listenersJSON,
-			controllerID,
-		)
+		// Check if the controller exists by its ID
+		var exists bool
+		if err := tx.QueryRowContext(ctx, selectQuery, controllerID).Scan(&exists); err != nil {
+			logger.Error(logLevel, logDetailController, fmt.Sprintf("Failed to execute select controller query: %v", err))
+			return fmt.Errorf("failed to execute select controller query: %w", err)
+		}
+		if !exists {
+			logger.Info(logLevel, logDetailController, fmt.Sprintf("Controller with ID %s does not exist", controllerID))
+			return fmt.Errorf("controller with ID %s does not exist", controllerID)
+		}
 
+		// Update the listener status rows on the listeners table
+		for status, ids := range statuses {
+			if len(ids) == 0 {
+				continue
+			}
+
+			// Build query with right number of placeholders
+			placeholders := make([]string, len(ids))
+			args := make([]any, len(ids)+1)
+			args[0] = status
+
+			for i, id := range ids {
+				placeholders[i] = fmt.Sprintf("$%d", i+2) // +2 because status is $1
+				args[i+1] = id
+			}
+
+			// Prepare statement
+			updateListenersQuery := fmt.Sprintf(
+				`UPDATE %s.listeners SET STATUS = $1 WHERE id IN (%s)`,
+				dal.schema,
+				strings.Join(placeholders, ","),
+			)
+			updateListenersStmt, err := dal.db.PrepareContext(ctx, updateListenersQuery)
+			if err != nil {
+				logger.Error(logLevel, logDetailController, fmt.Sprintf("Failed to prepare update listener query: %v", err))
+				return fmt.Errorf("failed to prepare update listener query: %w", err)
+			}
+
+			// Execute with statement in transaction
+			result, err := tx.StmtContext(ctx, updateListenersStmt).ExecContext(ctx, args...)
+			if err != nil {
+				logger.Error(logLevel, logDetailController, fmt.Sprintf("Failed to update listeners statuses: %v", err))
+				return fmt.Errorf("failed to update listeners statuses: %w", err)
+			}
+
+			rowsAffected, err := result.RowsAffected()
+			if err == nil && rowsAffected == 0 {
+				logger.Warn(logLevel, logDetailController, fmt.Sprintf("no listeners with status %s were updated", status))
+			}
+		}
+
+		// Finally, update the heartbeat on the controllers table
+		_, err := tx.ExecContext(ctx, updateHeartbeatQuery, controllerID)
 		if err != nil {
 			logger.Error(logLevel, logDetailController, "Failed to update heartbeat: ", err)
 			return fmt.Errorf("failed to update heartbeat: %w", err)
 		}
+
 		return nil
 	})
 }

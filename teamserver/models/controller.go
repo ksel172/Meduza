@@ -16,7 +16,6 @@ type KeyPair struct {
 }
 
 type HeartbeatRequest struct {
-	Timestamp int64             `json:"timestamp"`
 	Listeners map[string]string `json:"listeners"`
 }
 
