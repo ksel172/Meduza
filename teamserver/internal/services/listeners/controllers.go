@@ -8,7 +8,6 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 	http_listener "github.com/ksel172/Meduza/teamserver/pkg/listeners/http"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
-	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 /*
@@ -17,7 +16,6 @@ import (
 */
 
 var checkinRoute = "/" // Changed to "/" from "/checkin"
-var status = utils.Status
 
 // NewHTTPListenerController initializes a new HTTP listener controller.
 // The controller is responsible for handling HTTP requests to the listener.
@@ -40,7 +38,7 @@ func NewHTTPListenerController(
 				logger.Warn("IP not allowed:", clientIP)
 				ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{
 					"message": "IP not allowed",
-					"status":  status.ERROR,
+					"status":  "Error",
 				})
 				return
 			}

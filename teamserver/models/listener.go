@@ -9,6 +9,11 @@ import (
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 )
 
+const (
+	// URL parameter constants
+	ParamListenerID string = "listener_id"
+)
+
 // Listener Statuses (Enum)
 type status uint8
 
@@ -97,16 +102,16 @@ type HTTPListenerConfig struct {
 	HostRotation HostRotationType `json:"host_rotation"`
 	PortBind     string           `json:"port_bind"`
 	//PortConn         string           `json:"port_conn"`
-	Secure           bool          `json:"secure"`
-	UserAgent        string        `json:"user_agent"`
-	Headers          []Header      `json:"headers"`
-	Uris             []string      `json:"uris"`
-	Certificate      Certificate   `json:"certificate"`
-	WhitelistEnabled bool          `json:"whitelist_enabled"`
-	Whitelist        []string      `json:"whitelist"`
-	BlacklistEnabled bool          `json:"blacklist_enabled"`
-	Blacklist        []string      `json:"blacklist"`
-	ProxySettings    ProxySettings `json:"proxy_settings"`
+	Secure           bool           `json:"secure"`
+	UserAgent        string         `json:"user_agent"`
+	Headers          []Header       `json:"headers"`
+	Uris             []string       `json:"uris"`
+	Certificate      TLSCertificate `json:"certificate"`
+	WhitelistEnabled bool           `json:"whitelist_enabled"`
+	Whitelist        []string       `json:"whitelist"`
+	BlacklistEnabled bool           `json:"blacklist_enabled"`
+	Blacklist        []string       `json:"blacklist"`
+	ProxySettings    ProxySettings  `json:"proxy_settings"`
 }
 
 func (config *HTTPListenerConfig) Validate() error {
@@ -197,7 +202,7 @@ type Authentication struct {
 	Password string `json:"password,omitempty"`
 }
 
-type Certificate struct {
+type TLSCertificate struct {
 	CertPath string `json:"cert_path"`
 	KeyPath  string `json:"key_path"`
 }

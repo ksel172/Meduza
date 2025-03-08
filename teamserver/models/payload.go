@@ -2,17 +2,22 @@ package models
 
 import "time"
 
+const (
+	// URL parameter constants
+	ParamPayloadID string = "payload_id"
+)
+
 type PayloadRequest struct {
 	PayloadName       string    `json:"payload_name" validate:"required"`
 	ListenerID        string    `json:"listener_id" validate:"required"`
 	Arch              string    `json:"architecture" validate:"required,oneof=win-x64 win-x86 linux-x64 linux-x86"`
 	SelfContained     bool      `json:"self_contained" validate:"required,oneof=true false"`
-	Sleep             int       `json:"sleep" validate:"required"`
-	Jitter            int       `json:"jitter" validate:"required"`
+	Sleep             uint      `json:"sleep" validate:"required"`
+	Jitter            uint      `json:"jitter" validate:"required"`
 	StartDate         time.Time `json:"start_date" validate:"required"`
 	KillDate          time.Time `json:"kill_date" validate:"required"`
-	WorkingHoursStart int       `json:"working_hours_start" validate:"required"`
-	WorkingHoursEnd   int       `json:"working_hours_end" validate:"required"`
+	WorkingHoursStart uint8     `json:"working_hours_start" validate:"required"`
+	WorkingHoursEnd   uint8     `json:"working_hours_end" validate:"required"`
 }
 
 type PayloadConfig struct {
@@ -20,17 +25,17 @@ type PayloadConfig struct {
 	PayloadName       string    `json:"payload_name"`
 	ConfigID          string    `json:"config_id"`
 	ListenerID        string    `json:"listener_id"`
-	PublicKey         []byte    `json:"public_key"`
-	PrivateKey        []byte    `json:"private_key"`
+	PublicKey         []byte    `json:"-"`
+	PrivateKey        []byte    `json:"-"`
 	Token             string    `json:"token"`
 	Arch              string    `json:"architecture"`
 	ListenerConfig    any       `json:"config"`
-	Sleep             int       `json:"sleep"`
-	Jitter            int       `json:"jitter"` // Jitter as a percentage
+	Sleep             uint      `json:"sleep"`
+	Jitter            uint      `json:"jitter"` // Jitter as a percentage
 	StartDate         time.Time `json:"start_date"`
 	KillDate          time.Time `json:"kill_date"`
-	WorkingHoursStart int       `json:"working_hours_start"`
-	WorkingHoursEnd   int       `json:"working_hours_end"`
+	WorkingHoursStart uint8     `json:"working_hours_start"`
+	WorkingHoursEnd   uint8     `json:"working_hours_end"`
 	CreatedAt         time.Time `json:"created_at"`
 	//ListenerType   string        `json:"listenerType"`
 }

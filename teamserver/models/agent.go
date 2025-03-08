@@ -4,12 +4,10 @@ import (
 	"time"
 )
 
-// AgentTaskId is
-type AgentTaskId = string
-
 const (
-	ParamAgentID AgentTaskId = "agent_id" // Agents Id
-	ParamTaskID  AgentTaskId = "task_id"  // Tasks Id of a agent.
+	// URL parameter constants
+	ParamAgentID string = "agent_id"
+	ParamTaskID  string = "task_id"
 )
 
 // Contains all information required for controlling an agent.
@@ -18,8 +16,7 @@ type Agent struct {
 	Name          string      `json:"name"`
 	Note          string      `json:"note"`
 	Status        AgentStatus `json:"status"`
-	ConfigID      string      `json:"config_id"`
-	Info          AgentInfo   `json:"agent_info"`
+	ConfigID      string      `json:"config_id,omitempty"`
 	FirstCallback time.Time   `json:"first_callback"`
 	LastCallback  time.Time   `json:"last_callback"`
 	ModifiedAt    time.Time   `json:"modified_at"`
@@ -40,12 +37,12 @@ type AgentConfig struct {
 	ConfigID          string    `json:"config_id"`
 	ListenerID        string    `json:"listener_id"`
 	Arch              string    `json:"architecture"`
-	Sleep             int       `json:"sleep"`
-	Jitter            int       `json:"jitter"` // Jitter as a percentage
+	Sleep             uint      `json:"sleep"`
+	Jitter            uint      `json:"jitter"` // Jitter as a percentage
 	StartDate         time.Time `json:"start_date"`
 	KillDate          time.Time `json:"kill_date"`
-	WorkingHoursStart int       `json:"working_hours_start"`
-	WorkingHoursEnd   int       `json:"working_hours_end"`
+	WorkingHoursStart uint8     `json:"working_hours_start"`
+	WorkingHoursEnd   uint8     `json:"working_hours_end"`
 }
 
 // AgentTask represents the information of a task sent to an Agent

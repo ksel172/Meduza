@@ -2,6 +2,12 @@ package models
 
 import "time"
 
+const (
+	// URL parameter constants
+	ParamTeamID   string = "team_id"
+	ParamMemberID string = "member_id"
+)
+
 type Team struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`

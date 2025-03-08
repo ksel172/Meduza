@@ -1,14 +1,13 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
-
-	"github.com/gin-gonic/gin"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -36,44 +35,26 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 	var loginR models.AuthRequest
 
 	if err := ctx.ShouldBindJSON(&loginR); err != nil {
-		ctx.JSONP(http.StatusConflict, gin.H{
-			"Error":   err.Error(),
-			"message": "Invalid Request",
-			"status":  "Failed",
-		})
-		ctx.Abort()
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
 
 	user, err := ac.dal.GetUserByUsername(ctx.Request.Context(), loginR.Username)
 	if err != nil {
-		ctx.JSONP(http.StatusBadRequest, gin.H{
-			"Error":   err.Error(),
-			"message": "Invalid Credentials or Request Error",
-			"status":  "Failed",
-		})
-		ctx.Abort()
+		models.ResponseError(ctx, http.StatusBadRequest, "Failed to authenticate user", "Invalid credentials")
 		return
 	}
 
 	if !utils.CheckPasswordHash(loginR.Password, user.PasswordHash) {
-		log.Print("failed password check: ", loginR.Password, user.PasswordHash)
-		ctx.JSONP(http.StatusUnauthorized, gin.H{
-			"message": "Invalid Credentials or Request Error",
-			"status":  "Failed",
-		})
-		ctx.Abort()
+		logger.Error("Failed password check:", loginR.Username)
+		models.ResponseError(ctx, http.StatusUnauthorized, "Failed to authenticate user", "Invalid credentials")
 		return
 	}
+
 	tokens, err := ac.jwtS.GenerateTokens(user.ID, user.Role)
-	log.Printf("token errors: %v", err)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"Error":   err.Error(),
-			"Details": "Token generation failed",
-			"status":  "Failed",
-		})
-		ctx.Abort()
+		logger.Error("Failed to generate tokens:", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to generate authentication tokens", err.Error())
 		return
 	}
 
@@ -85,12 +66,9 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 		refresh_secure,
 		refresh_http)
 
-	ctx.JSONP(http.StatusOK, gin.H{
-		"Key":     tokens,
-		"message": "User Authenticated Successfully",
-		"status":  "Success",
-	})
+	models.ResponseSuccess(ctx, http.StatusOK, "User authenticated successfully", tokens)
 }
+
 func (ac *AuthController) LogoutController(ctx *gin.Context) {
 	header := ctx.GetHeader("Authorization")
 	var accessToken string
@@ -109,7 +87,7 @@ func (ac *AuthController) LogoutController(ctx *gin.Context) {
 			expiry := time.Unix(claims.ExpiresAt.Unix(), 0)
 			ac.jwtS.RevokeToken(accessToken, expiry)
 		} else {
-			log.Printf("Access token invalid or already expired: %v", err)
+			logger.Debug("Access token invalid or already expired:", err)
 		}
 	}
 
@@ -119,7 +97,7 @@ func (ac *AuthController) LogoutController(ctx *gin.Context) {
 			expiry := time.Unix(claims.ExpiresAt.Unix(), 0)
 			ac.jwtS.RevokeToken(refreshToken, expiry)
 		} else {
-			log.Printf("Access token invalid or already expired: %v", err)
+			logger.Debug("Refresh token invalid or already expired:", err)
 		}
 	}
 
@@ -131,60 +109,37 @@ func (ac *AuthController) LogoutController(ctx *gin.Context) {
 		refresh_secure,
 		refresh_http)
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"message": "successfully logged Out",
-		"status":  "Sucess",
-	})
+	models.ResponseSuccess(ctx, http.StatusOK, "User logged out successfully", nil)
 }
 
 func (ac *AuthController) RefreshTokenController(ctx *gin.Context) {
 	prevRefreshToken, err := ctx.Cookie("refresh_token")
 	if err != nil {
-		ctx.JSONP(http.StatusUnauthorized, gin.H{
-			"Error":   err.Error(),
-			"message": "Refresh Token Error",
-			"status":  "Failed",
-		})
-		ctx.Abort()
+		models.ResponseError(ctx, http.StatusUnauthorized, "Failed to refresh token", "No refresh token found")
 		return
 	}
 	if prevRefreshToken == "" {
-		ctx.JSONP(http.StatusUnauthorized, gin.H{
-			"message": "Empty Refresh token Cookie",
-			"status":  "Failed",
-		})
-		ctx.Abort()
+		models.ResponseError(ctx, http.StatusUnauthorized, "Failed to refresh token", "Empty refresh token")
 		return
 	}
 
 	claims, err := ac.jwtS.ValidateToken(prevRefreshToken)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"Error":   err.Error(),
-			"message": "Token validation failed",
-			"status":  "Failed",
-		})
+		models.ResponseError(ctx, http.StatusUnauthorized, "Failed to validate token", err.Error())
 		return
 	}
 
 	if claims.ExpiresAt.Before(time.Now()) {
-		ctx.JSONP(http.StatusUnauthorized, gin.H{
-			"message": "Refresh token has expired",
-			"status":  "Failed",
-		})
-		ctx.Abort()
+		models.ResponseError(ctx, http.StatusUnauthorized, "Failed to refresh token", "Refresh token has expired")
 		return
 	}
 
 	tokens, err := ac.jwtS.GenerateTokens(claims.ID, claims.Role)
 	if err != nil {
-		ctx.JSONP(http.StatusInternalServerError, gin.H{
-			"message": "Failed to generate tokens",
-			"status":  "Failed",
-		})
-		ctx.Abort()
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to generate tokens", err.Error())
 		return
 	}
+
 	ctx.SetCookie("refresh_token",
 		tokens.RefreshToken,
 		refresh_token_Age,
@@ -193,7 +148,7 @@ func (ac *AuthController) RefreshTokenController(ctx *gin.Context) {
 		refresh_secure,
 		refresh_http)
 
-	ctx.JSONP(http.StatusOK, gin.H{
+	models.ResponseSuccess(ctx, http.StatusOK, "Token refreshed successfully", gin.H{
 		"access_token": tokens.Token,
 	})
 }

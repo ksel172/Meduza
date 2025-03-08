@@ -1,12 +1,16 @@
 package models
 
+const (
+	// URL parameter constants
+	ParamModuleID string = "module_id"
+)
+
 type Module struct {
 	Id          string    `json:"module_id"`
 	Name        string    `json:"name"`
 	Author      string    `json:"author"`
 	Description string    `json:"description"`
 	FileName    string    `json:"file_name"`
-	Usage       string    `json:"usage"`
 	Commands    []Command `json:"commands"`
 }
 
