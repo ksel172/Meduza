@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label"
 import axios from 'axios';
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
-import { useCookies } from "react-cookie";
+import axiosInstance from "@/axiosInstance"
+// import { useCookies } from "react-cookie";
+import { cookies } from "next/headers";
 
 interface LoginFormProps extends React.ComponentProps<"div"> {
     type: "signin" | "register" | "forgot";
@@ -18,12 +20,12 @@ interface LoginFormProps extends React.ComponentProps<"div"> {
 //   baseURL: "http://localhost:8080/api/v1",
 // })
 
-const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8080/api/v1', // Ensure this matches your API base URL
-  headers: {
-    'Content-Type': 'application/json', // Set default headers if required
-  },
-});
+// const axiosInstance = axios.create({
+//   baseURL: 'http://localhost:8080/api/v1', // Ensure this matches your API base URL
+//   // headers: {
+//   //   'Content-Type': 'application/json', // Set default headers if required
+//   // },
+// });
 
 export function LoginForm({
   type,
@@ -36,7 +38,7 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [retypedPassword, setRetypedPassword] = useState("");
 
-  const [cookies, setCookie, removeCookie] = useCookies(["cookie-name"]);
+  // const [cookies, setCookie, removeCookie] = useCookies(["cookie-name"]);
 
   const { toast } = useToast()
 
@@ -56,27 +58,25 @@ export function LoginForm({
         const url = '/auth/login';
         const { data } = await axiosInstance.post(
             url,
-            {
-              "username": username,
-              "password": password
-            }
+            { username, password },
+            { withCredentials: true }
+            
         );
-        setUserToken(data.Key.token);
-        setCookie("jwt", data.Key.token);
-        setCookie("refresh_token", data.Key.refresh_token);
+
+        console.log(data)
+        setUserToken(data.token);
         location.pathname = "/";
-        // console.log(data.Key.token);
-        // console.log(data.Key.refresh_token);
 
         toast({
           title: "Authentication Successful!",
-          description: "You have successfully signed into your Meduza Team Server.",
+          description: data.message,
           action: (
             <ToastAction altText="undo">Undo</ToastAction>
           ),
         })
     }
     catch(error){
+      console.log(error)
         toast({
           title: "Invalid Credentials!",
           description: "You have either entered invalid credentials or the server is down. Please try again later.",
@@ -92,17 +92,11 @@ export function LoginForm({
         const url = '/auth/login';
         const { data } = await axiosInstance.post(
             url,
-            {
-              "username": username,
-              "password": password
-            }
+            { username, password },
+            { withCredentials: true }
         );
-        setUserToken(data.Key.token);
-        setCookie("jwt", data.Key.token);
-        setCookie("refresh_token", data.Key.refresh_token);
+        setUserToken(data.token);
         location.pathname = "/";
-        // console.log(data.Key.token);
-        // console.log(data.Key.refresh_token);
 
         toast({
           title: "Authentication Successful!",

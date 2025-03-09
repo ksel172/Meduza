@@ -4,8 +4,6 @@ import { TableComponent } from "@/components/util/navbar/table";
 import * as React from "react"
 import ChatRoom from "@/components/util/navbar/chat";
 import ConsoleWidget from "@/components/util/navbar/console";
-import axios from 'axios';
-
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -30,6 +28,7 @@ import { Combobox } from "@/components/util/items/combobox";
 
 import { Ear, Radio, Skull} from "lucide-react";
 import { Infocard } from "@/components/util/items/infocard";
+import axiosInstance from "@/axiosInstance";
 
 const comboboxOptions = [
   {
@@ -43,10 +42,6 @@ const comboboxOptions = [
 ]
 
 export default function Home() {
-
-  const axiosInstance = axios.create({
-    baseURL: "http://localhost:8080",
-  })
 
   const fetchRequest = async () => {
     try {

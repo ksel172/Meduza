@@ -19,8 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 
-import axios from "axios";
-
+import axiosInstance from "@/axiosInstance";
 import { formatISO } from "date-fns";
 
 import { Label } from "@radix-ui/react-label";
@@ -209,37 +208,19 @@ export default function Listeners() {
     console.log('Edit', listener)
   }
 
-  const axiosInstance = axios.create({
-    baseURL: 'http://localhost:8080/api/v1', // Ensure this matches your API base URL
-    headers: {
-      'Content-Type': 'application/json', // Set default headers if required
-    },
-  });
-
-  const refreshToken = async () => {
-    if(cookies.refresh_token){
-      console.log(cookies.refresh_token)
-      try {
-        const url = "/auth/refresh";
-        const tokenResponse = await axiosInstance.get(url,
-          {
-            "refresh_token": cookies.refresh_token
-          }
-        );
-        console.log(tokenResponse);
-
-      } catch (error) {
-        console.log(error);
-      }
-    }
-  };
+  // const axiosInstance = axios.create({
+  //   baseURL: 'http://localhost:8080/api/v1', // Ensure this matches your API base URL
+  //   headers: {
+  //     'Content-Type': 'application/json', // Set default headers if required
+  //   },
+  // });
 
   const fetchListeners = async () => {
     try {
-        const url = "/listeners/all";
+        const url = "/listeners";
         const listenersData = await axiosInstance.get(url,
           {
-            headers: { authorization: `Bearer ${cookies.jwt}` }
+            headers: { authorization: `Bearer ${cookies.access_token}` }
           }
         );
         console.log(listenersData.data.data);
@@ -261,9 +242,6 @@ export default function Listeners() {
         
     } catch (error) {
         console.log(error);
-        if(error.status === 401 && cookies.refresh_token){
-          refreshToken();
-        }
     }
   };
 
@@ -304,7 +282,7 @@ export default function Listeners() {
               }
             },
             {
-                headers: { authorization: `Bearer ${cookies.jwt}` }
+                headers: { authorization: `Bearer ${cookies.access_token}` }
             }
         );
         toast({
@@ -317,12 +295,12 @@ export default function Listeners() {
         })
         location.reload()
     }
-    catch(error){
+    catch(error: any){
         console.log(error);
         toast({
           variant: "destructive",
           title: "Listener Creation Failed...",
-          description: "Ensure the port is within the same range as specified in the docker compose.",
+          description: ( error.response.data.error ? error.response.data.error : "Ensure the port is within the same range as specified in the docker compose."),
           action: (
             <ToastAction altText="undo">Close</ToastAction>
           ),
@@ -339,7 +317,7 @@ export default function Listeners() {
             {
             },
             {
-                headers: { authorization: `Bearer ${cookies.jwt}` }
+                headers: { authorization: `Bearer ${cookies.access_token}` }
             }
         );
         toast({
@@ -374,7 +352,7 @@ export default function Listeners() {
             {
             },
             {
-                headers: { authorization: `Bearer ${cookies.jwt}` }
+                headers: { authorization: `Bearer ${cookies.access_token}` }
             }
         );
         toast({
@@ -407,7 +385,7 @@ export default function Listeners() {
         const { data } = await axiosInstance.delete(
             url,
             {
-                headers: { authorization: `Bearer ${cookies.jwt}` }
+                headers: { authorization: `Bearer ${cookies.access_token}` }
             }
         );
         toast({

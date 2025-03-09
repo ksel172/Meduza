@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	refresh_token_Age = 30 * 24 * 60 * 60
+	refresh_token_Age = 30 * 24 * 60 * 60 // 30 days in seconds
+	access_token_Age  = 3600              // 1 hour in seconds
 	cookie_path       = utils.GetEnvString("COOKIE_PATH", "")
 	cookie_domain     = utils.GetEnvString("COOKIE_DOMAIN", "")
 	refresh_secure    = utils.GetEnvBool("REFRESH_SECURE", false)
@@ -58,6 +59,14 @@ func (ac *AuthController) LoginController(ctx *gin.Context) {
 		return
 	}
 
+	ctx.SetCookie("access_token",
+		tokens.Token,
+		access_token_Age,
+		cookie_path,
+		cookie_domain,
+		refresh_secure,
+		false)
+
 	ctx.SetCookie("refresh_token",
 		tokens.RefreshToken,
 		refresh_token_Age,
@@ -101,6 +110,15 @@ func (ac *AuthController) LogoutController(ctx *gin.Context) {
 		}
 	}
 
+	// Clear both cookies
+	ctx.SetCookie("access_token",
+		"",
+		-1,
+		cookie_path,
+		cookie_domain,
+		refresh_secure,
+		false)
+
 	ctx.SetCookie("refresh_token",
 		"",
 		-1,
@@ -139,6 +157,15 @@ func (ac *AuthController) RefreshTokenController(ctx *gin.Context) {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to generate tokens", err.Error())
 		return
 	}
+
+	// Update both cookies
+	ctx.SetCookie("access_token",
+		tokens.Token,
+		access_token_Age,
+		cookie_path,
+		cookie_domain,
+		refresh_secure,
+		false)
 
 	ctx.SetCookie("refresh_token",
 		tokens.RefreshToken,

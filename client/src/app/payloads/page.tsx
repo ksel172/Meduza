@@ -49,6 +49,8 @@ import { Switch } from "@/components/ui/switch";
 import { useCookies } from "react-cookie";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
+import axiosInstance from "@/axiosInstance";
+
 
 export default function Payloads() {
 
@@ -104,12 +106,12 @@ export default function Payloads() {
     </>
   )
 
-  const axiosInstance = axios.create({
-    baseURL: 'http://localhost:8080/api/v1', // Ensure this matches your API base URL
-    headers: {
-      'Content-Type': 'application/json', // Set default headers if required
-    },
-  });
+  // const axiosInstance = axios.create({
+  //   baseURL: 'http://localhost:8080/api/v1', // Ensure this matches your API base URL
+  //   headers: {
+  //     'Content-Type': 'application/json', // Set default headers if required
+  //   },
+  // });
 
   const fetchListeners = async () => {
     try {
