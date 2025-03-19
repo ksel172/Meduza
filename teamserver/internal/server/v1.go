@@ -143,8 +143,6 @@ func (s *Server) CertificatesV1(group *gin.RouterGroup) {
 func (s *Server) ControllersV1(group *gin.RouterGroup) {
 	controllersGroup := group.Group("/controllers")
 	{
-		controllersGroup.Use(s.UserMiddleware())
-
 		controllersGroup.POST("", s.dependencies.ControllerHandler.RegisterController)
 		controllersGroup.GET(fmt.Sprintf("/:%s", models.ParamControllerID), s.dependencies.ControllerHandler.GetKeyPair)
 		controllersGroup.PUT(fmt.Sprintf("/:%s", models.ParamControllerID), s.dependencies.ControllerHandler.ReceiveHeartbeat)
