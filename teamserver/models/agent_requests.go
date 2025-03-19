@@ -8,10 +8,10 @@ import (
 
 // Contains only the fields that can be updated for any given agent
 type UpdateAgentRequest struct {
-	AgentID    string                   `json:"agent_id"`
-	Name       string                   `json:"name"`
+	AgentID    string                   `json:"agent_id" binding:"required,uuid"`
+	Name       string                   `json:"name" binding:"omitempty,max=100"`
 	Note       string                   `json:"note"`
-	Status     AgentTaskStatus          `json:"status"`
+	Status     AgentStatus              `json:"status"`
 	Config     UpdateAgentConfigRequest `json:"config"`
 	ModifiedAt time.Time                `json:"modified_at"`
 }

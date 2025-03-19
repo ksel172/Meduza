@@ -6,7 +6,7 @@ const (
 )
 
 type ControllerRegistration struct {
-	ID       string `json:"id"`
+	ID       string `json:"id" binding:"required,uuid"`
 	Endpoint string `json:"endpoint"`
 }
 
@@ -20,7 +20,7 @@ type HeartbeatRequest struct {
 }
 
 type Controller struct {
-	ID         string `json:"id"`
+	ID         string `json:"id" binding:"required,uuid"`
 	Endpoint   string `json:"endpoint"`
 	PublicKey  string `json:"PublicKey"`
 	PrivateKey string `json:"PrivateKey"`

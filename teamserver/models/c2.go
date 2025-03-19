@@ -8,7 +8,7 @@ import (
 // Valid agent statuses: ["uninitialized", "inactive", "active"]
 type C2Request struct {
 	Reason      RequestReason `json:"reason"`
-	AgentID     string        `json:"agent_id"`
+	AgentID     string        `json:"agent_id" binding:"required,uuid"`
 	ConfigID    string        `json:"config_id"`
 	AgentStatus AgentStatus   `json:"agent_status"`
 	Message     string        `json:"message"`

@@ -46,6 +46,10 @@ var baseConfig = ConfigLoader.LoadEmbeddedConfig();
 if (agentInfo is not null)
 {
     baseConfig.AgentId = agentInfo.AgentId ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(agentInfo.AgentId))
+    {
+        baseConfig.AgentId = Guid.NewGuid().ToString();
+    }
 }
 
 var baseCommunicationService = new CommunicationService(baseConfig);

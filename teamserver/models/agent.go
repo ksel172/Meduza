@@ -12,8 +12,8 @@ const (
 
 // Contains all information required for controlling an agent.
 type Agent struct {
-	AgentID       string      `json:"agent_id"`
-	Name          string      `json:"name"`
+	AgentID       string      `json:"agent_id" binding:"required,uuid"`
+	Name          string      `json:"name" binding:"omitempty,max=100"`
 	Note          string      `json:"note"`
 	Status        AgentStatus `json:"status"`
 	ConfigID      string      `json:"config_id,omitempty"`
@@ -24,7 +24,7 @@ type Agent struct {
 
 // AgentInfo contains information about the agent computer
 type AgentInfo struct {
-	AgentID    string `json:"agent_id"`
+	AgentID    string `json:"agent_id" binding:"required,uuid"`
 	HostName   string `json:"host_name"`
 	IPAddress  string `json:"ip_address"`
 	Username   string `json:"username"`
