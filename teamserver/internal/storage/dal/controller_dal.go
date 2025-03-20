@@ -57,7 +57,7 @@ func (dal *ControllerDAL) UpdateHeartbeat(ctx context.Context, controllerID stri
 		statuses[status] = append(statuses[status], id)
 	}
 
-	selectQuery := fmt.Sprintf(`SELECT EXISTS(SELECT 1 FROM %s.listeners WHERE id = $1)`, dal.schema)
+	selectQuery := fmt.Sprintf(`SELECT EXISTS(SELECT 1 FROM %s.controllers WHERE id = $1)`, dal.schema)
 	updateHeartbeatQuery := fmt.Sprintf(`UPDATE %s.controllers SET updated_at = CURRENT_TIMESTAMP WHERE id = $1`, dal.schema)
 
 	// updateListenersQuery := fmt.Sprintf(`UPDATE %s.listeners SET status = $1 WHERE id IN $2`, dal.schema)
