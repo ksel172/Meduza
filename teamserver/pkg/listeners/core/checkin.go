@@ -111,7 +111,7 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 
 		// Authenticate agent
 		logger.Info(LogLevel, LogDetail, fmt.Sprintf("Handling authentication request for agent %s", c2request.AgentID))
-		cc.Authenticate(ctx, c2request, string(authToken))
+		cc.authenticate(ctx, c2request, string(authToken))
 		return
 	}
 
@@ -158,7 +158,7 @@ func (cc *CheckInController) Checkin(ctx *gin.Context) {
 	}
 }
 
-func (cc *CheckInController) Authenticate(ctx *gin.Context, c2request models.C2Request, authToken string) {
+func (cc *CheckInController) authenticate(ctx *gin.Context, c2request models.C2Request, authToken string) {
 	// Get the agent public key from the request message
 	agentPublicKeyBase64 := c2request.Message
 	if agentPublicKeyBase64 == "" {

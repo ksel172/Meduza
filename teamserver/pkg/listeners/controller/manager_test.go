@@ -73,7 +73,7 @@ func TestManager_Start(t *testing.T) {
 			listener.lifecycleManager = mockLifecycleManager
 
 			// Create manager
-			m, err := NewManager(map[string]*Listener{listener.ID: listener})
+			m, err := NewListenerManager(map[string]*Listener{listener.ID: listener})
 			if !assert.NoError(t, err, "error creating manager") {
 				assert.FailNow(t, "error creating manager")
 			}
@@ -137,7 +137,7 @@ func TestManager_Add(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			// Create manager
-			m, err := NewManager(tc.listeners)
+			m, err := NewListenerManager(tc.listeners)
 			if !assert.NoError(t, err, "error creating manager") {
 				assert.FailNow(t, "error creating manager")
 			}
@@ -202,7 +202,7 @@ func TestManager_Terminate(t *testing.T) {
 			listener.lifecycleManager = mockLifecycleManager
 
 			listeners := map[string]*Listener{listener.ID: listener}
-			m, err := NewManager(listeners)
+			m, err := NewListenerManager(listeners)
 			if !assert.NoError(t, err, "error creating manager") {
 				assert.FailNow(t, "error creating manager")
 			}
@@ -278,7 +278,7 @@ func TestManager_Stop(t *testing.T) {
 			}
 			listener.lifecycleManager = mockLifecycleManager
 
-			m, err := NewManager(map[string]*Listener{listener.ID: listener})
+			m, err := NewListenerManager(map[string]*Listener{listener.ID: listener})
 			if !assert.NoError(t, err, "error creating manager") {
 				assert.FailNow(t, "error creating manager")
 			}

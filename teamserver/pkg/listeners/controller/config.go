@@ -1,22 +1,19 @@
 package controller
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"fmt"
 
 	_ "github.com/go-playground/validator/v10"
 )
 
-type ControllerConfig struct {
-	ID         string           `json:"id"`          // Controller ID
-	ServerURL  string           `json:"server_url"`  // C2 server URL
-	APIKey     string           `json:"api_key"`     // API Key to register controller with the c2 server
-	ListenAddr string           `json:"listen_addr"` // Endpoint controller's REST API is listening at
-	Heartbeat  int              `json:"heartbeat"`   // Controller heartbeat frequency
-	Listeners  []ListenerConfig `json:"listeners"`   // Controller managed listeners when it was shutdown
-}
+// type ControllerConfig struct {
+// 	ID         string           `json:"id"`          // Controller ID
+// 	ServerURL  string           `json:"server_url"`  // C2 server URL
+// 	APIKey     string           `json:"api_key"`     // API Key to register controller with the c2 server
+// 	ListenAddr string           `json:"listen_addr"` // Endpoint controller's REST API is listening at
+// 	Heartbeat  int              `json:"heartbeat"`   // Controller heartbeat frequency
+// 	Listeners  []ListenerConfig `json:"listeners"`   // Controller managed listeners when it was shutdown
+// }
 
 type ListenerConfig struct {
 
@@ -37,43 +34,43 @@ type ListenerConfig struct {
 	Deployment string `json:"deployment" validate:"oneof:local external"`
 }
 
-func NewControllerConfig(configBase64 string) (ControllerConfig, error) {
-	// Read json base64 encoded argument
-	configBytes, err := base64.StdEncoding.DecodeString(configBase64)
-	if err != nil {
-		return ControllerConfig{}, fmt.Errorf("failed to decode ControllerConfig: %v", err)
-	}
-	var config ControllerConfig
-	if err := json.Unmarshal(configBytes, &config); err != nil {
-		return ControllerConfig{}, fmt.Errorf("failed to marshal into ControllerConfig: %v", err)
-	}
+// func NewControllerConfig(configBase64 string) (ControllerConfig, error) {
+// 	// Read json base64 encoded argument
+// 	configBytes, err := base64.StdEncoding.DecodeString(configBase64)
+// 	if err != nil {
+// 		return ControllerConfig{}, fmt.Errorf("failed to decode ControllerConfig: %v", err)
+// 	}
+// 	var config ControllerConfig
+// 	if err := json.Unmarshal(configBytes, &config); err != nil {
+// 		return ControllerConfig{}, fmt.Errorf("failed to marshal into ControllerConfig: %v", err)
+// 	}
 
-	// validate
-	if err := config.validate(); err != nil {
-		return ControllerConfig{}, fmt.Errorf("config validation error: %v", err)
-	}
+// 	// validate
+// 	if err := config.validate(); err != nil {
+// 		return ControllerConfig{}, fmt.Errorf("config validation error: %v", err)
+// 	}
 
-	return config, nil
-}
+// 	return config, nil
+// }
 
-func (c *ControllerConfig) validate() error {
-	// Accumulate errors
-	var errs []error
+// func (c *ControllerConfig) validate() error {
+// 	// Accumulate errors
+// 	var errs []error
 
-	// Validate required config fields
-	if c.ServerURL == "" || c.ID == "" {
-		errs = append(errs, fmt.Errorf("invalid config: missing required fields"))
-	}
+// 	// Validate required config fields
+// 	if c.ServerURL == "" || c.ID == "" {
+// 		errs = append(errs, fmt.Errorf("invalid config: missing required fields"))
+// 	}
 
-	if c.Heartbeat < 30 {
-		errs = append(errs, errors.New("heartbeat cannot be less than 30"))
-	}
+// 	if c.Heartbeat < 30 {
+// 		errs = append(errs, errors.New("heartbeat cannot be less than 30"))
+// 	}
 
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
-	return nil
-}
+// 	if len(errs) > 0 {
+// 		return errors.Join(errs...)
+// 	}
+// 	return nil
+// }
 
 func (c *ListenerConfig) validate() error {
 	var errs []error

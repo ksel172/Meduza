@@ -7,13 +7,17 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 )
 
 // Managers can manage both LocalListeners:
 // deployed within the same process, supported only by default listener kinds
 // and ExternalListeners:
 // both default + custom listeners, communication through the network
-type Manager struct {
+
+// TODO: MAKE IT USE DAL INSTEAD OF MAPS
+type ListenerManager struct {
 	listeners    map[string]*Listener // Managed listeners
 	listenersMux sync.RWMutex         // Listeners RWmutex
 
@@ -29,6 +33,8 @@ type Manager struct {
 	// Manager start and stop timeout config
 	startTimeout int
 	stopTimeout  int
+
+	listenerDal dal.IListenerDAL
 	// terminateTimeout int
 
 	// Move this to the Controller struct
@@ -36,48 +42,55 @@ type Manager struct {
 	// allowedIPs []string // What IPs are allowed to connect with the controller
 }
 
-func (m *Manager) GetListeners() {
-	panic("unimplemented")
-}
-
-// GetListenerStatuses returns a map of all listener statuses (public method for testing)
-func (m *Manager) GetListenerStatuses() map[string]string {
-	return m.getListenerStatuses()
-}
-
-func (m *Manager) AddListener(config ListenerConfig) error {
-	return m.addListener(config)
-}
-
-// StartListener starts a listener (public wrapper for testing)
-func (m *Manager) StartListener(ctx context.Context, listenerID string, errChan chan<- error) error {
-	return m.startListener(ctx, listenerID, errChan)
-}
-
-// StopListener stops a running listener (public wrapper for testing)
-func (m *Manager) StopListener(ctx context.Context, listenerID string, errChan chan<- error) error {
-	return m.stopListener(ctx, listenerID, errChan)
-}
-
-// TerminateListener terminates a listener (public wrapper for testing)
-func (m *Manager) TerminateListener(ctx context.Context, listenerID string) error {
-	return m.terminateListener(ctx, listenerID)
-}
-
 // Add synchronization loop to remove inactive listeners, 10 * listener.Heartbeat
 // Add start up sequence after creating the manager -> starting up local listeners etc
 
-func NewManager(listeners map[string]*Listener) (*Manager, error) {
-	return &Manager{
+func NewListenerManager(listeners map[string]*Listener, listenerDAL dal.IListenerDAL) (*ListenerManager, error) {
+	if listenerDAL == nil {
+		return nil, fmt.Errorf("listener DAL cannot be nil")
+	}
+
+	manager := &ListenerManager{
 		listeners:          listeners,
 		synchronizationLog: make(map[string]time.Time),
 		startTimeout:       15,
 		stopTimeout:        15,
-	}, nil
+		listenerDal:        listenerDAL,
+	}
+
+	return manager, nil
+}
+
+func (m *ListenerManager) GetListeners() {
+	panic("unimplemented")
+}
+
+// GetListenerStatuses returns a map of all listener statuses (public method for testing)
+func (m *ListenerManager) GetListenerStatuses() map[string]string {
+	return m.getListenerStatuses()
+}
+
+func (m *ListenerManager) AddListener(config ListenerConfig) error {
+	return m.addListener(config)
+}
+
+// StartListener starts a listener (public wrapper for testing)
+func (m *ListenerManager) StartListener(ctx context.Context, listenerID string, errChan chan<- error) error {
+	return m.startListener(ctx, listenerID, errChan)
+}
+
+// StopListener stops a running listener (public wrapper for testing)
+func (m *ListenerManager) StopListener(ctx context.Context, listenerID string, errChan chan<- error) error {
+	return m.stopListener(ctx, listenerID, errChan)
+}
+
+// TerminateListener terminates a listener (public wrapper for testing)
+func (m *ListenerManager) TerminateListener(ctx context.Context, listenerID string) error {
+	return m.terminateListener(ctx, listenerID)
 }
 
 // Loop to watch if any of the listeners failed to comply
-func (m *Manager) watchListeners() {
+func (m *ListenerManager) watchListeners() {
 	// Read a consistent state of the listeners, push all listeners that need to be removed to a queue
 	m.listenersMux.RLock()
 	terminateQueue := []string{}
@@ -117,7 +130,7 @@ func (m *Manager) watchListeners() {
 }
 
 // Adding a listener to a listenerController does not start it.
-func (m *Manager) addListener(listenerConfig ListenerConfig) error {
+func (m *ListenerManager) addListener(listenerConfig ListenerConfig) error {
 	// Create listener object before acquiring any locks
 	listener, err := NewListenerFromConfig(listenerConfig)
 	if err != nil {
@@ -155,7 +168,7 @@ func (m *Manager) addListener(listenerConfig ListenerConfig) error {
 }
 
 // Starts an already existing listener
-func (m *Manager) startListener(ctx context.Context, listenerID string, errChan chan<- error) error {
+func (m *ListenerManager) startListener(ctx context.Context, listenerID string, errChan chan<- error) error {
 	m.listenersMux.RLock()
 	defer m.listenersMux.RUnlock()
 
@@ -177,7 +190,7 @@ func (m *Manager) startListener(ctx context.Context, listenerID string, errChan 
 }
 
 // Stops a running listener
-func (m *Manager) stopListener(ctx context.Context, listenerID string, errChan chan<- error) error {
+func (m *ListenerManager) stopListener(ctx context.Context, listenerID string, errChan chan<- error) error {
 	m.listenersMux.RLock()
 
 	listener, ok := m.listeners[listenerID]
@@ -200,7 +213,7 @@ func (m *Manager) stopListener(ctx context.Context, listenerID string, errChan c
 }
 
 // Terminate a listener and remove from registry
-func (m *Manager) terminateListener(ctx context.Context, listenerID string) error {
+func (m *ListenerManager) terminateListener(ctx context.Context, listenerID string) error {
 	m.listenersMux.RLock()
 	listener, ok := m.listeners[listenerID]
 	if !ok {
@@ -222,7 +235,7 @@ func (m *Manager) terminateListener(ctx context.Context, listenerID string) erro
 }
 
 // Updates a listener's config
-func (m *Manager) updateListener(ctx context.Context, listenerConfig ListenerConfig) error {
+func (m *ListenerManager) updateListener(ctx context.Context, listenerConfig ListenerConfig) error {
 	m.listenersMux.RLock()
 	defer m.listenersMux.RUnlock()
 
@@ -242,7 +255,7 @@ func (m *Manager) updateListener(ctx context.Context, listenerConfig ListenerCon
 
 // External listener only
 // Update a listener status
-func (m *Manager) updateListenerStatus(ctx context.Context, listenerID, status string) error {
+func (m *ListenerManager) updateListenerStatus(ctx context.Context, listenerID, status string) error {
 	m.listenersMux.RLock()
 	defer m.listenersMux.RUnlock()
 
@@ -262,7 +275,7 @@ func (m *Manager) updateListenerStatus(ctx context.Context, listenerID, status s
 
 // External listener only
 // Synchronizes configurations with external listeners
-func (m *Manager) synchronize(listenerID string) (ListenerConfig, error) {
+func (m *ListenerManager) synchronize(listenerID string) (ListenerConfig, error) {
 	m.listenersMux.RLock()
 	defer m.listenersMux.RUnlock()
 
@@ -279,7 +292,7 @@ func (m *Manager) synchronize(listenerID string) (ListenerConfig, error) {
 	return listener.Config, nil
 }
 
-func (m *Manager) getListenerStatuses() map[string]string {
+func (m *ListenerManager) getListenerStatuses() map[string]string {
 	m.listenersMux.RLock()
 	listenerStatuses := make(map[string]string)
 	for id, list := range m.listeners {
