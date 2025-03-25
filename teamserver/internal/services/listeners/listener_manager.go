@@ -74,20 +74,20 @@ func (m *ListenerManager) watchListeners(ctx context.Context) {
 		}
 
 		m.syncMux.Lock()
-		lastSync, ok := m.synchronizationLog[listener.Config.ID.String()]
+		lastSync, ok := m.synchronizationLog[listener.Config.ID]
 		m.syncMux.Unlock()
 
 		if !ok {
 			// Initialize sync record if not exists
 			m.syncMux.Lock()
-			m.synchronizationLog[listener.Config.ID.String()] = time.Now()
+			m.synchronizationLog[listener.Config.ID] = time.Now()
 			m.syncMux.Unlock()
 			continue
 		}
 
 		// If a listener has exceeded the time allowed it can miss communications
 		if time.Since(lastSync) > time.Duration(listener.Config.Heartbeat*5) {
-			terminateQueue = append(terminateQueue, listener.Config.ID.String())
+			terminateQueue = append(terminateQueue, listener.Config.ID)
 		}
 	}
 
@@ -104,7 +104,7 @@ func (m *ListenerManager) getListenerStatuses(ctx context.Context) (map[string]s
 	listenerStatuses := make(map[string]string)
 	for i := range listeners {
 		listener := &listeners[i] // Use pointer to avoid copying mutex
-		listenerStatuses[listener.Config.ID.String()] = listener.Config.Status
+		listenerStatuses[listener.Config.ID] = listener.Config.Status
 	}
 	return listenerStatuses, nil
 }
@@ -112,7 +112,7 @@ func (m *ListenerManager) getListenerStatuses(ctx context.Context) (map[string]s
 // Adding a listener to a listenerController does not start it.
 func (m *ListenerManager) addListener(ctx context.Context, listenerConfig ListenerConfig) error {
 	// Check if listener with same ID already exists
-	_, err := m.listenerDal.GetListenerById(ctx, listenerConfig.ID.String())
+	_, err := m.listenerDal.GetListenerById(ctx, listenerConfig.ID)
 	if err == nil {
 		return fmt.Errorf("listener with ID %s already exists", listenerConfig.ID)
 	}
@@ -130,7 +130,7 @@ func (m *ListenerManager) addListener(ctx context.Context, listenerConfig Listen
 
 	// Initialize synchronization record for this listener
 	m.syncMux.Lock()
-	m.synchronizationLog[listener.Config.ID.String()] = time.Now()
+	m.synchronizationLog[listener.Config.ID] = time.Now()
 	m.syncMux.Unlock()
 
 	return nil
@@ -218,7 +218,7 @@ func (m *ListenerManager) terminateListener(ctx context.Context, listenerID stri
 
 // Updates a listener's config
 func (m *ListenerManager) updateListener(ctx context.Context, listenerConfig ListenerConfig) error {
-	listener, err := m.listenerDal.GetListenerById(ctx, listenerConfig.ID.String())
+	listener, err := m.listenerDal.GetListenerById(ctx, listenerConfig.ID)
 	if err != nil {
 		return fmt.Errorf("listener with ID '%s' not found: %w", listenerConfig.ID, err)
 	}
@@ -232,7 +232,7 @@ func (m *ListenerManager) updateListener(ctx context.Context, listenerConfig Lis
 	updates := map[string]any{
 		"config": listenerConfig,
 	}
-	return m.listenerDal.UpdateListener(ctx, listenerConfig.ID.String(), updates)
+	return m.listenerDal.UpdateListener(ctx, listenerConfig.ID, updates)
 }
 
 // External listener only
@@ -270,15 +270,22 @@ func (m *ListenerManager) synchronize(ctx context.Context, listenerID string) (L
 	return listener.Config, nil
 }
 
-func (m *ListenerManager) getListenerStatuses(ctx context.Context) (map[string]string, error) {
-	listeners, err := m.listenerDal.GetAllListeners(ctx)
+func (m *ListenerManager) AutoStart(ctx context.Context) error {
+	listeners, err := m.listenerDal.GetActiveListeners(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get listeners: %w", err)
+		return fmt.Errorf("failed to get active listeners: %w", err)
 	}
 
-	listenerStatuses := make(map[string]string)
-	for _, listener := range listeners {
-		listenerStatuses[listener.Config.ID.String()] = listener.Config.Status
+	for i := range listeners {
+		listener := &listeners[i]
+		if listener.Config.Status == StatusRunning {
+			continue
+		}
+
+		if err := m.startListener(ctx, listener.Config.ID, make(chan<- error)); err != nil {
+			return fmt.Errorf("failed to start listener: %w", err)
+		}
 	}
-	return listenerStatuses, nil
+
+	return nil
 }

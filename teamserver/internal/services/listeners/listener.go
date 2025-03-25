@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -28,13 +27,11 @@ const (
 // Listener provides an abstraction over a listener of any kind
 // Listeners MIGHT have an implementation or not
 type Listener struct {
-
-	// Metadata
-	ID uuid.UUID
+	ID string `json:"id"`
 
 	// Listener operation configuration
-	Config ListenerConfig
-	mux    sync.RWMutex // Any writes to the listener should lock it, it can be read concurrently though
+	Config ListenerConfig `json:"config"`
+	mux    sync.RWMutex   // Any writes to the listener should lock it, it can be read concurrently though
 
 	// Lifecycle manager, differ based on the listener lifecycle
 	lifecycleManager ListenerLifecycleManager
@@ -61,7 +58,7 @@ func NewListenerFromConfig(config ListenerConfig) (*Listener, error) {
 	var impl ListenerImplementation
 	if config.Deployment == DeploymentLocal {
 		var err error
-		impl, err = CreateImplementation(config.Kind)
+		impl, err = CreateImplementation(config.Type)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create listener implementation: %w", err)
 		}
@@ -108,7 +105,7 @@ func (l *Listener) UpdateConfig(ctx context.Context, config ListenerConfig) erro
 	errs := []error{errors.New("cannot update fields: ")}
 
 	// Validate fields that cannot be updated remain the same
-	if l.Config.Kind != config.Kind {
+	if l.Config.Type != config.Type {
 		errs = append(errs, errors.New("kind"))
 	}
 	if l.Config.Lifecycle != config.Lifecycle {
@@ -131,7 +128,7 @@ func (l *Listener) UpdateConfig(ctx context.Context, config ListenerConfig) erro
 // The listener is sendign a response back to confirm it received and performed
 // the requested operation asynchronously
 func (l *Listener) UpdateStatus(ctx context.Context, status string) {
-	utils.AssertEquals(l.Config.Kind, DeploymentExternal)
+	utils.AssertEquals(l.Config.Type, DeploymentExternal)
 
 	l.mux.Lock()
 	defer l.mux.Unlock()

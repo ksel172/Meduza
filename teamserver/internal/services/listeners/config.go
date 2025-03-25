@@ -4,14 +4,13 @@ import (
 	"errors"
 
 	_ "github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 )
 
 type ListenerConfig struct {
 
 	// metadata about the listener
-	ID   uuid.UUID `json:"id"`
-	Type string    `json:"type"` // http, tcp, smb, custom, etc
+	ID   string `json:"id"`
+	Type string `json:"type"` // http, tcp, smb, custom, etc
 
 	// listener specs shared by both deployment types
 	Host   string `json:"host"`
