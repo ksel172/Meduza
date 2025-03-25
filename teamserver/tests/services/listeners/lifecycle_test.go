@@ -1,10 +1,11 @@
-package controller
+package service_tests
 
 import (
 	"context"
 	"errors"
 	"testing"
 
+	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -14,7 +15,7 @@ type MockLifecycleManager struct {
 	mock.Mock
 }
 
-func (m *MockLifecycleManager) Start(ctx context.Context, listener *Listener) error {
+func (m *MockLifecycleManager) Start(ctx context.Context, listener *services.Listener) error {
 	args := m.Called(ctx, listener)
 	return args.Error(0)
 }
