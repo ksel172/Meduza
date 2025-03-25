@@ -66,10 +66,24 @@ func (h *CertificateHandler) UploadCertificate(ctx *gin.Context) {
 	// Create a unique filename to prevent overwriting
 	uploadPath := conf.GetCertUploadPath()
 	filename := fmt.Sprintf("%s-%s", certType, filepath.Base(file.Filename))
+	
+	// Validate filename to ensure it does not contain any path separators or parent directory references
+	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.Contains(filename, "..") {
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid file name", "File name contains invalid characters")
+		return
+	}
+	
 	filePath := filepath.Join(uploadPath, filename)
-
+	
+	// Ensure the resolved path is within the safe directory
+	absPath, err := filepath.Abs(filePath)
+	if err != nil || !strings.HasPrefix(absPath, uploadPath) {
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid file path", "File path is outside the allowed directory")
+		return
+	}
+	
 	// Save the file
-	if err := ctx.SaveUploadedFile(file, filePath); err != nil {
+	if err := ctx.SaveUploadedFile(file, absPath); err != nil {
 		logger.Error("Failed to save certificate file", err)
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to save certificate file", err.Error())
 		return
