@@ -1,4 +1,4 @@
-package controller
+package services
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ksel172/Meduza/teamserver/pkg/listeners"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -40,7 +39,7 @@ type Listener struct {
 	lifecycleManager ListenerLifecycleManager
 
 	// Listener concrete implementation
-	listener listeners.ListenerImplementation
+	listener ListenerImplementation
 }
 
 func NewListenerFromConfig(config ListenerConfig) (*Listener, error) {
@@ -58,10 +57,10 @@ func NewListenerFromConfig(config ListenerConfig) (*Listener, error) {
 	}
 
 	// Create listener implementation from defaults if listener is local
-	var impl listeners.ListenerImplementation
+	var impl ListenerImplementation
 	if config.Deployment == DeploymentLocal {
 		var err error
-		impl, err = listeners.CreateImplementation(config.Kind)
+		impl, err = CreateImplementation(config.Kind)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create listener implementation: %w", err)
 		}
