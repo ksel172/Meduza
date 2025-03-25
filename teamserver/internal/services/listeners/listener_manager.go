@@ -1,4 +1,4 @@
-package controller
+package services
 
 import (
 	"context"
@@ -45,20 +45,12 @@ type ListenerManager struct {
 // Add synchronization loop to remove inactive listeners, 10 * listener.Heartbeat
 // Add start up sequence after creating the manager -> starting up local listeners etc
 
-func NewListenerManager(listeners map[string]*Listener, listenerDAL dal.IListenerDAL) (*ListenerManager, error) {
-	if listenerDAL == nil {
-		return nil, fmt.Errorf("listener DAL cannot be nil")
+func NewListenerManager(listenerDAL dal.IListenerDAL) *ListenerManager {
+	return &ListenerManager{
+		startTimeout: 15,
+		stopTimeout:  15,
+		listenerDal:  listenerDAL,
 	}
-
-	manager := &ListenerManager{
-		listeners:          listeners,
-		synchronizationLog: make(map[string]time.Time),
-		startTimeout:       15,
-		stopTimeout:        15,
-		listenerDal:        listenerDAL,
-	}
-
-	return manager, nil
 }
 
 func (m *ListenerManager) GetListeners() {

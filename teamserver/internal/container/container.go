@@ -4,12 +4,13 @@ import (
 	"time"
 
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
+	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
+
 	// services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
-	"github.com/ksel172/Meduza/teamserver/pkg/listeners/controller"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
@@ -21,7 +22,7 @@ type Container struct {
 	TeamController     *handlers.TeamController
 	JwtService         models.JWTServiceProvider
 	AgentController    *handlers.AgentController
-	ListenerController *controller.ListenerController
+	ListenerController *services.ListenerController
 	// ListenerService       *services.ListenersService // for autostart
 	// ListenerDal           *dal.ListenerDAL
 	PayloadController     *handlers.PayloadHandler

@@ -1,4 +1,4 @@
-package controller
+package services
 
 type ListenerController struct {
 	// config  ControllerConfig // Controler config
@@ -17,13 +17,12 @@ type ListenerController struct {
 //  1. Controller should register with server, if not succesfull, should clean up all of its resources and kill itself.
 //  2. C2 Server will expect a response with 30 seconds to 1 minute (??), if none is received, it will assume the controller could
 //     not be launched for some reason or failed to commnicate with the server and shut itself down
-func NewListenerController(manager *ListenerManager) (*ListenerController, error) {
+func NewListenerController(manager *ListenerManager) *ListenerController {
 	// Setup controller
 	return &ListenerController{
 		// config:  config,
 		manager: manager,
-	}, nil
-
+	}
 }
 
 // func (c *Controller) Run() {
