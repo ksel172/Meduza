@@ -1,9 +1,7 @@
 package server
 
 import (
-	"context"
 	"fmt"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
@@ -39,21 +37,21 @@ func NewServer(dependencies *container.Container) *Server {
 
 func (s *Server) Run() error {
 	// Call AutoStart before starting the server
-	if err := s.AutoStart(); err != nil {
-		return fmt.Errorf("failed to auto-start listeners: %w", err)
-	}
+	// if err := s.AutoStart(); err != nil {
+	// 	return fmt.Errorf("failed to auto-start listeners: %w", err)
+	// }
 
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	return s.engine.Run(addr)
 }
 
-func (s *Server) AutoStart() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+// func (s *Server) AutoStart() error {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+// 	defer cancel()
 
-	err := s.dependencies.ListenerController.AutoStart(ctx)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// 	err := s.dependencies.ListenerController.AutoStart(ctx)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }

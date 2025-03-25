@@ -61,25 +61,25 @@ func (s *Server) AgentsV1(group *gin.RouterGroup) {
 	}
 }
 
-func (s *Server) ListenersV1(group *gin.RouterGroup) {
+// func (s *Server) ListenersV1(group *gin.RouterGroup) {
 
-	listenersGroup := group.Group("/listeners")
-	{
-		listenersGroup.Use(s.UserMiddleware())
+// 	listenersGroup := group.Group("/listeners")
+// 	{
+// 		listenersGroup.Use(s.UserMiddleware())
 
-		// Listener CRUD operations and status info
-		listenersGroup.POST("", s.dependencies.ListenerController.CreateListener)
-		listenersGroup.GET("", s.dependencies.ListenerController.GetAllListeners)
-		listenersGroup.GET(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.GetListenerById)
-		listenersGroup.PUT(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.UpdateListener)
-		listenersGroup.DELETE(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.DeleteListener)
+// 		// Listener CRUD operations and status info
+// 		listenersGroup.POST("", s.dependencies.ListenerController.CreateListener)
+// 		listenersGroup.GET("", s.dependencies.ListenerController.GetAllListeners)
+// 		listenersGroup.GET(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.GetListenerById)
+// 		listenersGroup.PUT(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.UpdateListener)
+// 		listenersGroup.DELETE(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.DeleteListener)
 
-		// Listener operations and status
-		listenersGroup.GET(fmt.Sprintf("/:%s/status", models.ParamListenerID), s.dependencies.ListenerController.CheckRunningListener)
-		listenersGroup.POST(fmt.Sprintf("/:%s/start", models.ParamListenerID), s.dependencies.ListenerController.StartListener)
-		listenersGroup.POST(fmt.Sprintf("/:%s/stop", models.ParamListenerID), s.dependencies.ListenerController.StopListener)
-	}
-}
+//			// Listener operations and status
+//			listenersGroup.GET(fmt.Sprintf("/:%s/status", models.ParamListenerID), s.dependencies.ListenerController.CheckRunningListener)
+//			listenersGroup.POST(fmt.Sprintf("/:%s/start", models.ParamListenerID), s.dependencies.ListenerController.StartListener)
+//			listenersGroup.POST(fmt.Sprintf("/:%s/stop", models.ParamListenerID), s.dependencies.ListenerController.StopListener)
+//		}
+//	}
 func (s *Server) PayloadV1(group *gin.RouterGroup) {
 
 	payloadsGroup := group.Group("/payloads")
