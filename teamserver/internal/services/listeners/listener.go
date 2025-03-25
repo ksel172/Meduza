@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -29,7 +30,7 @@ const (
 type Listener struct {
 
 	// Metadata
-	ID string
+	ID uuid.UUID
 
 	// Listener operation configuration
 	Config ListenerConfig
