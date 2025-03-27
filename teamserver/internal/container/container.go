@@ -45,7 +45,6 @@ func NewContainer() (*Container, error) {
 	agentDal := dal.NewAgentDAL(pgsql, schema)
 	// checkInDal := dal.NewCheckInDAL(pgsql, schema)
 	listenerDal := services.NewListenerDAL(pgsql, schema)
-	listenerManager := services.NewListenerManager(listenerDal)
 	payloadDal := dal.NewPayloadDAL(pgsql, schema)
 	moduleDal := dal.NewModuleDAL(pgsql, schema)
 	certificateDal := dal.NewCertificateDAL(pgsql, schema)
@@ -67,7 +66,7 @@ func NewContainer() (*Container, error) {
 		TeamController:     handlers.NewTeamController(teamDal),
 		JwtService:         jwtService,
 		AgentController:    handlers.NewAgentController(agentDal, moduleDal),
-		ListenerController: services.NewListenerController(listenerManager),
+		ListenerController: services.NewListenerController(listenerDal),
 		// ListenerController:    handlers.NewListenersHandler(listenerDal, listenersService),
 		// ListenerService:       listenersService,
 		// ListenerDal:           autoStart,

@@ -51,8 +51,7 @@ func (s *Server) AutoStart() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	manager := s.dependencies.ListenerController.GetManager()
-	err := manager.AutoStart(ctx)
+	err := s.dependencies.ListenerController.AutoStart(ctx)
 	if err != nil {
 		return err
 	}

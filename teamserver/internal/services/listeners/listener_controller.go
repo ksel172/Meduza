@@ -1,90 +1,290 @@
 package services
 
-type ListenerController struct {
-	// config  ControllerConfig // Controler config
-	manager *ListenerManager // Handles managed listeners
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"sync"
+	"time"
+)
 
-	// stopChan chan bool
+// Managers can manage both LocalListeners:
+// deployed within the same process, supported only by default listener kinds
+// and ExternalListeners:
+// both default + custom listeners, communication through the network
+type Manager struct {
+	listeners    map[string]*Listener // Managed listeners
+	listenersMux sync.RWMutex         // Listeners RWmutex
 
-	// For caching key pairs
-	// Will a cache even be useful really? It will reduce the amount of times the keys are sent over the network
-	// but is there a point? the keys are the same for the same payload so maybe there will be many agents
-	// reconnecting at once when the listener is restarted, so it could be useful.
-	// KeyCache     *cache.Cache
+	// Implement some mechanism to log listener synchronization calls (heartbeat + sync in one)
+	// to remove listeners from jurisdiction if they miss 10 heartbeats in a row
+	synchronizationLog map[string]time.Time
+	syncMux            sync.Mutex
+
+	// Local listeners
+	// usedPorts []int      // List of currently used ports
+	// portsMux  sync.Mutex // Mutex for ports availability
+
+	// Manager start and stop timeout config
+	startTimeout int
+	stopTimeout  int
+	// terminateTimeout int
+
+	// Move this to the Controller struct
+	// External listeners
+	// allowedIPs []string // What IPs are allowed to connect with the controller
 }
 
-// Important considerations
-//  1. Controller should register with server, if not succesfull, should clean up all of its resources and kill itself.
-//  2. C2 Server will expect a response with 30 seconds to 1 minute (??), if none is received, it will assume the controller could
-//     not be launched for some reason or failed to commnicate with the server and shut itself down
-func NewListenerController(manager *ListenerManager) *ListenerController {
-	// Setup controller
-	return &ListenerController{
-		// config:  config,
-		manager: manager,
+func (m *Manager) GetListeners() {
+	panic("unimplemented")
+}
+
+// GetListenerStatuses returns a map of all listener statuses (public method for testing)
+func (m *Manager) GetListenerStatuses() map[string]string {
+	return m.getListenerStatuses()
+}
+
+func (m *Manager) AddListener(config ListenerConfig) error {
+	return m.addListener(config)
+}
+
+// StartListener starts a listener (public wrapper for testing)
+func (m *Manager) StartListener(ctx context.Context, listenerID string, errChan chan<- error) error {
+	return m.startListener(ctx, listenerID, errChan)
+}
+
+// StopListener stops a running listener (public wrapper for testing)
+func (m *Manager) StopListener(ctx context.Context, listenerID string, errChan chan<- error) error {
+	return m.stopListener(ctx, listenerID, errChan)
+}
+
+// TerminateListener terminates a listener (public wrapper for testing)
+func (m *Manager) TerminateListener(ctx context.Context, listenerID string) error {
+	return m.terminateListener(ctx, listenerID)
+}
+
+// Add synchronization loop to remove inactive listeners, 10 * listener.Heartbeat
+// Add start up sequence after creating the manager -> starting up local listeners etc
+
+func NewManager(listeners map[string]*Listener) (*Manager, error) {
+	return &Manager{
+		listeners:          listeners,
+		synchronizationLog: make(map[string]time.Time),
+		startTimeout:       15,
+		stopTimeout:        15,
+	}, nil
+}
+
+// Loop to watch if any of the listeners failed to comply
+func (m *Manager) watchListeners() {
+	// Read a consistent state of the listeners, push all listeners that need to be removed to a queue
+	m.listenersMux.RLock()
+	terminateQueue := []string{}
+	for listenerID, listener := range m.listeners {
+		if listener.Config.Deployment != DeploymentExternal {
+			continue
+		}
+
+		// This should never happen, so we panic in case it happens
+		lastSync, ok := m.synchronizationLog[listenerID]
+		if !ok {
+			panic(fmt.Sprintf("no synchronization log for listener: %s", listenerID))
+		}
+
+		// If a listener has exceeded the time allowed it can miss communications with the controller
+		// we will try to send a terminate command anyway
+		// This serves one purpose for both deployment kinds: to remove the listener from the controller's jurisdiction
+		// But there is one added benefit for managed listeners: one last attempt to terminate and prevent resource leakage
+		if time.Since(lastSync) > time.Duration(listener.Config.Heartbeat*5) {
+			terminateQueue = append(terminateQueue, listenerID)
+		}
+	}
+	m.listenersMux.RUnlock()
+
+	if len(terminateQueue) == 0 {
+		return
+	}
+
+	// This operation might be kind of costly as each termination must be done sequentially
+	// if too many listeners are terminated at once it might take a while
+	for _, listenerID := range terminateQueue {
+		if err := m.terminateListener(context.Background(), listenerID); err != nil {
+			log.Printf("failed to terminate listener, might've been already terminated: %s", listenerID)
+			return
+		}
 	}
 }
 
-// func (c *Controller) Run() {
+// Adding a listener to a listenerController does not start it.
+func (m *Manager) addListener(listenerConfig ListenerConfig) error {
+	// Create listener object before acquiring any locks
+	listener, err := NewListenerFromConfig(listenerConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create listener config: %w", err)
+	}
 
-// 	// Start hearbeat loop
-// 	go func() {
-// 		c.heartbeatLoop()
-// 	}()
+	m.listenersMux.Lock()
+	defer m.listenersMux.Unlock()
 
-// 	defer func() {
-// 		if err := recover(); err != nil {
-// 			// c.Shutdown()
-// 		}
-// 		panic("server error")
-// 	}()
-// 	if err := c.server.Run(); err != nil {
-// 		log.Fatalf("Controller server failed: %v", err)
-// 	}
-// }
+	_, ok := m.listeners[listenerConfig.ID]
+	if ok {
+		return fmt.Errorf("listener with ID %s already exists", listenerConfig.ID)
+	}
 
-func (c *ListenerController) GetManager() *ListenerManager {
-	return c.manager
+	// Local listener specific configurations
+	// if listener.Config.Deployment == DeploymentLocal {
+	// 	// Validate port selection
+	// 	m.portsMux.Lock()
+	// 	for _, port := range m.usedPorts {
+	// 		if listenerConfig.Port == port {
+	// 			return fmt.Errorf("selected port already in use")
+	// 		}
+	// 	}
+	// 	m.usedPorts = append(m.usedPorts, listenerConfig.Port)
+	// 	m.portsMux.Unlock()
+	// }
+
+	m.listeners[listener.Config.ID] = listener
+
+	m.syncMux.Lock()
+	m.synchronizationLog[listener.Config.ID] = time.Now()
+	m.syncMux.Unlock()
+
+	return nil
 }
 
-// func (c *Controller) SendTestHeartbeat(ctx context.Context) error {
-// 	return c.sendHeartbeat(ctx)
-// }
+// Starts an already existing listener
+func (m *Manager) startListener(ctx context.Context, listenerID string, errChan chan<- error) error {
+	m.listenersMux.RLock()
+	defer m.listenersMux.RUnlock()
 
-// Stop will stop all listeners controller is responsible for
-// func (c *Controller) Stop() error {
-// 	var wg sync.WaitGroup
-// 	for id, listener := range c.manager.listeners {
-// 		wg.Add(1)
-// 		go func(l *Listener) {
-// 			defer wg.Done()
-// 			if err := l.Stop(); err != nil {
-// 				log.Printf("failed to stop listener with id: %s", id)
-// 			}
-// 		}(listener)
-// 	}
-// 	wg.Wait()
-// 	log.Println("All listeners shut down gracefully")
-// 	return nil
-// }
+	listener, ok := m.listeners[listenerID]
+	if !ok {
+		return fmt.Errorf("listener with ID %s not found", listenerID)
+	}
 
-// Shutdown will stop all listeners from running and the controller itself
-// func (c *Controller) Shutdown() {
-// 	var wg sync.WaitGroup
-// 	for _, listener := range c.manager.listeners {
-// 		wg.Add(1)
-// 		go func(l *Listener) {
-// 			defer wg.Done()
-// 			l.Shutdown()
-// 		}(listener)
-// 	}
-// 	wg.Wait()
-// 	log.Println("All listeners shut down gracefully")
+	go func() {
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(m.startTimeout)*time.Second)
+		defer cancel()
+		if err := listener.Start(ctx); err != nil {
+			errChan <- fmt.Errorf("failed to start listener: %w", err)
+		}
+		close(errChan)
+	}()
 
-// 	if err := c.server.Shutdown(); err != nil {
-// 		log.Print("failed to shutdown server gracefully, forcing close: %v", err)
-// 		c.server.Kill()
-// 	}
+	return nil
+}
 
-// 	os.Exit(1)
-// }
+// Stops a running listener
+func (m *Manager) stopListener(ctx context.Context, listenerID string, errChan chan<- error) error {
+	m.listenersMux.RLock()
+
+	listener, ok := m.listeners[listenerID]
+	if !ok {
+		m.listenersMux.RUnlock()
+		return fmt.Errorf("listener with ID %s not found", listenerID)
+	}
+	m.listenersMux.RUnlock()
+
+	go func() {
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(m.stopTimeout)*time.Second)
+		defer cancel()
+		if err := listener.Stop(ctx); err != nil {
+			errChan <- fmt.Errorf("failed to stop listener: %w", err)
+		}
+		close(errChan)
+	}()
+
+	return nil
+}
+
+// Terminate a listener and remove from registry
+func (m *Manager) terminateListener(ctx context.Context, listenerID string) error {
+	m.listenersMux.RLock()
+	listener, ok := m.listeners[listenerID]
+	if !ok {
+		return fmt.Errorf("listener with ID '%s' not found", listenerID)
+	}
+	m.listenersMux.RUnlock()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(m.stopTimeout)*time.Second)
+	defer cancel()
+	if err := listener.Terminate(ctx); err != nil {
+		return fmt.Errorf("failed to close listener: %w", err)
+	}
+
+	m.listenersMux.Lock()
+	delete(m.listeners, listenerID)
+	m.listenersMux.Unlock()
+
+	return nil
+}
+
+// Updates a listener's config
+func (m *Manager) updateListener(ctx context.Context, listenerConfig ListenerConfig) error {
+	m.listenersMux.RLock()
+	defer m.listenersMux.RUnlock()
+
+	// Search the listener from the provided ID in the config
+	listener, ok := m.listeners[listenerConfig.ID]
+	if !ok {
+		return fmt.Errorf("listener with ID '%s' not found", listenerConfig.ID)
+	}
+
+	// Update listener config, the listener itself controls its own relaunch, if necessary
+	if err := listener.UpdateConfig(ctx, listenerConfig); err != nil {
+		return fmt.Errorf("failed to update listener config: %w", err)
+	}
+
+	return nil
+}
+
+// External listener only
+// Update a listener status
+func (m *Manager) updateListenerStatus(ctx context.Context, listenerID, status string) error {
+	m.listenersMux.RLock()
+	defer m.listenersMux.RUnlock()
+
+	listener, ok := m.listeners[listenerID]
+	if !ok {
+		return fmt.Errorf("listener not found: %s", listenerID)
+	}
+
+	if listener.Config.Type != DeploymentExternal {
+		return errors.New("operation not allowed for local listeners")
+	}
+
+	listener.UpdateStatus(ctx, status)
+
+	return nil
+}
+
+// External listener only
+// Synchronizes configurations with external listeners
+func (m *Manager) synchronize(listenerID string) (ListenerConfig, error) {
+	m.listenersMux.RLock()
+	defer m.listenersMux.RUnlock()
+
+	listener, ok := m.listeners[listenerID]
+	if !ok {
+		return ListenerConfig{}, fmt.Errorf("listener not found: %s", listenerID)
+	}
+
+	// Update last synchronization time
+	m.syncMux.Lock()
+	m.synchronizationLog[listenerID] = time.Now()
+	m.syncMux.Unlock()
+
+	return listener.Config, nil
+}
+
+func (m *Manager) getListenerStatuses() map[string]string {
+	m.listenersMux.RLock()
+	listenerStatuses := make(map[string]string)
+	for id, list := range m.listeners {
+		listenerStatuses[id] = list.Config.Status
+	}
+	m.listenersMux.RUnlock()
+	return listenerStatuses
+}
