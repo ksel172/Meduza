@@ -19,7 +19,7 @@ func (s *Server) RegisterRoutes() {
 	s.UsersV1(v1Group)
 	s.AgentsV1(v1Group)
 	// s.CheckInV1(v1Group)
-	// s.ListenersV1(v1Group)
+	s.ListenersV1(v1Group)
 	s.PayloadV1(v1Group)
 	s.ModuleV1(v1Group)
 	s.TeamsV1(v1Group)
