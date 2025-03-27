@@ -10,6 +10,10 @@ import (
 )
 
 const (
+	ParamListenerID string = "listener_id"
+)
+
+const (
 	StatusPending     = "pending"     // Starting up resources
 	StatusReady       = "ready"       // Idle, waiting for initialization/start
 	StatusStarting    = "starting"    // Listener is being started

@@ -22,7 +22,7 @@ type Container struct {
 	TeamController     *handlers.TeamController
 	JwtService         models.JWTServiceProvider
 	AgentController    *handlers.AgentController
-	ListenerController *services.ListenerController
+	ListenerController *handlers.ListenerHandler
 	// ListenerService       *services.ListenersService // for autostart
 	// ListenerDal           *dal.ListenerDAL
 	PayloadController     *handlers.PayloadHandler
@@ -52,7 +52,7 @@ func NewContainer() (*Container, error) {
 	// Initialize services
 	redisService := repos.NewRedisService()
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
-
+	listenerService := services.NewListenerService(listenerDal)
 	//Type assertion error fix
 	// autoStart, ok := listenerDal.(*dal.ListenerDAL)
 	// if !ok {
@@ -66,7 +66,7 @@ func NewContainer() (*Container, error) {
 		TeamController:     handlers.NewTeamController(teamDal),
 		JwtService:         jwtService,
 		AgentController:    handlers.NewAgentController(agentDal, moduleDal),
-		ListenerController: services.NewListenerController(listenerDal),
+		ListenerController: handlers.NewListenersHandler(listenerService),
 		// ListenerController:    handlers.NewListenersHandler(listenerDal, listenersService),
 		// ListenerService:       listenersService,
 		// ListenerDal:           autoStart,
