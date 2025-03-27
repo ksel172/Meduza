@@ -28,7 +28,7 @@ func NewListenerService(listenerDAL IListenerDAL) *ListenersService {
 	}
 }
 
-func (ls *ListenersService) GetListeners(ctx context.Context) ([]Listener, error) {
+func (ls *ListenersService) GetListeners(ctx context.Context) ([]*Listener, error) {
 	listeners, err := ls.listenerDal.GetAllListeners(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get listeners: %w", err)
@@ -43,7 +43,7 @@ func (ls *ListenersService) GetListener(ctx context.Context, listenerID string) 
 		return nil, fmt.Errorf("failed to get listener: %w", err)
 	}
 
-	return &listener, nil
+	return listener, nil
 }
 
 func (ls *ListenersService) GetListenerStatuses(ctx context.Context) (map[string]string, error) {
@@ -53,34 +53,33 @@ func (ls *ListenersService) GetListenerStatuses(ctx context.Context) (map[string
 	}
 
 	listenerStatuses := make(map[string]string)
-	for i := range listeners {
-		listener := &listeners[i]
-		listenerStatuses[listener.Config.ID] = listener.Config.Status
+	for _, listener := range listeners {
+		listenerStatuses[listener.ID] = listener.Status
 	}
 	return listenerStatuses, nil
 }
 
-func (ls *ListenersService) AddListener(ctx context.Context, listenerConfig ListenerConfig) error {
+func (ls *ListenersService) AddListener(ctx context.Context, listener *Listener) error {
 	// Check if listener with same ID already exists
-	_, err := ls.listenerDal.GetListenerById(ctx, listenerConfig.ID)
-	if err == nil {
-		return fmt.Errorf("listener with ID %s already exists", listenerConfig.ID)
-	}
+	// _, err := ls.listenerDal.GetListenerByID(ctx, listener.ID)
+	// if err == nil {
+	// 	return fmt.Errorf("listener with ID %s already exists", listener.ID)
+	// }
 
 	// Create listener object
-	listener, err := NewListenerFromConfig(listenerConfig)
+	newListener, err := NewListenerFromBase(listener)
 	if err != nil {
 		return fmt.Errorf("failed to create listener config: %w", err)
 	}
 
 	// Add to DAL
-	if err := ls.listenerDal.CreateListener(ctx, listener); err != nil {
+	if err := ls.listenerDal.CreateListener(ctx, newListener); err != nil {
 		return fmt.Errorf("failed to store listener: %w", err)
 	}
 
 	// Initialize synchronization record for this listener
 	ls.syncMux.Lock()
-	ls.synchronizationLog[listener.Config.ID] = time.Now()
+	ls.synchronizationLog[listener.ID] = time.Now()
 	ls.syncMux.Unlock()
 
 	return nil
@@ -163,22 +162,22 @@ func (ls *ListenersService) TerminateListener(ctx context.Context, listenerID st
 	return nil
 }
 
-func (ls *ListenersService) UpdateListener(ctx context.Context, listenerConfig ListenerConfig) error {
-	listener, err := ls.listenerDal.GetListenerById(ctx, listenerConfig.ID)
+func (ls *ListenersService) UpdateListener(ctx context.Context, listener *Listener) error {
+	existingListener, err := ls.listenerDal.GetListenerById(ctx, listener.ID)
 	if err != nil {
-		return fmt.Errorf("listener with ID '%s' not found: %w", listenerConfig.ID, err)
+		return fmt.Errorf("listener with ID '%s' not found: %w", listener.ID, err)
 	}
 
 	// Update listener config
-	if err := listener.UpdateConfig(ctx, listenerConfig); err != nil {
+	if err := existingListener.UpdateConfig(ctx, listener); err != nil {
 		return fmt.Errorf("failed to update listener config: %w", err)
 	}
 
 	// Save updated listener to DAL
 	updates := map[string]any{
-		"config": listenerConfig,
+		"config": listener.Config,
 	}
-	return ls.listenerDal.UpdateListener(ctx, listenerConfig.ID, updates)
+	return ls.listenerDal.UpdateListener(ctx, listener.ID, updates)
 }
 
 func (ls *ListenersService) UpdateListenerStatus(ctx context.Context, listenerID, status string) error {
@@ -187,7 +186,7 @@ func (ls *ListenersService) UpdateListenerStatus(ctx context.Context, listenerID
 		return fmt.Errorf("listener not found: %w", err)
 	}
 
-	if listener.Config.Deployment != DeploymentExternal {
+	if listener.Deployment != DeploymentExternal {
 		return errors.New("operation not allowed for local listeners")
 	}
 
@@ -198,10 +197,10 @@ func (ls *ListenersService) UpdateListenerStatus(ctx context.Context, listenerID
 	return ls.listenerDal.UpdateListener(ctx, listenerID, updates)
 }
 
-func (ls *ListenersService) synchronize(ctx context.Context, listenerID string) (ListenerConfig, error) {
+func (ls *ListenersService) synchronize(ctx context.Context, listenerID string) (*Listener, error) {
 	listener, err := ls.listenerDal.GetListenerById(ctx, listenerID)
 	if err != nil {
-		return ListenerConfig{}, fmt.Errorf("listener not found: %w", err)
+		return nil, fmt.Errorf("listener not found: %w", err)
 	}
 
 	// Update last synchronization time
@@ -209,7 +208,16 @@ func (ls *ListenersService) synchronize(ctx context.Context, listenerID string) 
 	ls.synchronizationLog[listenerID] = time.Now()
 	ls.syncMux.Unlock()
 
-	return listener.Config, nil
+	return listener, nil
+}
+
+func (ls *ListenersService) GetListenerByName(ctx context.Context, name string) (*Listener, error) {
+	listener, err := ls.listenerDal.GetListenerByName(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get listener: %w", err)
+	}
+
+	return listener, nil
 }
 
 func (ls *ListenersService) AutoStart(ctx context.Context) error {
@@ -218,13 +226,12 @@ func (ls *ListenersService) AutoStart(ctx context.Context) error {
 		return fmt.Errorf("failed to get active listeners: %w", err)
 	}
 
-	for i := range listeners {
-		listener := &listeners[i]
-		if listener.Config.Status == StatusRunning {
+	for _, listener := range listeners {
+		if listener.Status == StatusRunning {
 			continue
 		}
 
-		if err := ls.StartListener(ctx, listener.Config.ID, make(chan<- error)); err != nil {
+		if err := ls.StartListener(ctx, listener.ID, make(chan<- error)); err != nil {
 			return fmt.Errorf("failed to start listener: %w", err)
 		}
 	}

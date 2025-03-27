@@ -3,8 +3,8 @@ package services
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
+	"time"
 
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
@@ -28,14 +28,28 @@ const (
 	DeploymentExternal = "external" // Listener is deployed anywhere else and communicates over the network
 )
 
-// Listener provides an abstraction over a listener of any kind
-// Listeners MIGHT have an implementation or not
 type Listener struct {
-	ID string `json:"id"`
+	ID   string `json:"id"`
+	Type string `json:"type"` // http, tcp, smb, custom, etc
 
-	// Listener operation configuration
-	Config ListenerConfig `json:"config"`
-	mux    sync.RWMutex   // Any writes to the listener should lock it, it can be read concurrently though
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Status      string `json:"status"` // running, stopped etc
+
+	Heartbeat int `json:"heartbeat"`
+	Config    any `json:"config"`
+
+	// fixed specs, cannot be modified after set unless listener is restarted
+	Lifecycle  string `json:"lifecycle" validate:"oneof:scheduled managed"` // scheduled || managed
+	Deployment string `json:"deployment" validate:"oneof:local external"`
+
+	// Time related fields
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	StartedAt *time.Time `json:"started_at,omitempty"`
+	StoppedAt *time.Time `json:"stopped_at,omitempty"`
+
+	mux sync.RWMutex
 
 	// Lifecycle manager, differ based on the listener lifecycle
 	lifecycleManager ListenerLifecycleManager
@@ -44,43 +58,34 @@ type Listener struct {
 	listener ListenerImplementation
 }
 
-func NewListenerFromConfig(config ListenerConfig) (*Listener, error) {
-	if err := config.validate(); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
+func NewListenerFromBase(base *Listener) (*Listener, error) {
+	// Initialize new listener based on the base configuration
+	newListener := &Listener{
+		ID:               base.ID,
+		Type:             base.Type,
+		Name:             base.Name,
+		Description:      base.Description,
+		Status:           base.Status,
+		Heartbeat:        base.Heartbeat,
+		Config:           base.Config,
+		Lifecycle:        base.Lifecycle,
+		Deployment:       base.Deployment,
+		CreatedAt:        base.CreatedAt,
+		UpdatedAt:        base.UpdatedAt,
+		StartedAt:        base.StartedAt,
+		StoppedAt:        base.StoppedAt,
+		lifecycleManager: base.lifecycleManager,
+		listener:         base.listener,
 	}
 
-	var lifecycleManager ListenerLifecycleManager
-	if config.Lifecycle == LifecycleManaged {
-		lifecycleManager = NewManagedLifecycleManager()
-	} else if config.Lifecycle == LifecycleScheduled {
-		lifecycleManager = NewScheduledLifecycleManager()
-	} else {
-		return nil, fmt.Errorf("unknown lifecycle: %s", config.Lifecycle)
-	}
-
-	// Create listener implementation from defaults if listener is local
-	var impl ListenerImplementation
-	if config.Deployment == DeploymentLocal {
-		var err error
-		impl, err = CreateImplementation(config.Type)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create listener implementation: %w", err)
-		}
-	}
-
-	return &Listener{
-		ID:               config.ID,
-		Config:           config,
-		lifecycleManager: lifecycleManager,
-		listener:         impl,
-	}, nil
+	return newListener, nil
 }
 
 func (l *Listener) Start(ctx context.Context) error {
 	l.mux.Lock()
 	defer l.mux.Unlock()
 
-	if l.Config.Status != StatusReady {
+	if l.Status != StatusReady {
 		return errors.New("listener is not ready to start")
 	}
 
@@ -91,7 +96,7 @@ func (l *Listener) Stop(ctx context.Context) error {
 	l.mux.Lock()
 	defer l.mux.Unlock()
 
-	if l.Config.Status != StatusRunning {
+	if l.Status != StatusRunning {
 		return errors.New("listener is not running")
 	}
 
@@ -105,25 +110,20 @@ func (l *Listener) Terminate(ctx context.Context) error {
 	return l.lifecycleManager.Terminate(ctx, l)
 }
 
-func (l *Listener) UpdateConfig(ctx context.Context, config ListenerConfig) error {
-	errs := []error{errors.New("cannot update fields: ")}
+func (l *Listener) UpdateConfig(ctx context.Context, newConfig *Listener) error {
+	l.mux.Lock()
+	defer l.mux.Unlock()
 
-	// Validate fields that cannot be updated remain the same
-	if l.Config.Type != config.Type {
-		errs = append(errs, errors.New("kind"))
-	}
-	if l.Config.Lifecycle != config.Lifecycle {
-		errs = append(errs, errors.New("lifecycle"))
-	}
-	if l.Config.Deployment != config.Deployment {
-		errs = append(errs, errors.New(DeploymentLocal))
-	}
-
-	if len(errs) > 1 {
-		return errors.Join(errs...)
-	}
-
-	l.lifecycleManager.UpdateConfig(ctx, l, config)
+	// Update the listener configuration
+	l.Type = newConfig.Type
+	l.Name = newConfig.Name
+	l.Description = newConfig.Description
+	l.Status = newConfig.Status
+	l.Heartbeat = newConfig.Heartbeat
+	l.Config = newConfig.Config
+	l.Lifecycle = newConfig.Lifecycle
+	l.Deployment = newConfig.Deployment
+	l.UpdatedAt = time.Now()
 
 	return nil
 }
@@ -132,10 +132,11 @@ func (l *Listener) UpdateConfig(ctx context.Context, config ListenerConfig) erro
 // The listener is sendign a response back to confirm it received and performed
 // the requested operation asynchronously
 func (l *Listener) UpdateStatus(ctx context.Context, status string) {
-	utils.AssertEquals(l.Config.Type, DeploymentExternal)
+	// Fixed: Check Deployment field instead of Type
+	utils.AssertEquals(l.Deployment, DeploymentExternal)
 
 	l.mux.Lock()
 	defer l.mux.Unlock()
 
-	l.Config.Status = status
+	l.Status = status
 }

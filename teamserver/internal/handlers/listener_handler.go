@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 type ListenerHandler struct {
@@ -21,14 +22,40 @@ func NewListenersHandler(service *services.ListenersService) *ListenerHandler {
 }
 
 func (h *ListenerHandler) CreateListener(ctx *gin.Context) {
-	var listenerConfig services.ListenerConfig
-	if err := ctx.ShouldBindJSON(&listenerConfig); err != nil {
+	var listener services.Listener
+	if err := ctx.ShouldBindJSON(&listener); err != nil {
 		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request format", err.Error())
-
+		return
 	}
-	err := h.service.AddListener(ctx, listenerConfig)
+
+	existingListener, err := h.service.GetListenerByName(ctx.Request.Context(), listener.Name)
 	if err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Error adding listener", err.Error())
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to check listener existence", err.Error())
+		return
+	}
+	if existingListener != nil {
+		models.ResponseError(ctx, http.StatusConflict, "Failed to create listener", "Listener with the same name already exists")
+		return
+	}
+
+	// Validate the listener configuration
+	switch listener.Type {
+	case "http":
+		var httpConfig services.HttpListenerConfig
+		if err := utils.MapToStruct(listener.Config, &httpConfig); err != nil {
+			models.ResponseError(ctx, http.StatusBadRequest, "Failed to validate listener config", "Invalid configuration for HTTP listener")
+			return
+		}
+		if err := httpConfig.Validate(); err != nil {
+			models.ResponseError(ctx, http.StatusBadRequest, "Failed to validate listener config", err.Error())
+			return
+		}
+		listener.Config = httpConfig
+	}
+
+	err = h.service.AddListener(ctx.Request.Context(), &listener)
+	if err != nil {
+		models.ResponseError(ctx, http.StatusBadRequest, "Failed to create listener", err.Error())
 		return
 	}
 
@@ -78,18 +105,39 @@ func (h *ListenerHandler) TerminateListener(ctx *gin.Context) {
 }
 
 func (h *ListenerHandler) UpdateListener(ctx *gin.Context) {
-	var listenerConfig services.ListenerConfig
-	if err := ctx.ShouldBindJSON(&listenerConfig); err != nil {
+	// Get the listener ID from path parameter
+	listenerID := ctx.Param(services.ParamListenerID)
+	if listenerID == "" {
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid listener ID", "Listener ID is required")
+		return
+	}
+
+	// Parse the incoming data as a Listener struct
+	var listener services.Listener
+	if err := ctx.ShouldBindJSON(&listener); err != nil {
 		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request format", err.Error())
-
+		return
 	}
 
-	err := h.service.UpdateListener(ctx, listenerConfig)
+	// Ensure the listener ID in the path matches the one in the request body
+	if listener.ID == "" {
+		listener.ID = listenerID
+	} else if listener.ID != listenerID {
+		models.ResponseError(ctx, http.StatusBadRequest, "Listener ID mismatch",
+			"Listener ID in URL doesn't match ID in request body")
+		return
+	}
+
+	// Update the listener
+	err := h.service.UpdateListener(ctx, &listener)
 	if err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, fmt.Sprintf("Failed to update listener with ID: ", listenerConfig.ID), err.Error())
+		models.ResponseError(ctx, http.StatusInternalServerError,
+			fmt.Sprintf("Failed to update listener with ID: %s", listener.ID), err.Error())
+		return
 	}
 
-	models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("Successfully updated listener with ID: ", listenerConfig.ID), nil)
+	models.ResponseSuccess(ctx, http.StatusOK,
+		fmt.Sprintf("Successfully updated listener with ID: %s", listener.ID), nil)
 }
 
 func (h *ListenerHandler) StartListener(ctx *gin.Context) {
