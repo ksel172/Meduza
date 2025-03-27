@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
@@ -70,14 +71,14 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 		// Listener CRUD operations and status info
 		listenersGroup.POST("", s.dependencies.ListenerController.CreateListener)
 		listenersGroup.GET("", s.dependencies.ListenerController.GetAllListeners)
-		listenersGroup.GET(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.GetListenerById)
-		listenersGroup.PUT(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.UpdateListener)
-		listenersGroup.DELETE(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.DeleteListener)
+		listenersGroup.GET(fmt.Sprintf("/:%s", services.ParamListenerID), s.dependencies.ListenerController.GetListener)
+		listenersGroup.PUT(fmt.Sprintf("/:%s", services.ParamListenerID), s.dependencies.ListenerController.UpdateListener)
+		listenersGroup.DELETE(fmt.Sprintf("/:%s", services.ParamListenerID), s.dependencies.ListenerController.TerminateListener)
 
 		// Listener operations and status
-		listenersGroup.GET(fmt.Sprintf("/:%s/status", models.ParamListenerID), s.dependencies.ListenerController.CheckRunningListener)
-		listenersGroup.POST(fmt.Sprintf("/:%s/start", models.ParamListenerID), s.dependencies.ListenerController.StartListener)
-		listenersGroup.POST(fmt.Sprintf("/:%s/stop", models.ParamListenerID), s.dependencies.ListenerController.StopListener)
+		listenersGroup.GET("/status", s.dependencies.ListenerController.GetListenerStatuses)
+		listenersGroup.POST(fmt.Sprintf("/:%s/start", services.ParamListenerID), s.dependencies.ListenerController.StartListener)
+		listenersGroup.POST(fmt.Sprintf("/:%s/stop", services.ParamListenerID), s.dependencies.ListenerController.StopListener)
 	}
 }
 func (s *Server) PayloadV1(group *gin.RouterGroup) {

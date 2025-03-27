@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
@@ -20,11 +21,11 @@ import (
 
 type PayloadHandler struct {
 	agentDAL    dal.IAgentDAL
-	listenerDAL dal.IListenerDAL
+	listenerDAL services.IListenerDAL
 	payloadDAL  dal.IPayloadDAL
 }
 
-func NewPayloadHandler(agentDAL dal.IAgentDAL, listenerDAL dal.IListenerDAL, payloadDAL dal.IPayloadDAL) *PayloadHandler {
+func NewPayloadHandler(agentDAL dal.IAgentDAL, listenerDAL services.IListenerDAL, payloadDAL dal.IPayloadDAL) *PayloadHandler {
 	return &PayloadHandler{
 		agentDAL:    agentDAL,
 		listenerDAL: listenerDAL,
@@ -90,7 +91,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		"--self-contained", strings.ToLower(fmt.Sprintf("%t", payloadRequest.SelfContained)),
 		"-o", "/app/build/payload-" + payloadConfig.PayloadID,
 		"-p:PublishSingleFile=true",
-		"-p:DefineConstants=TYPE_" + listener.Type,
+		// "-p:DefineConstants=TYPE_" + listener.Type,
 		"-r", payloadConfig.Arch,
 		"agent/Agent/Agent.csproj",
 	}
