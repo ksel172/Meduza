@@ -60,6 +60,16 @@ type Listener struct {
 
 func NewListenerFromBase(base *Listener) (*Listener, error) {
 	// Initialize new listener based on the base configuration
+	newStartedAt := new(time.Time)
+	if base.StartedAt != nil {
+		*newStartedAt = *base.StartedAt
+
+	}
+	newStoppedAt := new(time.Time)
+	if base.StoppedAt != nil {
+		*newStoppedAt = *base.StoppedAt
+	}
+
 	newListener := &Listener{
 		ID:               base.ID,
 		Type:             base.Type,
@@ -72,8 +82,8 @@ func NewListenerFromBase(base *Listener) (*Listener, error) {
 		Deployment:       base.Deployment,
 		CreatedAt:        base.CreatedAt,
 		UpdatedAt:        base.UpdatedAt,
-		StartedAt:        base.StartedAt,
-		StoppedAt:        base.StoppedAt,
+		StartedAt:        newStartedAt,
+		StoppedAt:        newStoppedAt,
 		lifecycleManager: base.lifecycleManager,
 		listener:         base.listener,
 	}
