@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import React, {useEffect} from "react";
 import localFont from "next/font/local";
 import "./globals.css";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -32,6 +33,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // const [sidebarOpen, setSidebarOpen] = useState(true);
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -57,4 +59,3 @@ export default function RootLayout({
     </html>
   );
 }
-

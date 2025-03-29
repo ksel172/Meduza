@@ -1,3 +1,8 @@
+// RIGHT NOW THIS PAGE RENDERS THE DASHBOARD PAGE.
+// PERHAPS WE CAN CHANGE THIS TO ACT AS MIDDLEWARE
+// AND HANDLE THE REFRESH TOKEN AS WELL AS REDIRECT
+// TO THE PROPER PAGES AS NECESSARY.
+"use client"
 import Image from "next/image";
 import { Navbar } from "@/components/util/navbar/navbar";
 import { TableComponent } from "@/components/util/navbar/table";
@@ -29,6 +34,8 @@ import { Combobox } from "@/components/util/items/combobox";
 import { Ear, Radio, Skull} from "lucide-react";
 import { Infocard } from "@/components/util/items/infocard";
 import axiosInstance from "@/axiosInstance";
+import { useEffect, useState } from "react";
+import { isAuthenticated } from "@/axiosInstance";
 
 const comboboxOptions = [
   {
@@ -70,6 +77,29 @@ export default function Home() {
     }
   }
 
+  const [userAuthenticated, setUserAuthenticated] = useState(false);
+  useEffect(() => {
+    const checkAuth = async () => {
+      const authStatus = await isAuthenticated();
+      setUserAuthenticated(authStatus);
+      if (!authStatus) {
+        window.location.href = "/signin";
+      } else {
+        // setAuthLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+  
+  if (userAuthenticated === false) {
+    return (
+      <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] gap-4 justify-items-center items-center flex flex-col pb-0 mb-0 p-0">
+        <h1>[PAGE RESTRICTED]</h1>
+      </div>
+    );
+  }
+  
   return (
     // <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] flex flex-col gap-4 justify-items-center min-h-screen pb-4 p-0 m-6 overflow-x-hidden">
     <div className="w-[calc(100vw-var(--sidebar-width))] h-[100%] gap-4 justify-items-center items-center flex flex-col pb-0 mb-0 p-0">

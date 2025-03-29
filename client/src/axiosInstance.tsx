@@ -27,6 +27,7 @@ axiosInstance.interceptors.response.use(
 
         // If we receive a 401 Unauthorized error and the original request hasn't been retried yet
         if (error.response && error.response.status === 401 && !originalRequest._retry) {
+            console.log("Token Expired.");
             originalRequest._retry = true; // Mark the request as retried
 
             try {
@@ -37,18 +38,20 @@ axiosInstance.interceptors.response.use(
                     throw new Error("No refresh token available");
                 }
 
-                const refreshTokenResponse = await axiosInstance.post('/auth/refresh', {}, { 
-                    withCredentials: true, 
-                    headers: { 
-                        "Authorization": `Bearer ${refreshToken}` // Send the refresh token for refreshing
-                    }
+                const refreshTokenResponse = await axiosInstance.post('/auth/refresh', { 
+                    "refresh_token": refreshToken,
+                    // withCredentials: true, 
+                    // headers: { 
+                    //     "Authorization": `Bearer ${refreshToken}` // Send the refresh token for refreshing
+                    // }
                 });
 
                 const { access_token, refresh_token } = refreshTokenResponse.data;
+                console.log(access_token, refresh_token)
 
                 // Store the new tokens (in cookies)
-                document.cookie = `access_token=${access_token}; path=/;`;
-                document.cookie = `refresh_token=${refresh_token}; path=/;`;
+                // document.cookie = `access_token=${access_token}; path=/;`;
+                // document.cookie = `refresh_token=${refresh_token}; path=/;`;
 
                 // Update the original request with the new access token
                 originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
@@ -57,7 +60,7 @@ axiosInstance.interceptors.response.use(
                 return axiosInstance(originalRequest);
             } catch (refreshError) {
                 console.error("Token refresh failed", refreshError);
-                window.location.href = '/login'; // Handle refresh failure (logout or redirect to login)
+                // window.location.href = '/login'; // Handle refresh failure (logout or redirect to login)
                 return Promise.reject(refreshError);
             }
         }
@@ -67,3 +70,13 @@ axiosInstance.interceptors.response.use(
 );
 
 export default axiosInstance;
+
+export const isAuthenticated = async (): Promise<boolean> => {
+    try {
+      const response = await axiosInstance.get("/users"); // Endpoint to validate token
+      console.log(response)
+      return response.status === 200;
+    } catch (error) {
+      return false; // If the request fails (e.g., 401 Unauthorized), return false
+    }
+  };

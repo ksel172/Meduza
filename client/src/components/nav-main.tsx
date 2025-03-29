@@ -16,6 +16,8 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarContent,
+  useSidebar
 } from "@/components/ui/sidebar"
 
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogDescription, DialogTitle, DialogFooter } from "./ui/dialog"
@@ -23,6 +25,8 @@ import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Label } from "./ui/label"
 import { UserManagement } from "./teams/user-management"
+import { useEffect, useState } from "react"
+import React from "react"
 
 export function NavMain({
   items,
@@ -38,11 +42,12 @@ export function NavMain({
     }[]
   }[]
 }){
+  const {state} = useSidebar();
   return (
       <SidebarGroup>
         <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline">View Team</Button>
+              <Button className={`${state === 'collapsed' ? 'hidden' : ''}`} variant="outline">View Team</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -88,7 +93,7 @@ export function NavMain({
             ) :
             (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton tooltip={item.title}>
+                <SidebarMenuButton tooltip={item.title} onClick={() => window.location.href = item.url}>
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
                 </SidebarMenuButton>

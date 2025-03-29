@@ -51,7 +51,9 @@ export function UserManagement() {
                 </Avatar>
                 <div>
                   <h3 className="font-semibold">{user.name}</h3>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {`${user.email.slice(0, 18)}${user.email.length > 18 ? "..." : ""}`}
+                  </p>
                 </div>
               </div>
               {isAdmin && (

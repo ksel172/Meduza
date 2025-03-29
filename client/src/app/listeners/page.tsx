@@ -145,7 +145,7 @@ export default function Listeners() {
 
   const [listeners, setListeners] = useState<Listener[]>([]);
 
-  const [cookies, setCookie, removeCookie] = useCookies(["cookie-name"]);
+  const [cookies, setCookie, removeCookie] = useCookies<any>(["cookie-name"]);
   const { toast } = useToast()
 
   const agentHeaders = ["Name", "Status", "Listener Type", "Bind", "Start Time"];
@@ -571,7 +571,7 @@ export default function Listeners() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="apple">Fallback</SelectItem>
+                      <SelectItem value="fallback">Fallback</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -606,7 +606,7 @@ export default function Listeners() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="apple">Cert</SelectItem>
+                      <SelectItem value="cert">Cert</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -620,7 +620,7 @@ export default function Listeners() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectItem value="apple">Key</SelectItem>
+                        <SelectItem value="key">Key</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
@@ -643,7 +643,7 @@ export default function Listeners() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectItem value="apple">RIO (Experimental)</SelectItem>
+                        <SelectItem value="rio">RIO (Experimental)</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>

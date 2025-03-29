@@ -115,10 +115,10 @@ export default function Payloads() {
 
   const fetchListeners = async () => {
     try {
-        const url = "/listeners/all";
+        const url = "/listeners";
         const listenersData = await axiosInstance.get(url,
           {
-            headers: { authorization: `Bearer ${cookies.jwt}` }
+            headers: { authorization: `Bearer ${cookies.access_token}` }
           }
         );
         console.log(listenersData.data.data);
@@ -140,15 +140,13 @@ export default function Payloads() {
         
     } catch (error) {
         console.log(error);
-        if(error.status === 401 && cookies.refresh_token){
-          refreshToken();
-        }
     }
   };
 
+
   const fetchPayloads = async () => {
     try {
-        const url = "/payloads/all";
+        const url = "/payloads";
         const payloadsData = await axiosInstance.get(url,
           {
             headers: { authorization: `Bearer ${cookies.jwt}` }
@@ -156,10 +154,10 @@ export default function Payloads() {
         );
         console.log(payloadsData.data);
 
-        if(payloadsData.data){
+        if(payloadsData.data.data){
           setPayloads((prevPayloads) => [
             ...prevPayloads,
-            ...payloadsData.data.map((payload : any) => (
+            ...payloadsData.data.data.map((payload : any) => (
               {
               name: payload.payload_name || "Unknown Listener",
               payloadArch: payload.architecture || "Unknown",
@@ -172,9 +170,6 @@ export default function Payloads() {
         
     } catch (error) {
         console.log(error);
-        if(error.status === 401 && cookies.refresh_token){
-          refreshToken();
-        }
     }
   };
 
@@ -209,7 +204,7 @@ export default function Payloads() {
 
   const createPayload = async () => {
     try{
-        const url = '/payloads/create';
+        const url = '/payloads';
         const { data } = await axiosInstance.post(
             url,
             {
@@ -254,7 +249,7 @@ export default function Payloads() {
 
   const downloadPayload = async (payload: any) => {
     try{
-      console.log(payload)
+        console.log(payload)
         const url = `/payloads/download/${payload.id}`;
         const data : any = await axiosInstance.get(
             url,
@@ -294,7 +289,7 @@ export default function Payloads() {
   const deletePayload = async (payload: any) => {
     try{
       console.log(payload)
-        const url = `/payloads/delete/${payload.id}`;
+        const url = `/payloads/${payload.id}`;
         const { data } = await axiosInstance.delete(
             url,
             {

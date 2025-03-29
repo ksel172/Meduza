@@ -31,7 +31,7 @@ namespace Agent.Services
                 string retUuid = Regex.Replace(uuid, @"\s+", string.Empty);
                 return retUuid;
             }
-            return "ERROR: Failed to get UUID";
+            return string.Empty;
         }
         public async Task<string> GetMOBO()
         {

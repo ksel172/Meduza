@@ -1,10 +1,5 @@
 "use client"
 
-// RIGHT NOW THIS PAGE RENDERS THE DASHBOARD PAGE.
-// PERHAPS WE CAN CHANGE THIS TO ACT AS MIDDLEWARE
-// AND HANDLE THE REFRESH TOKEN AS WELL AS REDIRECT
-// TO THE PROPER PAGES AS NECESSARY.
-
 import * as React from "react"
 import {
   AudioWaveform,
@@ -40,7 +35,7 @@ import {
 } from "@/components/ui/sidebar"
 
 import { usePathname } from "next/navigation";
-
+import { useSidebar } from "@/hooks/use-sidebar"
 // This is sample data.
 const data = {
   user: {
@@ -111,7 +106,7 @@ const data = {
     },
     {
       title: "Documentation",
-      url: "/docs",
+      url: "https://meduza-framework.github.io/meduza-documentation/",
       icon: BookOpenText,
     },
   ],
@@ -137,7 +132,8 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+// export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  export function AppSidebar({ ...props }: any) {
   const pathname = usePathname();
 
   if (pathname === "/signin" || pathname === "/register"){
@@ -150,7 +146,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarHeader>
         <SidebarContent>
           <NavMain items={data.navMain} />
-          <NavProjects projects={data.projects} />
+          {/* <NavProjects projects={data.projects} /> */}
         </SidebarContent>
         <SidebarFooter>
           <NavUser user={data.user} />
