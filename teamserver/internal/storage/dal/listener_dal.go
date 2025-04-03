@@ -39,7 +39,7 @@ func NewListenerDAL(db *sql.DB, schema string) IListenerDAL {
 func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *models.Listener) error {
 	query := fmt.Sprintf(`
         INSERT INTO %s.listeners (kind, name, description, status, heartbeat, lifecycle, deployment, config) 
-        VALUES ($1, $2, $3, $4, $5)`, dal.schema)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
 
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		config, err := json.Marshal(listener.Config)
@@ -50,7 +50,7 @@ func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *models.Lis
 
 		logger.Debug(logLevel, logDetailListener, fmt.Sprintf("Creating listener: %s", listener.ID))
 
-		_, err = stmt.ExecContext(ctx, listener.Kind, listener.Name, listener.Status, listener.Description, config)
+		_, err = stmt.ExecContext(ctx, listener.Kind, listener.Name, listener.Description, listener.Status, listener.Heartbeat, listener.Lifecycle, listener.Deployment, config)
 		if err != nil {
 			logger.Error(logLevel, logDetailListener, "Failed to create listener: ", err)
 			return fmt.Errorf("failed to create listener: %w", err)
@@ -61,18 +61,41 @@ func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *models.Lis
 
 func (dal *ListenerDAL) GetListenerById(ctx context.Context, listenerID string) (models.Listener, error) {
 	query := fmt.Sprintf(`
-		SELECT id, kind, name, description, status, config, heartbeat, lifecycle, deployment, created_at, updated_at, started_at, stopped_at 
-		FROM %s.listeners WHERE id = $1`, dal.schema)
+        SELECT id, kind, name, description, status, config, heartbeat, lifecycle, deployment, created_at, updated_at, started_at, stopped_at 
+        FROM %s.listeners WHERE id = $1`, dal.schema)
 
 	var listener models.Listener
 	err := utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		row := stmt.QueryRowContext(ctx, listenerID)
 
 		var config []byte
-		err := row.Scan(&listener.ID, &listener.Kind, &listener.Name, &listener.Status, &listener.Description, &config, &listener.CreatedAt, &listener.UpdatedAt, &listener.StartedAt, &listener.StoppedAt)
+		var startedAt, stoppedAt sql.NullTime
+
+		err := row.Scan(
+			&listener.ID,
+			&listener.Kind,
+			&listener.Name,
+			&listener.Description,
+			&listener.Status,
+			&config,
+			&listener.Heartbeat,
+			&listener.Lifecycle,
+			&listener.Deployment,
+			&listener.CreatedAt,
+			&listener.UpdatedAt,
+			&startedAt,
+			&stoppedAt,
+		)
 		if err != nil {
 			logger.Error(logLevel, logDetailListener, "Failed to get listener: ", err)
 			return fmt.Errorf("failed to get listener: %w", err)
+		}
+
+		if startedAt.Valid {
+			listener.StartedAt = startedAt.Time
+		}
+		if stoppedAt.Valid {
+			listener.StoppedAt = stoppedAt.Time
 		}
 
 		err = json.Unmarshal(config, &listener.Config)
@@ -89,7 +112,7 @@ func (dal *ListenerDAL) GetListenerById(ctx context.Context, listenerID string) 
 
 func (dal *ListenerDAL) GetAllListeners(ctx context.Context) ([]models.Listener, error) {
 	query := fmt.Sprintf(`
-        SELECT id, kind, name, description, status, heartbeat, lifecycle, deployment, config, created_at, updated_at, started_at, stopped_at 
+        SELECT id, kind, name, description, status, config, heartbeat, lifecycle, deployment, created_at, updated_at, started_at, stopped_at 
         FROM %s.listeners`, dal.schema)
 
 	var listeners []models.Listener
@@ -104,10 +127,33 @@ func (dal *ListenerDAL) GetAllListeners(ctx context.Context) ([]models.Listener,
 		for rows.Next() {
 			var listener models.Listener
 			var config []byte
-			err := rows.Scan(&listener.ID, &listener.Kind, &listener.Name, &listener.Status, &listener.Description, &config, &listener.CreatedAt, &listener.UpdatedAt, &listener.StartedAt, &listener.StoppedAt)
+			var startedAt, stoppedAt sql.NullTime
+
+			err := rows.Scan(
+				&listener.ID,
+				&listener.Kind,
+				&listener.Name,
+				&listener.Description,
+				&listener.Status,
+				&config,
+				&listener.Heartbeat,
+				&listener.Lifecycle,
+				&listener.Deployment,
+				&listener.CreatedAt,
+				&listener.UpdatedAt,
+				&startedAt,
+				&stoppedAt,
+			)
 			if err != nil {
 				logger.Error(logLevel, logDetailListener, "Failed to scan listener: ", err)
 				return fmt.Errorf("failed to scan listener: %w", err)
+			}
+
+			if startedAt.Valid {
+				listener.StartedAt = startedAt.Time
+			}
+			if stoppedAt.Valid {
+				listener.StoppedAt = stoppedAt.Time
 			}
 
 			err = json.Unmarshal(config, &listener.Config)
@@ -187,7 +233,7 @@ func (dal *ListenerDAL) UpdateListener(ctx context.Context, listenerID string, u
 
 func (dal *ListenerDAL) GetActiveListeners(ctx context.Context) ([]models.Listener, error) {
 	query := fmt.Sprintf(`
-        SELECT id, kind, name, description, status, heartbeat, lifecycle, deployment, config, created_at, updated_at, started_at, stopped_at 
+        SELECT id, kind, name, description, status, config, heartbeat, lifecycle, deployment, created_at, updated_at, started_at, stopped_at 
         FROM %s.listeners WHERE status = 'running'`, dal.schema)
 
 	var listeners []models.Listener
@@ -202,7 +248,21 @@ func (dal *ListenerDAL) GetActiveListeners(ctx context.Context) ([]models.Listen
 		for rows.Next() {
 			var listener models.Listener
 			var config []byte
-			err := rows.Scan(&listener.ID, &listener.Kind, &listener.Name, &listener.Status, &listener.Description, &config, &listener.CreatedAt, &listener.UpdatedAt, &listener.StartedAt, &listener.StoppedAt)
+			err := rows.Scan(
+				&listener.ID,
+				&listener.Kind,
+				&listener.Name,
+				&listener.Description,
+				&listener.Status,
+				&config,
+				&listener.Heartbeat,
+				&listener.Lifecycle,
+				&listener.Deployment,
+				&listener.CreatedAt,
+				&listener.UpdatedAt,
+				&listener.StartedAt,
+				&listener.StoppedAt,
+			)
 			if err != nil {
 				logger.Error(logLevel, logDetailListener, "Failed to scan listener: ", err)
 				return fmt.Errorf("failed to scan listener: %w", err)
@@ -225,7 +285,7 @@ func (dal *ListenerDAL) GetActiveListeners(ctx context.Context) ([]models.Listen
 
 func (dal *ListenerDAL) GetListenerByName(ctx context.Context, name string) (models.Listener, error) {
 	query := fmt.Sprintf(`
-        SELECT id, kind, name, description, status, heartbeat, lifecycle, deployment, config, created_at, updated_at, started_at, stopped_at 
+        SELECT id, kind, name, description, status, config, heartbeat, lifecycle, deployment, created_at, updated_at, started_at, stopped_at 
         FROM %s.listeners WHERE name = $1`, dal.schema)
 
 	var listener models.Listener
@@ -233,11 +293,25 @@ func (dal *ListenerDAL) GetListenerByName(ctx context.Context, name string) (mod
 		row := stmt.QueryRowContext(ctx, name)
 
 		var config []byte
-		err := row.Scan(&listener.ID, &listener.Kind, &listener.Name, &listener.Status, &listener.Description, &config, &listener.CreatedAt, &listener.UpdatedAt, &listener.StartedAt, &listener.StoppedAt)
+		err := row.Scan(
+			&listener.ID,
+			&listener.Kind,
+			&listener.Name,
+			&listener.Description,
+			&listener.Status,
+			&config,
+			&listener.Heartbeat,
+			&listener.Lifecycle,
+			&listener.Deployment,
+			&listener.CreatedAt,
+			&listener.UpdatedAt,
+			&listener.StartedAt,
+			&listener.StoppedAt,
+		)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				logger.Debug(logLevel, logDetailListener, fmt.Sprintf("No listener found with name: %s", name))
-				return nil // No rows is not an error for this function
+				return nil
 			}
 			logger.Error(logLevel, logDetailListener, "Failed to get listener by name: ", err)
 			return fmt.Errorf("failed to get listener by name: %w", err)
