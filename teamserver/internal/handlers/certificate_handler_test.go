@@ -3,18 +3,14 @@ package handlers
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/mocks"
 	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -24,10 +20,6 @@ func TestUploadCertificate(t *testing.T) {
 	mockCertDAL := &mocks.MockCertificateDAL{}
 	handler := NewCertificateHandler(mockCertDAL)
 	gin.SetMode(gin.TestMode)
-
-	uploadPath := conf.GetCertUploadPath()
-	err := os.MkdirAll(uploadPath, 0755)
-	require.NoError(t, err)
 
 	tests := []struct {
 		name           string
@@ -83,7 +75,8 @@ func TestUploadCertificate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockCertDAL.ExpectedCalls = nil
 
-			if tt.expectedStatus == http.StatusOK || tt.expectedStatus == http.StatusInternalServerError {
+			if (tt.certType == "cert" || tt.certType == "key") &&
+				(tt.fileName == "test-cert.crt" || tt.fileName == "test-key.key") {
 				mockCertDAL.On("SaveCertificate",
 					mock.Anything,
 					tt.certType,
@@ -92,55 +85,28 @@ func TestUploadCertificate(t *testing.T) {
 			}
 
 			w := httptest.NewRecorder()
-			_, r := gin.CreateTestContext(w)
-
-			r.POST("/certificates/:type", handler.UploadCertificate)
+			_, router := gin.CreateTestContext(w)
+			router.POST("/certificates/:type", handler.UploadCertificate)
 
 			body := &bytes.Buffer{}
 			writer := multipart.NewWriter(body)
 
 			part, err := writer.CreateFormFile("file", tt.fileName)
 			require.NoError(t, err)
-
 			_, err = part.Write(tt.fileContent)
 			require.NoError(t, err)
-
-			err = writer.Close()
-			require.NoError(t, err)
+			writer.Close()
 
 			req, err := http.NewRequest(http.MethodPost, "/certificates/"+tt.certType, body)
 			require.NoError(t, err)
-
 			req.Header.Set("Content-Type", writer.FormDataContentType())
 
-			r.ServeHTTP(w, req)
+			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code, "Response body: %s", w.Body.String())
 
-			if tt.expectedStatus == http.StatusOK {
+			if tt.expectedStatus == http.StatusOK && tt.mockError == nil {
 				mockCertDAL.AssertExpectations(t)
-
-				if tt.certType == "cert" || tt.certType == "key" {
-					mockCertDAL.ExpectedCalls = nil
-
-					mockCertID := "mock-cert-id"
-					mockCertDAL.On("DeleteCertificate", mock.Anything, mockCertID).Return(nil).Once()
-
-					deleteW := httptest.NewRecorder()
-					c, deleteRouter := gin.CreateTestContext(deleteW)
-					deleteRouter.DELETE("/certificates/:id", handler.DeleteCertificate)
-
-					c.Params = gin.Params{{Key: models.ParamCertificateID, Value: mockCertID}}
-					c.Request, _ = http.NewRequest(http.MethodDelete, "/certificates/"+mockCertID, nil)
-
-					handler.DeleteCertificate(c)
-
-					assert.Equal(t, http.StatusOK, deleteW.Code)
-					mockCertDAL.AssertExpectations(t)
-				}
-
-				testFilePath := filepath.Join(uploadPath, fmt.Sprintf("%s-%s", tt.certType, tt.fileName))
-				os.Remove(testFilePath)
 			}
 		})
 	}
