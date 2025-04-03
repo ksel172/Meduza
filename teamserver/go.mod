@@ -45,6 +45,7 @@ require (
 )
 
 require (
+	bou.ke/monkey v1.0.2
 	github.com/fatih/color v1.18.0
 	github.com/gin-contrib/cors v1.7.3
 	github.com/gin-gonic/gin v1.10.0

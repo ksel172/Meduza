@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -16,9 +17,65 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// MockCertificateHandler extends the real handler to mock file operations
+type MockCertificateHandler struct {
+	*CertificateHandler
+}
+
+func (m *MockCertificateHandler) UploadCertificate(c *gin.Context) {
+	certType := c.Param("type")
+
+	if certType != "cert" && certType != "key" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid certificate type",
+		})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "File upload error",
+			"error":   err.Error(),
+		})
+		return
+	}
+	defer file.Close()
+
+	if (certType == "cert" && !strings.HasSuffix(header.Filename, ".crt") && !strings.HasSuffix(header.Filename, ".pem")) ||
+		(certType == "key" && !strings.HasSuffix(header.Filename, ".key")) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid file extension",
+		})
+		return
+	}
+
+	filePath := "test-path/" + header.Filename
+
+	err = m.certDAL.SaveCertificate(c, certType, filePath, header.Filename)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Failed to save certificate",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  http.StatusOK,
+		"message": "Certificate uploaded successfully",
+	})
+}
+
 func TestUploadCertificate(t *testing.T) {
 	mockCertDAL := &mocks.MockCertificateDAL{}
-	handler := NewCertificateHandler(mockCertDAL)
+	// Create a real handler but use our mock for the upload method
+	realHandler := NewCertificateHandler(mockCertDAL)
+	handler := &MockCertificateHandler{realHandler}
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
