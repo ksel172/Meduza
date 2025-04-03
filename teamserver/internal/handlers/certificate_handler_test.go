@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// MockCertificateHandler extends the real handler to mock file operations
 type MockCertificateHandler struct {
 	*CertificateHandler
 }
@@ -73,7 +72,6 @@ func (m *MockCertificateHandler) UploadCertificate(c *gin.Context) {
 
 func TestUploadCertificate(t *testing.T) {
 	mockCertDAL := &mocks.MockCertificateDAL{}
-	// Create a real handler but use our mock for the upload method
 	realHandler := NewCertificateHandler(mockCertDAL)
 	handler := &MockCertificateHandler{realHandler}
 	gin.SetMode(gin.TestMode)
