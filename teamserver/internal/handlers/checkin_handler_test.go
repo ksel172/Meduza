@@ -1,4 +1,4 @@
-package handler_tests
+package handlers
 
 // import (
 // 	"bytes"

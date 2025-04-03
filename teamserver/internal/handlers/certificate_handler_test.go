@@ -1,4 +1,4 @@
-package handler_tests
+package handlers
 
 import (
 	"bytes"
@@ -9,16 +9,15 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/handlers"
+	"github.com/ksel172/Meduza/teamserver/internal/mocks/mocks"
 	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/tests/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestUploadCertificate(t *testing.T) {
 	mockCertDAL := &mocks.MockCertificateDAL{}
-	handler := handlers.NewCertificateHandler(mockCertDAL)
+	handler := NewCertificateHandler(mockCertDAL)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -112,7 +111,7 @@ func TestUploadCertificate(t *testing.T) {
 
 func TestGetCertificates(t *testing.T) {
 	mockCertDAL := &mocks.MockCertificateDAL{}
-	handler := handlers.NewCertificateHandler(mockCertDAL)
+	handler := NewCertificateHandler(mockCertDAL)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -153,7 +152,7 @@ func TestGetCertificates(t *testing.T) {
 
 func TestDeleteCertificate(t *testing.T) {
 	mockCertDAL := &mocks.MockCertificateDAL{}
-	handler := handlers.NewCertificateHandler(mockCertDAL)
+	handler := NewCertificateHandler(mockCertDAL)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {

@@ -1,4 +1,4 @@
-package handler_tests
+package handlers
 
 import (
 	"bytes"
@@ -10,16 +10,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/handlers"
+	"github.com/ksel172/Meduza/teamserver/internal/mocks/mocks"
 	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/tests/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestGetUsers(t *testing.T) {
 	mockUserDAL := &mocks.MockUserDAL{}
-	handler := handlers.NewUserController(mockUserDAL)
+	handler := NewUserController(mockUserDAL)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -57,7 +56,7 @@ func TestGetUsers(t *testing.T) {
 
 func TestAddUsers(t *testing.T) {
 	mockUserDAL := &mocks.MockUserDAL{}
-	handler := handlers.NewUserController(mockUserDAL)
+	handler := NewUserController(mockUserDAL)
 	gin.SetMode(gin.TestMode)
 
 	requestUser := models.ResUser{
