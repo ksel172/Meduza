@@ -30,6 +30,7 @@ type Container struct {
 	PayloadController     *handlers.PayloadHandler
 	ModuleController      *handlers.ModuleController
 	CertificateController *handlers.CertificateHandler
+	ChatController        *handlers.ChatHandler // Added ChatController
 	ListenerContainer
 }
 
@@ -60,6 +61,9 @@ func NewContainer() (*Container, error) {
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
 	listenersService := services.NewListenerService(checkInController)
 
+	//Start PubSub Dal
+	pubSubDal := dal.NewPubSubDAL(redisService) // Initialize PubSub service using Redis
+
 	//Type assertion error fix
 	autoStart, ok := listenerDal.(*dal.ListenerDAL)
 	if !ok {
@@ -79,6 +83,7 @@ func NewContainer() (*Container, error) {
 		PayloadController:     handlers.NewPayloadHandler(agentDal, listenerDal, payloadDal),
 		ModuleController:      handlers.NewModuleController(moduleDal),
 		CertificateController: handlers.NewCertificateHandler(certificateDal),
+		ChatController:        handlers.NewChatHandler(*pubSubDal), // Initialize ChatHandler
 		ListenerContainer: ListenerContainer{
 			CheckInController: checkInController,
 		},

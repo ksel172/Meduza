@@ -19,6 +19,7 @@ type Service interface {
 	JsonDelete(ctx context.Context, key string) error
 	GetAllByPartial(ctx context.Context, partialKey string) ([]interface{}, error)
 	DeleteAllByPartial(ctx context.Context, partialKey string) error
+	GetClient() *redis.Client
 }
 
 type redisService struct {

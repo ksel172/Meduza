@@ -139,3 +139,17 @@ func (s *Server) CertificatesV1(group *gin.RouterGroup) {
 		certsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamCertificateID), s.AdminMiddleware(), s.dependencies.CertificateController.DeleteCertificate)
 	}
 }
+
+func (s *Server) ChatV1(group *gin.RouterGroup) {
+	chatGroup := group.Group("/chat")
+	{
+		chatGroup.Use(s.UserMiddleware()) // Add authentication middleware
+
+		// Chat operations
+		chatGroup.POST("/subscribe", s.dependencies.ChatController.Subscribe)
+		chatGroup.POST("/unsubscribe", s.dependencies.ChatController.Unsubscribe)
+		chatGroup.GET("/messages", s.dependencies.ChatController.GetAllMessages)
+		chatGroup.POST("/publish", s.dependencies.ChatController.PublishMessage)
+		chatGroup.GET("/stream", s.dependencies.ChatController.ReceiveMessage) // Add endpoint for streaming messages
+	}
+}
