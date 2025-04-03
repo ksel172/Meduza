@@ -104,6 +104,20 @@ func TestUploadCertificate(t *testing.T) {
 			if (tt.certType == "cert" || tt.certType == "key") &&
 				(tt.fileName == "test-cert.crt" || tt.fileName == "test-key.key") {
 				mockCertDAL.AssertExpectations(t)
+
+				if tt.expectedStatus == http.StatusOK && tt.mockError == nil {
+					mockCertID := "mock-cert-id"
+					mockCertDAL.On("DeleteCertificate", mock.Anything, mockCertID).Return(nil).Once()
+
+					deleteW := httptest.NewRecorder()
+					deleteC, _ := gin.CreateTestContext(deleteW)
+					deleteC.Params = gin.Params{{Key: models.ParamCertificateID, Value: mockCertID}}
+
+					handler.DeleteCertificate(deleteC)
+
+					assert.Equal(t, http.StatusOK, deleteW.Code)
+					mockCertDAL.AssertExpectations(t)
+				}
 			}
 		})
 	}
