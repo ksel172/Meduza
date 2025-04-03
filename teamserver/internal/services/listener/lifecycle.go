@@ -1,4 +1,4 @@
-package services
+package listener
 
 import (
 	"context"
@@ -6,22 +6,21 @@ import (
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
+// Lifecycle stuff
 type ListenerLifecycleManager interface {
 	Start(ctx context.Context, listener *Listener) error
 	Stop(ctx context.Context, listener *Listener) error
 	Terminate(ctx context.Context, listener *Listener) error
 	UpdateConfig(ctx context.Context, listener *Listener, config any) error
 }
-
-// Implementation for managed listeners
 type ManagedLifecycleManager struct{}
+type ScheduledLifecycleManager struct{}
 
 func NewManagedLifecycleManager() *ManagedLifecycleManager {
 	return &ManagedLifecycleManager{}
 }
 
 // Implementation for scheduled listeners
-type ScheduledLifecycleManager struct{}
 
 func NewScheduledLifecycleManager() *ScheduledLifecycleManager {
 	return &ScheduledLifecycleManager{}

@@ -11,7 +11,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
@@ -21,11 +20,11 @@ import (
 
 type PayloadHandler struct {
 	agentDAL    dal.IAgentDAL
-	listenerDAL services.IListenerDAL
+	listenerDAL dal.IListenerDAL
 	payloadDAL  dal.IPayloadDAL
 }
 
-func NewPayloadHandler(agentDAL dal.IAgentDAL, listenerDAL services.IListenerDAL, payloadDAL dal.IPayloadDAL) *PayloadHandler {
+func NewPayloadHandler(agentDAL dal.IAgentDAL, listenerDAL dal.IListenerDAL, payloadDAL dal.IPayloadDAL) *PayloadHandler {
 	return &PayloadHandler{
 		agentDAL:    agentDAL,
 		listenerDAL: listenerDAL,

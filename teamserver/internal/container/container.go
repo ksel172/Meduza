@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
-	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
+	listenerService "github.com/ksel172/Meduza/teamserver/internal/services/listener"
 
 	// services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
@@ -22,7 +22,7 @@ type Container struct {
 	TeamController     *handlers.TeamController
 	JwtService         models.JWTServiceProvider
 	AgentController    *handlers.AgentController
-	ListenerController *handlers.ListenerHandler
+	ListenerController *handlers.ListenerController
 	// ListenerService       *services.ListenersService // for autostart
 	// ListenerDal           *dal.ListenerDAL
 	PayloadController     *handlers.PayloadHandler
@@ -44,7 +44,7 @@ func NewContainer() (*Container, error) {
 	teamDal := dal.NewTeamDAL(pgsql, schema)
 	agentDal := dal.NewAgentDAL(pgsql, schema)
 	// checkInDal := dal.NewCheckInDAL(pgsql, schema)
-	listenerDal := services.NewListenerDAL(pgsql, schema)
+	listenerDal := dal.NewListenerDAL(pgsql, schema)
 	payloadDal := dal.NewPayloadDAL(pgsql, schema)
 	moduleDal := dal.NewModuleDAL(pgsql, schema)
 	certificateDal := dal.NewCertificateDAL(pgsql, schema)
@@ -52,7 +52,7 @@ func NewContainer() (*Container, error) {
 	// Initialize services
 	redisService := repos.NewRedisService()
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
-	listenerService := services.NewListenerService(listenerDal)
+	listenerService := listenerService.NewListenerService(listenerDal)
 	//Type assertion error fix
 	// autoStart, ok := listenerDal.(*dal.ListenerDAL)
 	// if !ok {
@@ -66,7 +66,7 @@ func NewContainer() (*Container, error) {
 		TeamController:     handlers.NewTeamController(teamDal),
 		JwtService:         jwtService,
 		AgentController:    handlers.NewAgentController(agentDal, moduleDal),
-		ListenerController: handlers.NewListenersHandler(listenerService),
+		ListenerController: handlers.NewListenersHandler(listenerService, listenerDal),
 		// ListenerController:    handlers.NewListenersHandler(listenerDal, listenersService),
 		// ListenerService:       listenersService,
 		// ListenerDal:           autoStart,

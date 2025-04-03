@@ -1,12 +1,12 @@
-package services
+package listener
 
 import (
 	"context"
 	"errors"
 
-	http_listener "github.com/ksel172/Meduza/teamserver/pkg/listeners/http"
-	smb_listener "github.com/ksel172/Meduza/teamserver/pkg/listeners/smb"
-	tcp_listener "github.com/ksel172/Meduza/teamserver/pkg/listeners/tcp"
+	http_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/http"
+	smb_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/smb"
+	tcp_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/tcp"
 )
 
 /*
