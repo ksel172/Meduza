@@ -87,7 +87,10 @@ func (ls *ListenerService) StopListener(ctx context.Context, listenerID string, 
 	}
 
 	// Listener needs to be setup once data fields are read from storage
-	l := CreateListenerFromModel(listenerModel)
+	l, err := CreateListenerFromModel(listenerModel)
+	if err != nil {
+		return fmt.Errorf("failed to create listener from model: %w", err)
+	}
 
 	go func() {
 		ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.stopTimeout)*time.Second)
@@ -187,7 +190,7 @@ func (ls *ListenerService) synchronize(ctx context.Context, listenerID string) (
 
 	l, err := CreateListenerFromModel(listenerModel)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Update last synchronization time
