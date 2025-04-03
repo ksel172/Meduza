@@ -3,14 +3,18 @@ package handlers
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/mocks"
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -95,7 +99,7 @@ func TestUploadCertificate(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Request = req
 
-			c.Params = gin.Params{{Key: "type", Value: tt.certType}}
+			c.Params = gin.Params{{Key: models.ParamCertificateType, Value: tt.certType}}
 
 			handler.UploadCertificate(c)
 
@@ -114,9 +118,11 @@ func TestUploadCertificate(t *testing.T) {
 					deleteC.Params = gin.Params{{Key: models.ParamCertificateID, Value: mockCertID}}
 
 					handler.DeleteCertificate(deleteC)
-
 					assert.Equal(t, http.StatusOK, deleteW.Code)
-					mockCertDAL.AssertExpectations(t)
+
+					uploadPath := conf.GetCertUploadPath()
+					testFilePath := filepath.Join(uploadPath, fmt.Sprintf("%s-%s", tt.certType, tt.fileName))
+					os.Remove(testFilePath)
 				}
 			}
 		})
