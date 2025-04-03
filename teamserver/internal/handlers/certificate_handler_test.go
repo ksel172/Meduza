@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/mocks/mocks"
+	"github.com/ksel172/Meduza/teamserver/internal/mocks"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
