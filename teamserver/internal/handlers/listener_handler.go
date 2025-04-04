@@ -92,6 +92,7 @@ func (lc *ListenerController) StartListener(ctx *gin.Context) {
 	// TODO
 	if err := lc.service.StartListener(ctx, listenerID, make(chan<- error)); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Error starting listener", err.Error())
+		return
 	}
 
 	models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("Successfully started listener with ID: %s", listenerID), nil)

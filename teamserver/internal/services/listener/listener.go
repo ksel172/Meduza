@@ -31,7 +31,6 @@ type Listener struct {
 // we must check how the listener is setup to run and prepare the fields
 // for usage
 func CreateListenerFromModel(listenerModel models.Listener) (*Listener, error) {
-
 	l := Listener{}
 	l.Listener = listenerModel
 
@@ -46,22 +45,30 @@ func CreateListenerFromModel(listenerModel models.Listener) (*Listener, error) {
 
 	switch l.Deployment {
 	case DeploymentExternal:
-		// l.listener =
+		// TODO: Add external deployment support
 	case DeploymentLocal:
 		switch l.Kind {
 		case HTTPListenerKind:
-			httpConfig, ok := l.Config.(http_listener.HTTPListenerConfig)
-			if !ok {
-				return nil, fmt.Errorf("listener config is not of type HTTPListenerConfig")
+			var httpConfig http_listener.HTTPListenerConfig
+			if err := utils.MapToStruct(l.Config, &httpConfig); err != nil {
+				return nil, fmt.Errorf("failed to convert config to HTTPListenerConfig: %w", err)
 			}
 
-			// TODO: Inject CheckInController with DAL initialized
+			if err := httpConfig.ValidateConfig(); err != nil {
+				return nil, fmt.Errorf("invalid HTTP listener config: %w", err)
+			}
+
 			listenerImplementation, err := http_listener.NewHTTPListener(httpConfig, &checkin.CheckInController{})
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to create HTTP listener: %w", err)
 			}
 			l.listener = listenerImplementation
+		default:
+			return nil, fmt.Errorf("unsupported listener kind: %s", l.Kind)
 		}
+		// TODO: Add other cases here for different listener kinds
+	default:
+		return nil, fmt.Errorf("invalid deployment: %s", l.Deployment)
 	}
 
 	return &l, nil
