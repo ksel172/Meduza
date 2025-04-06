@@ -21,3 +21,16 @@ const (
 	SMBListenerKind      string = "smb"
 	ExternalListenerKind string = "external"
 )
+
+func IsBuiltinListenerKind(kind string) bool {
+	switch kind {
+	case HTTPListenerKind, TCPListenerKind, SMBListenerKind:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsExternalListenerKind(kind string) bool {
+	return !IsBuiltinListenerKind(kind)
+}

@@ -11,7 +11,9 @@ import (
 )
 
 type IControllerDal interface {
-	RegisterExternalController()
+	RegisterExternalController(ctx context.Context, controller models.ListenerController) error
+	CheckInController(ctx context.Context, controllerID string) error
+	QueryByKind(ctx context.Context, kind string) (models.ListenerController, error)
 }
 
 type ControllerDal struct {
@@ -19,11 +21,8 @@ type ControllerDal struct {
 	schema string
 }
 
-func NewControllerDal(db *sql.DB, schema string) *ControllerDal {
-	return &ControllerDal{
-		db:     db,
-		schema: schema,
-	}
+func NewControllerDal(db *sql.DB, schema string) IControllerDal {
+	return &ControllerDal{db: db, schema: schema}
 }
 
 func (dal *ControllerDal) RegisterExternalController(ctx context.Context, controller models.ListenerController) error {
@@ -58,19 +57,39 @@ func (dal *ControllerDal) CheckInController(ctx context.Context, controllerID st
 	})
 }
 
-func (dal *ControllerDal) QueryByKind(ctx context.Context) error {
+func (dal *ControllerDal) QueryByKind(ctx context.Context, kind string) (models.ListenerController, error) {
+	var controller models.ListenerController
 
 	query := fmt.Sprintf(`
-	SELECT id, callback_ip, callback_port, listener_config, created_at, last_seen
-	FROM %s.external_controllers
-	WHERE listener_kind = $1`, dal.schema)
+    SELECT id, listener_kind, url, api_key, callback_ip, callback_port, listener_config, created_at, last_seen
+    FROM %s.external_controllers
+    WHERE listener_kind = $1`, dal.schema)
 
-	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
-		_, err := stmt.QueryContext(ctx, "external")
+	err := utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		row := stmt.QueryRowContext(ctx, kind)
+
+		err := row.Scan(
+			&controller.ID,
+			&controller.CallbackIP,
+			&controller.CallbackPort,
+			&controller.ListenerConfig,
+			&controller.CreatedAt,
+			&controller.LastSeen,
+		)
+
 		if err != nil {
-			logger.Error(logLevel, logDetailController, "Failed to query external controllers: ", err)
-			return fmt.Errorf("failed to query external controllers: %w", err)
+			if err == sql.ErrNoRows {
+				return fmt.Errorf("no external controller found for kind '%s'", kind)
+			}
+			logger.Error(logLevel, logDetailController, "Failed to scan controller data: ", err)
+			return fmt.Errorf("failed to query external controller: %w", err)
 		}
 		return nil
 	})
+
+	if err != nil {
+		return models.ListenerController{}, err
+	}
+
+	return controller, nil
 }

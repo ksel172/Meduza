@@ -13,3 +13,9 @@ func AssertEquals(firstValue, secondValue any) {
 		panic(fmt.Sprintf("assertion error: %v is not equal to %v", firstValue, secondValue))
 	}
 }
+
+func AssertTrue(condition bool, message string) {
+	if !condition {
+		panic(fmt.Sprintf("assertion error: %s", message))
+	}
+}

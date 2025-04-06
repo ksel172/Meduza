@@ -49,6 +49,7 @@ func NewContainer() (*Container, error) {
 	payloadDal := dal.NewPayloadDAL(pgsql, schema)
 	moduleDal := dal.NewModuleDAL(pgsql, schema)
 	certificateDal := dal.NewCertificateDAL(pgsql, schema)
+	controllerDal := dal.NewControllerDal(pgsql, schema)
 
 	// Initialize services
 	redisService := repos.NewRedisService()
@@ -69,7 +70,7 @@ func NewContainer() (*Container, error) {
 		TeamController:     handlers.NewTeamController(teamDal),
 		JwtService:         jwtService,
 		AgentController:    handlers.NewAgentController(agentDal, moduleDal),
-		ListenerController: handlers.NewListenersHandler(listenerService, listenerClient, listenerDal),
+		ListenerController: handlers.NewListenersHandler(listenerService, listenerClient, listenerDal, controllerDal),
 		// ListenerController:    handlers.NewListenersHandler(listenerDal, listenersService),
 		// ListenerService:       listenersService,
 		// ListenerDal:           autoStart,

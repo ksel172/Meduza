@@ -28,7 +28,5 @@ func (ExternalControllerHandler) RegisterExternalListener(ctx *gin.Context) erro
 
 func (ExternalControllerHandler) CheckInExternalListener(ctx *gin.Context) error {
 
-	// Send listener related updates
-
 	return nil
 }
