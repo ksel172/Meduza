@@ -75,7 +75,7 @@ func (l *Listener) UpdateConfig(ctx context.Context, newConfig *Listener) error 
 // the requested operation asynchronously
 func (l *Listener) UpdateStatus(ctx context.Context, status string) {
 	// Ensure this is only called for external listeners
-	utils.AssertTrue(IsExternalListenerKind(l.Kind), "UpdateStatus can only be called for external listeners")
+	utils.AssertTrue(!IsBuiltinListenerKind(l.Kind), "UpdateStatus can only be called for external listeners")
 
 	l.mux.Lock()
 	defer l.mux.Unlock()
