@@ -28,5 +28,7 @@ func (ExternalControllerHandler) RegisterExternalListener(ctx *gin.Context) erro
 
 func (ExternalControllerHandler) CheckInExternalListener(ctx *gin.Context) error {
 
+	//TODO: Implement updating of listeners and heartbeat coming from an external controller
+
 	return nil
 }
