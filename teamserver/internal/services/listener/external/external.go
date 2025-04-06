@@ -1,5 +1,7 @@
 package external
 
+import "sync"
+
 // Create external listener type
 // It should have:
 // 1. An API to receives requests that have already been handled by some externally deployed listener
@@ -7,4 +9,8 @@ package external
 // 3. Tracking information of how to reach the listener, IP and Port
 
 type ExternalListener struct {
+	Config any
+
+	isRunning bool
+	mu        sync.RWMutex
 }

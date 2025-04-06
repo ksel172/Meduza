@@ -10,17 +10,20 @@ import (
 	listenerService "github.com/ksel172/Meduza/teamserver/internal/services/listener"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
+	external_listener "github.com/ksel172/Meduza/teamserver/pkg/listeners/external"
 )
 
 type ListenerController struct {
-	service *listenerService.ListenerService
-	dal     dal.IListenerDAL
+	service        *listenerService.ListenerService
+	listenerClient *external_listener.ListenerClient
+	dal            dal.IListenerDAL
 }
 
-func NewListenersHandler(service *listenerService.ListenerService, listenerDAL dal.IListenerDAL) *ListenerController {
+func NewListenersHandler(service *listenerService.ListenerService, listenerClient *external_listener.ListenerClient, listenerDAL dal.IListenerDAL) *ListenerController {
 	return &ListenerController{
-		service: service,
-		dal:     listenerDAL,
+		service:        service,
+		listenerClient: listenerClient,
+		dal:            listenerDAL,
 	}
 }
 
@@ -72,6 +75,10 @@ func (lc *ListenerController) CreateListener(ctx *gin.Context) {
 	}
 
 	listenerModel.ID = uuid.NewString()
+
+	if listenerModel.Kind == listenerService.ExternalListenerKind {
+
+	}
 
 	// Add to DAL, name uniqueness constraint is enforced at the database level
 	if err := lc.dal.CreateListener(ctx, &listenerModel); err != nil {
