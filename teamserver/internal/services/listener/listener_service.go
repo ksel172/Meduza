@@ -2,7 +2,6 @@ package listener
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -28,17 +27,17 @@ type ListenerService struct {
 
 	listenerDal dal.IListenerDAL
 
-	// Track synchronization timestamps for external listeners
-	synchronizationLog map[string]time.Time
-	syncMux            sync.Mutex
+	// Keep track of the runtime listener representations
+	activeListeners map[string]Listener
+	mux             sync.RWMutex
 }
 
 func NewListenerService(listenerDAL dal.IListenerDAL) *ListenerService {
 	return &ListenerService{
-		startTimeout:       15,
-		stopTimeout:        15,
-		listenerDal:        listenerDAL,
-		synchronizationLog: make(map[string]time.Time),
+		startTimeout:    15,
+		stopTimeout:     15,
+		listenerDal:     listenerDAL,
+		activeListeners: make(map[string]Listener),
 	}
 }
 
@@ -49,35 +48,35 @@ func (ls *ListenerService) StartListener(ctx context.Context, listenerID string,
 	}
 
 	// Listener needs to be setup once data fields are read from storage
-	listener, err := CreateListenerFromModel(listenerModel)
+	listener, err := createListenerFromModel(listenerModel)
 	if err != nil {
 		return fmt.Errorf("failed to create listener from model: %w", err)
 	}
 
-	// Run listener in another goroutine
-	go func() {
-		ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.startTimeout)*time.Second)
-		defer cancel()
-		if err := listener.Start(ctx); err != nil {
-			errChan <- fmt.Errorf("failed to start listener: %w", err)
-			return
-		}
-
-		// Update listener status in DAL
-		updates := map[string]any{"status": "running"}
-		if err := ls.listenerDal.UpdateListener(ctx, listenerID, updates); err != nil {
-			errChan <- fmt.Errorf("failed to update listener status: %w", err)
-			return
-		}
-		close(errChan)
-	}()
-
-	// Initialize synchronization record for this listener
-	ls.syncMux.Lock()
-	ls.synchronizationLog[listener.ID] = time.Now()
-	ls.syncMux.Unlock()
+	// Start listener in goroutine
+	go ls.doListenerAction(ctx, listener.Start, listenerID, errChan)
 
 	return nil
+}
+
+// goroutine helper function
+func (ls *ListenerService) doListenerAction(ctx context.Context, fn ListenerActionFunc, listenerID string, errChan chan<- error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.startTimeout)*time.Second)
+	defer cancel()
+
+	if err := fn(ctx); err != nil {
+		errChan <- fmt.Errorf("failed listener operation: %w", err)
+		return
+	}
+
+	// Update listener status in DAL
+	updates := map[string]any{"status": "running"}
+	if err := ls.listenerDal.UpdateListener(ctx, listenerID, updates); err != nil {
+		errChan <- fmt.Errorf("failed to update listener status: %w", err)
+		return
+	}
+
+	close(errChan)
 }
 
 func (ls *ListenerService) StopListener(ctx context.Context, listenerID string, errChan chan<- error) error {
@@ -87,7 +86,7 @@ func (ls *ListenerService) StopListener(ctx context.Context, listenerID string, 
 	}
 
 	// Listener needs to be setup once data fields are read from storage
-	l, err := CreateListenerFromModel(listenerModel)
+	l, err := createListenerFromModel(listenerModel)
 	if err != nil {
 		return fmt.Errorf("failed to create listener from model: %w", err)
 	}
@@ -118,7 +117,7 @@ func (ls *ListenerService) TerminateListener(ctx context.Context, listenerID str
 		return fmt.Errorf("listener with ID '%s' not found: %w", listenerID, err)
 	}
 
-	l, err := CreateListenerFromModel(listenerModel)
+	l, err := createListenerFromModel(listenerModel)
 	if err != nil {
 		return err
 	}
@@ -134,16 +133,11 @@ func (ls *ListenerService) TerminateListener(ctx context.Context, listenerID str
 		return fmt.Errorf("failed to delete listener from storage: %w", err)
 	}
 
-	// Clean up synchronization record
-	ls.syncMux.Lock()
-	delete(ls.synchronizationLog, listenerID)
-	ls.syncMux.Unlock()
-
 	return nil
 }
 
 func (ls *ListenerService) UpdateListener(ctx context.Context, listenerModel models.Listener) error {
-	listener, err := CreateListenerFromModel(listenerModel)
+	listener, err := createListenerFromModel(listenerModel)
 	if err != nil {
 		return err
 	}
@@ -155,7 +149,7 @@ func (ls *ListenerService) UpdateListener(ctx context.Context, listenerModel mod
 
 	// Save updated listener to DAL
 	updates := map[string]any{
-		"config": listener.Config,
+		"config": listener.RawConfig,
 	}
 	return ls.listenerDal.UpdateListener(ctx, listener.ID, updates)
 }
@@ -166,13 +160,9 @@ func (ls *ListenerService) UpdateListenerStatus(ctx context.Context, listenerID,
 		return fmt.Errorf("listener not found: %w", err)
 	}
 
-	l, err := CreateListenerFromModel(listenerModel)
+	l, err := createListenerFromModel(listenerModel)
 	if err != nil {
 		return err
-	}
-
-	if l.Deployment != DeploymentExternal {
-		return errors.New("operation not allowed for local listeners")
 	}
 
 	l.UpdateStatus(ctx, status)
@@ -188,15 +178,10 @@ func (ls *ListenerService) synchronize(ctx context.Context, listenerID string) (
 		return nil, fmt.Errorf("listener not found: %w", err)
 	}
 
-	l, err := CreateListenerFromModel(listenerModel)
+	l, err := createListenerFromModel(listenerModel)
 	if err != nil {
 		return nil, err
 	}
-
-	// Update last synchronization time
-	ls.syncMux.Lock()
-	ls.synchronizationLog[listenerID] = time.Now()
-	ls.syncMux.Unlock()
 
 	return l, nil
 }

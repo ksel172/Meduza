@@ -26,6 +26,7 @@ func NewScheduledLifecycleManager() *ScheduledLifecycleManager {
 	return &ScheduledLifecycleManager{}
 }
 
+// TODO: think about status synchronization with database
 func (m *ManagedLifecycleManager) Start(ctx context.Context, l *Listener) error {
 	utils.AssertNotNil(l.listener)
 

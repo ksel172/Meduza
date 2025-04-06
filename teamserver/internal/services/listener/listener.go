@@ -3,7 +3,6 @@ package listener
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -22,38 +21,6 @@ type Listener struct {
 
 	// Listener concrete implementation
 	listener ListenerImplementation
-}
-
-// This function is called after a listener is retrieved from storage
-// The lifecycleManager and ListenerImplementation fields will be nil
-// we must check how the listener is setup to run and prepare the fields
-// for usage
-func CreateListenerFromModel(listenerModel models.Listener) (*Listener, error) {
-	listener := Listener{}
-	listener.Listener = listenerModel
-
-	switch listener.Lifecycle {
-	case LifecycleManaged:
-		listener.lifecycleManager = NewManagedLifecycleManager()
-	case LifecycleScheduled:
-		listener.lifecycleManager = NewScheduledLifecycleManager()
-	default:
-		return nil, fmt.Errorf("invalid lifecycle: %s", listener.Lifecycle)
-	}
-
-	// Create the concrete listener implementation
-	listenerImplementation, err := CreateListenerImplementation(listener.Kind, listener.RawConfig)
-	if err != nil {
-		return nil, err
-	}
-	listener.listener = listenerImplementation
-
-	// Validate configuration
-	if err := listener.ValidateConfig(); err != nil {
-		return nil, fmt.Errorf("failed to validate config: %w", err)
-	}
-
-	return &listener, nil
 }
 
 func (l *Listener) Start(ctx context.Context) error {

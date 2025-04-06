@@ -9,24 +9,11 @@ import (
 	http_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/http"
 	smb_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/smb"
 	tcp_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/tcp"
+	"github.com/ksel172/Meduza/teamserver/models"
 )
 
-/*
-This is only used for Local listener deployments
+type ListenerActionFunc func(context.Context) error
 
-Listener implementation specs
-
- 1. Custom protocol.
-    HTTP, TCP, SMB ...
- 2. Custom programming language. Use whatever language to code listeners.
- 3. Listeners should declare a version in their communications.
-    That is the version of the API the listenerController will be using.
- 4. Listeners should handle the following tasks
-    a. Agent communication
-    Decryption/encryption
-    b. Request forwarding.
-    Should parse agent request and forward to the listener controller
-*/
 type ListenerImplementation interface {
 	Start(context.Context) error        // Start starts a listener with Ready status
 	Stop(context.Context) error         // Stop simply stops a listener from listening. It will still be active and sending heartbeats.
@@ -36,8 +23,40 @@ type ListenerImplementation interface {
 	Validate() error // Listener validates its configuration
 }
 
+// This function is called after a listener is retrieved from storage
+// The lifecycleManager and ListenerImplementation fields will be nil
+// we must check how the listener is setup to run and prepare the fields
+// for usage
+func createListenerFromModel(listenerModel models.Listener) (*Listener, error) {
+	listener := Listener{}
+	listener.Listener = listenerModel
+
+	switch listener.Lifecycle {
+	case LifecycleManaged:
+		listener.lifecycleManager = NewManagedLifecycleManager()
+	case LifecycleScheduled:
+		listener.lifecycleManager = NewScheduledLifecycleManager()
+	default:
+		return nil, fmt.Errorf("invalid lifecycle: %s", listener.Lifecycle)
+	}
+
+	// Create the concrete listener implementation
+	listenerImplementation, err := createListenerImplementation(listener.Kind, listener.RawConfig)
+	if err != nil {
+		return nil, err
+	}
+	listener.listener = listenerImplementation
+
+	// Validate configuration
+	if err := listener.ValidateConfig(); err != nil {
+		return nil, fmt.Errorf("failed to validate config: %w", err)
+	}
+
+	return &listener, nil
+}
+
 // Creates the local listener implementation based on the provided config byte array
-func CreateListenerImplementation(kind string, config json.RawMessage) (ListenerImplementation, error) {
+func createListenerImplementation(kind string, config json.RawMessage) (ListenerImplementation, error) {
 	switch kind {
 
 	case HTTPListenerKind:

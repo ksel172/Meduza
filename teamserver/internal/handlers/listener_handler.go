@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -96,13 +97,26 @@ func (lc *ListenerController) StartListener(ctx *gin.Context) {
 		return
 	}
 
-	// TODO
-	if err := lc.service.StartListener(ctx, listenerID, make(chan<- error)); err != nil {
+	errChan := make(chan error)
+	if err := lc.service.StartListener(ctx, listenerID, errChan); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Error starting listener", err.Error())
 		return
 	}
 
-	models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("Successfully started listener with ID: %s", listenerID), nil)
+	select {
+	case err, ok := <-errChan:
+		if !ok { // Channel closed, meaning successful completion
+			models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("listener %s started", listenerID), nil)
+			return
+		}
+		log.Printf("Failed to start listener: %v", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, err.Error(), err)
+		return
+	case <-ctx.Request.Context().Done():
+		log.Printf("Listener start timed out")
+		models.ResponseError(ctx, http.StatusRequestTimeout, "listener start timed out", nil)
+		return
+	}
 }
 
 func (lc *ListenerController) StopListener(ctx *gin.Context) {
