@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 const ParamListenerID string = "listener_id"
 
@@ -22,11 +25,10 @@ type Listener struct {
 	Heartbeat int `json:"heartbeat"` //
 
 	// Config holds implementation specific configs for external listeners, otherwise they are accessed from the listener field
-	Config any `json:"config" validate:"required"`
+	RawConfig json.RawMessage `json:"config" validate:"required"`
 
-	// Listener operation method
-	Lifecycle  string `json:"lifecycle" validate:"oneof:scheduled managed"`
-	Deployment string `json:"deployment" validate:"oneof:local external"`
+	// Listener operation methodology
+	Lifecycle string `json:"lifecycle" validate:"oneof:scheduled managed"`
 
 	// Auditability fields
 	CreatedAt time.Time `json:"created_at"`

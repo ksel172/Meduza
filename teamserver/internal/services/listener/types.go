@@ -15,10 +15,6 @@ const (
 	LifecycleManaged   = "managed"   // Listener is managed by the manager and listen for changes
 	LifecycleScheduled = "scheduled" // Listener is scheduled by the manager and polls for changes
 
-	// Listener deployment modes
-	DeploymentLocal    = "local"    // Listener is deployed and managed locally within the same process
-	DeploymentExternal = "external" // Listener is deployed anywhere else and communicates over the network
-
 	// Supported listener kinds
 	HTTPListenerKind     string = "http"
 	TCPListenerKind      string = "tcp"

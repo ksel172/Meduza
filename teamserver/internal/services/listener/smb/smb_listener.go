@@ -17,3 +17,6 @@ func (l SMBListener) Terminate(ctx context.Context) error {
 func (l SMBListener) UpdateConfig(ctx context.Context) error {
 	return nil
 }
+func (l SMBListener) Validate() error {
+	return nil
+}

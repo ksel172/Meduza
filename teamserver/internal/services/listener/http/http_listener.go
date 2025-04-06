@@ -196,6 +196,11 @@ func (l *HTTPListener) UpdateConfig(ctx context.Context) error {
 	return nil
 }
 
+// TODO
+func (l *HTTPListener) Validate() error {
+	return nil
+}
+
 // validateCertificate checks if certificate files exist and are valid
 func (l *HTTPListener) validateCertificate() error {
 	if !l.Config.EnableTLS {

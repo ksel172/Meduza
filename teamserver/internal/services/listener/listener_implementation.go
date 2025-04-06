@@ -2,8 +2,10 @@ package listener
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
+	"fmt"
 
+	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
 	http_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/http"
 	smb_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/smb"
 	tcp_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/tcp"
@@ -30,17 +32,33 @@ type ListenerImplementation interface {
 	Stop(context.Context) error         // Stop simply stops a listener from listening. It will still be active and sending heartbeats.
 	Terminate(context.Context) error    // Close kills a listener process.
 	UpdateConfig(context.Context) error // Listener updates its own configuration
+
+	Validate() error // Listener validates its configuration
 }
 
-func CreateImplementation(kind string) (ListenerImplementation, error) {
+// Creates the local listener implementation based on the provided config byte array
+func CreateListenerImplementation(kind string, config json.RawMessage) (ListenerImplementation, error) {
 	switch kind {
-	case "http":
-		return &http_listener.HTTPListener{}, nil
-	case "tcp":
+
+	case HTTPListenerKind:
+		var httpConfig http_listener.HTTPListenerConfig
+		if err := json.Unmarshal(config, &httpConfig); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal HTTP config: %w", err)
+		}
+
+		implementation, err := http_listener.NewHTTPListener(httpConfig, &checkin.CheckInController{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create http implementation: %w", err)
+		}
+		return implementation, nil
+
+	case TCPListenerKind:
 		return &tcp_listener.TCPListener{}, nil
-	case "smb":
+
+	case SMBListenerKind:
 		return &smb_listener.SMBListener{}, nil
+
 	default:
-		return nil, errors.New("unsupported listener kind")
+		return nil, fmt.Errorf("unsupported listener kind: %s", kind)
 	}
 }

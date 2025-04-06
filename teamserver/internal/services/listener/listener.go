@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
-	http_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/http"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
@@ -31,47 +29,31 @@ type Listener struct {
 // we must check how the listener is setup to run and prepare the fields
 // for usage
 func CreateListenerFromModel(listenerModel models.Listener) (*Listener, error) {
-	l := Listener{}
-	l.Listener = listenerModel
+	listener := Listener{}
+	listener.Listener = listenerModel
 
-	switch l.Lifecycle {
+	switch listener.Lifecycle {
 	case LifecycleManaged:
-		l.lifecycleManager = NewManagedLifecycleManager()
+		listener.lifecycleManager = NewManagedLifecycleManager()
 	case LifecycleScheduled:
-		l.lifecycleManager = NewScheduledLifecycleManager()
+		listener.lifecycleManager = NewScheduledLifecycleManager()
 	default:
-		return nil, fmt.Errorf("invalid lifecycle: %s", l.Lifecycle)
+		return nil, fmt.Errorf("invalid lifecycle: %s", listener.Lifecycle)
 	}
 
-	switch l.Deployment {
-	case DeploymentExternal:
-		// TODO: Add external deployment support
-	case DeploymentLocal:
-		switch l.Kind {
-		case HTTPListenerKind:
-			var httpConfig http_listener.HTTPListenerConfig
-			if err := utils.MapToStruct(l.Config, &httpConfig); err != nil {
-				return nil, fmt.Errorf("failed to convert config to HTTPListenerConfig: %w", err)
-			}
+	// Create the concrete listener implementation
+	listenerImplementation, err := CreateListenerImplementation(listener.Kind, listener.RawConfig)
+	if err != nil {
+		return nil, err
+	}
+	listener.listener = listenerImplementation
 
-			if err := httpConfig.ValidateConfig(); err != nil {
-				return nil, fmt.Errorf("invalid HTTP listener config: %w", err)
-			}
-
-			listenerImplementation, err := http_listener.NewHTTPListener(httpConfig, &checkin.CheckInController{})
-			if err != nil {
-				return nil, fmt.Errorf("failed to create HTTP listener: %w", err)
-			}
-			l.listener = listenerImplementation
-		default:
-			return nil, fmt.Errorf("unsupported listener kind: %s", l.Kind)
-		}
-		// TODO: Add other cases here for different listener kinds
-	default:
-		return nil, fmt.Errorf("invalid deployment: %s", l.Deployment)
+	// Validate configuration
+	if err := listener.ValidateConfig(); err != nil {
+		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
 
-	return &l, nil
+	return &listener, nil
 }
 
 func (l *Listener) Start(ctx context.Context) error {
@@ -114,9 +96,8 @@ func (l *Listener) UpdateConfig(ctx context.Context, newConfig *Listener) error 
 	l.Description = newConfig.Description
 	l.Status = newConfig.Status
 	l.Heartbeat = newConfig.Heartbeat
-	l.Config = newConfig.Config
+	l.RawConfig = newConfig.RawConfig
 	l.Lifecycle = newConfig.Lifecycle
-	l.Deployment = newConfig.Deployment
 	l.UpdatedAt = time.Now()
 
 	return nil
@@ -126,8 +107,7 @@ func (l *Listener) UpdateConfig(ctx context.Context, newConfig *Listener) error 
 // The listener is sendign a response back to confirm it received and performed
 // the requested operation asynchronously
 func (l *Listener) UpdateStatus(ctx context.Context, status string) {
-	// Fixed: Check Deployment field instead of Type
-	utils.AssertEquals(l.Deployment, DeploymentExternal)
+	utils.AssertEquals(l.Kind, ExternalListenerKind)
 
 	l.mux.Lock()
 	defer l.mux.Unlock()

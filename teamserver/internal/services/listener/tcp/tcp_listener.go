@@ -19,3 +19,6 @@ func (l TCPListener) Terminate(ctx context.Context) error {
 func (l TCPListener) UpdateConfig(ctx context.Context) error {
 	return nil
 }
+func (l TCPListener) Validate() error {
+	return nil
+}

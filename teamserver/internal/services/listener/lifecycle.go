@@ -56,6 +56,7 @@ func (m *ManagedLifecycleManager) Terminate(ctx context.Context, l *Listener) er
 	return l.listener.Terminate(ctx)
 }
 
+// TODO: redesign
 func (m *ManagedLifecycleManager) UpdateConfig(ctx context.Context, l *Listener, config any) error {
 	utils.AssertNotNil(l.listener)
 
@@ -63,10 +64,11 @@ func (m *ManagedLifecycleManager) UpdateConfig(ctx context.Context, l *Listener,
 	// For example, what if the listener actually updates its config but returns an error anyway for some reason?
 	// Or what if the return from this request is missed and it times out, the listener config will not be synced
 	// with how the controller. Some polling mechanism or reconciliation loop could fix this.
-	if err := l.listener.UpdateConfig(ctx); err != nil {
-		return err
-	}
-	l.Config = config
+
+	// if err := l.listener.UpdateConfig(ctx); err != nil {
+	// 	return err
+	// }
+	// l.Config = config
 
 	return nil
 }
@@ -86,8 +88,9 @@ func (m *ScheduledLifecycleManager) Terminate(ctx context.Context, l *Listener) 
 	return nil
 }
 
+// TODO: redesign
 // We just need to update the config and the listener will poll the controller for updates to its config
 func (m *ScheduledLifecycleManager) UpdateConfig(ctx context.Context, l *Listener, config any) error {
-	l.Config = config
+	// l.Config = config
 	return nil
 }

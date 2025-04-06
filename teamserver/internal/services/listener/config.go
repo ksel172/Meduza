@@ -3,7 +3,6 @@ package listener
 import (
 	"errors"
 
-	http_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/http"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -15,15 +14,9 @@ func (l *Listener) ValidateConfig() error {
 		errs = append(errs, err)
 	}
 
-	// Validate specific listener kind configs
-	switch l.Kind {
-	case "http":
-		var config http_listener.HTTPListenerConfig
-		if err := utils.MapToStruct(l.Config, &config); err != nil {
-			errs = append(errs, errors.New("invalid HTTP listener config"))
-		} else if err := config.ValidateConfig(); err != nil {
-			errs = append(errs, err)
-		}
+	// Validate listener implementation config for local deployments
+	if err := l.listener.Validate(); err != nil {
+		errs = append(errs, err)
 	}
 
 	if len(errs) > 0 {
@@ -34,11 +27,6 @@ func (l *Listener) ValidateConfig() error {
 
 func (l *Listener) validateSetDefaults() error {
 	var errs []error
-
-	// Validate lifecycle and deployment combinations
-	if l.Deployment == DeploymentLocal && l.Lifecycle == LifecycleScheduled {
-		errs = append(errs, errors.New("local deployments cannot be scheduled"))
-	}
 
 	if l.Heartbeat == 0 {
 		l.Heartbeat = 30
