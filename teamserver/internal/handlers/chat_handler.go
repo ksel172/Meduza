@@ -96,7 +96,7 @@ func (h *ChatHandler) PublishMessage(ctx *gin.Context) {
 	}
 
 	// Publish the message to the chat topic
-	err = h.chatDal.PublishMessage(context.Background(), "chat", string(messageJSON))
+	err = h.chatDal.Publish(context.Background(), "chat", string(messageJSON))
 	if err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to publish message", err)
 		return

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
-	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 
 type IPubSubDAL interface {
@@ -25,17 +24,16 @@ func NewPubSubDAL(client repos.Service) *PubSubDAL {
 }
 
 func (dal *PubSubDAL) Subscribe(ctx context.Context, channel string) (chan string, error) {
-	logger.Info("INFO", "YOU GOT THIS FAR")
 	rdb := dal.client.GetClient()
 	pubsub := rdb.Subscribe(ctx, channel)
-	if err := pubsub; err != nil {
-		logger.Info("ERROR", err)
+
+	if err := pubsub.Ping(ctx, ""); err != nil {
 		return nil, fmt.Errorf("failed to subscribe to channel: %v", err)
 	}
-
 	messageChan := make(chan string)
 
 	go func() {
+		defer pubsub.Close()
 		for msg := range pubsub.Channel() {
 			messageChan <- msg.Payload
 		}
@@ -53,19 +51,26 @@ func (dal *PubSubDAL) Unsubscribe(ctx context.Context, channel string) error {
 	return nil
 }
 
-func (dal *PubSubDAL) PublishMessage(ctx context.Context, channel string, message string) error {
+func (dal *PubSubDAL) Publish(ctx context.Context, channel string, message string) error {
 	rdb := dal.client.GetClient()
-	err := rdb.Publish(ctx, channel, message).Err()
-	if err != nil {
+
+	listKey := fmt.Sprintf("chat_history:%s", channel)
+	if err := rdb.RPush(ctx, listKey, message).Err(); err != nil {
+		return fmt.Errorf("failed to store message in history: %v", err)
+	}
+
+	if err := rdb.Publish(ctx, channel, message).Err(); err != nil {
 		return fmt.Errorf("failed to publish message: %v", err)
 	}
+
 	return nil
 }
 
 func (dal *PubSubDAL) ReceiveMessage(ctx context.Context, channel string) (string, error) {
 	rdb := dal.client.GetClient()
 	pubsub := rdb.Subscribe(ctx, channel)
-	if err := pubsub; err != nil {
+
+	if err := pubsub.Ping(ctx, ""); err != nil {
 		return "", fmt.Errorf("failed to subscribe to channel: %v", err)
 	}
 
@@ -79,14 +84,11 @@ func (dal *PubSubDAL) ReceiveMessage(ctx context.Context, channel string) (strin
 
 func (dal *PubSubDAL) GetAllMessages(ctx context.Context, channel string) ([]string, error) {
 	rdb := dal.client.GetClient()
-	pubsub := rdb.Subscribe(ctx, channel)
-	if err := pubsub; err != nil {
-		return nil, fmt.Errorf("failed to subscribe to channel: %v", err)
-	}
 
-	messages := []string{}
-	for msg := range pubsub.Channel() {
-		messages = append(messages, msg.Payload)
+	listKey := fmt.Sprintf("chat_history:%s", channel)
+	messages, err := rdb.LRange(ctx, listKey, 0, -1).Result()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve chat history: %v", err)
 	}
 
 	return messages, nil
