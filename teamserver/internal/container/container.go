@@ -7,11 +7,11 @@ import (
 	listenerService "github.com/ksel172/Meduza/teamserver/internal/services/listener"
 
 	// services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
+	external_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/external"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
-	external_listener "github.com/ksel172/Meduza/teamserver/pkg/listeners/external"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
 

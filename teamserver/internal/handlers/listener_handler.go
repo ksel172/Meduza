@@ -8,9 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	listenerService "github.com/ksel172/Meduza/teamserver/internal/services/listener"
+	external_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/external"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
-	external_listener "github.com/ksel172/Meduza/teamserver/pkg/listeners/external"
 )
 
 type ListenerController struct {
