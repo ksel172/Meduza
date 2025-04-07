@@ -65,3 +65,4 @@ func (agr AgentTaskRequest) IntoAgentTask() AgentTask {
 		Created: time.Now(),
 	}
 }
+

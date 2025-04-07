@@ -78,15 +78,14 @@ func (h *ChatHandler) GetAllMessages(ctx *gin.Context) {
 func (h *ChatHandler) PublishMessage(ctx *gin.Context) {
 	// Get the message from the request body
 	var message models.Message
+
 	if err := ctx.ShouldBindJSON(&message); err != nil {
 		models.ResponseError(ctx, http.StatusBadRequest, "Invalid message format", err)
 		return
 	}
 
-	// Set the creation timestamp if not provided
-	if message.CreatedAt == "" {
-		message.CreatedAt = time.Now().Format(time.RFC3339)
-	}
+	// Always set the creation timestamp
+	message.CreatedAt = time.Now().Format(time.RFC3339)
 
 	// Convert message to JSON string
 	messageJSON, err := json.Marshal(message)
