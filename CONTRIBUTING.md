@@ -5,7 +5,6 @@ We follow a structured Git branching model:
 - **`main`**: The production-ready branch.
 - **`dev`**: The development branch.
 - **Feature Branches (`feature/<name>`)**: Used for adding new features. Branch from `dev`.
-- **Release Branches (`release/<version>`)**: Used for preparing a release. Used by the main developer team. Branch from `dev`.
 - **Fix Branches (`fix/<name>`)**: For non-urgent fixes (e.g., UI updates, code styling, optimizations). Branch from `dev`.
 - **Hotfix Branches (`hotfix/<name>`)**: For urgent production fixes. Branch from `main`.
 
