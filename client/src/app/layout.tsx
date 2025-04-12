@@ -7,6 +7,8 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Toaster } from "@/components/ui/toaster"
+import { isAuthenticated } from "@/axiosInstance"
+import { redirect } from "next/navigation";
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
@@ -34,6 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   // const [sidebarOpen, setSidebarOpen] = useState(true);
+  
   return (
     <html lang="en" suppressHydrationWarning>
       <body

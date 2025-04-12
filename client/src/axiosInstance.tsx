@@ -79,4 +79,4 @@ export const isAuthenticated = async (): Promise<boolean> => {
     } catch (error) {
       return false; // If the request fails (e.g., 401 Unauthorized), return false
     }
-  };
+};
