@@ -16,9 +16,10 @@ const (
 	LifecycleScheduled = "scheduled" // Listener is scheduled by the manager and polls for changes
 
 	// Supported listener kinds
-	HTTPListenerKind string = "http"
-	TCPListenerKind  string = "tcp"
-	SMBListenerKind  string = "smb"
+	HTTPListenerKind     string = "http"
+	TCPListenerKind      string = "tcp"
+	SMBListenerKind      string = "smb"
+	ExternalListenerKind string = "external"
 )
 
 func IsBuiltinListenerKind(kind string) bool {

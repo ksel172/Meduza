@@ -62,123 +62,92 @@ func (ls *ListenerService) StartListener(ctx context.Context, listenerID string,
 		return fmt.Errorf("failed to create listener from model: %w", err)
 	}
 
-	// Start listener in goroutine
-	go ls.doListenerAction(ctx, listener.Start, listenerID, errChan, listener)
+	go ls.startListener(ctx, listener, errChan)
 
 	return nil
 }
 
-// goroutine helper function
-func (ls *ListenerService) doListenerAction(ctx context.Context,
-	fn ListenerActionFunc,
-	listenerID string,
-	errChan chan<- error,
-	listener *Listener) {
-
+func (ls *ListenerService) startListener(ctx context.Context, listener *Listener, errChan chan<- error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.startTimeout)*time.Second)
 	defer cancel()
 
-	if err := fn(ctx); err != nil {
-		errChan <- fmt.Errorf("failed listener operation: %w", err)
+	if err := listener.Start(ctx); err != nil {
+		errChan <- err
 		return
 	}
 
-	// Add to active listeners map
-	ls.mux.Lock()
-	ls.activeListeners[listenerID] = listener
-	ls.mux.Unlock()
-
-	// Update listener status in DAL
-	updates := map[string]any{"status": "running"}
-	if err := ls.listenerDal.UpdateListener(ctx, listenerID, updates); err != nil {
+	updates := map[string]any{"status": StatusRunning}
+	if err := ls.listenerDal.UpdateListener(ctx, listener.ID, updates); err != nil {
 		errChan <- fmt.Errorf("failed to update listener status: %w", err)
 		return
 	}
 
-	close(errChan)
+	ls.mux.Lock()
+	ls.activeListeners[listener.ID] = listener
+	ls.mux.Unlock()
 }
 
+// The expected behavior, and since all listeners that are running should be kept track of, return an error if the listener is not mapped
+// Do not try retrieving from the database as the runtime struct of the listener is required to stop it, otherwise, you are simply creating a listener just to stop it
 func (ls *ListenerService) StopListener(ctx context.Context, listenerID string, errChan chan<- error) error {
-	// First check if we have it in our active map
 	ls.mux.RLock()
 	listener, exists := ls.activeListeners[listenerID]
 	ls.mux.RUnlock()
 
-	// If not found in active listeners, try loading from database
+	// If not found in active listeners map, try loading from database
 	if !exists {
-		listenerModel, err := ls.listenerDal.GetListenerById(ctx, listenerID)
-		if err != nil {
-			return fmt.Errorf("listener with ID %s not found: %w", listenerID, err)
-		}
-
-		// Listener needs to be setup once data fields are read from storage
-		listener, err = createListenerFromModel(listenerModel)
-		if err != nil {
-			return fmt.Errorf("failed to create listener from model: %w", err)
-		}
+		return fmt.Errorf("trying to stop listener that is not mapped")
 	}
 
-	go func() {
-		ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.stopTimeout)*time.Second)
-		defer cancel()
-		if err := listener.Stop(ctx); err != nil {
-			errChan <- fmt.Errorf("failed to stop listener: %w", err)
-			return
-		}
-
-		// Remove from active listeners map
-		ls.mux.Lock()
-		delete(ls.activeListeners, listenerID)
-		ls.mux.Unlock()
-
-		// Update listener status in DAL
-		updates := map[string]any{"status": "stopped"}
-		if err := ls.listenerDal.UpdateListener(ctx, listenerID, updates); err != nil {
-			errChan <- fmt.Errorf("failed to update listener status: %w", err)
-			return
-		}
-		close(errChan)
-	}()
+	go ls.stopListener(ctx, listener, errChan)
 
 	return nil
 }
 
-func (ls *ListenerService) TerminateListener(ctx context.Context, listenerID string) error {
-	// First check if we have it in our active map
+func (ls *ListenerService) stopListener(ctx context.Context, listener *Listener, errChan chan<- error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.startTimeout)*time.Second)
+	defer cancel()
+
+	if err := listener.Stop(ctx); err != nil {
+		errChan <- err
+		return
+	}
+
+	updates := map[string]any{"status": StatusStopping}
+	if err := ls.listenerDal.UpdateListener(ctx, listener.ID, updates); err != nil {
+		errChan <- fmt.Errorf("failed to update listener status: %w", err)
+		return
+	}
+}
+
+// Terminate is an operation that fully stops a listener, killing processes and removing from active listeners map
+func (ls *ListenerService) TerminateListener(ctx context.Context, listenerID string, errChan chan<- error) error {
 	ls.mux.RLock()
 	listener, exists := ls.activeListeners[listenerID]
 	ls.mux.RUnlock()
 
-	// If not found in active listeners, try loading from database
 	if !exists {
-		listenerModel, err := ls.listenerDal.GetListenerById(ctx, listenerID)
-		if err != nil {
-			return fmt.Errorf("listener with ID '%s' not found: %w", listenerID, err)
-		}
-
-		listener, err = createListenerFromModel(listenerModel)
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("trying to terminate listener that is not mapped")
 	}
 
+	go ls.terminateListener(ctx, listener, errChan)
+
+	return nil
+}
+
+func (ls *ListenerService) terminateListener(ctx context.Context, listener *Listener, errChan chan<- error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.stopTimeout)*time.Second)
 	defer cancel()
+
 	if err := listener.Terminate(ctx); err != nil {
-		return fmt.Errorf("failed to close listener: %w", err)
+		errChan <- fmt.Errorf("failed to close listener: %w", err)
+		return
 	}
 
-	// Remove from active listeners map
 	ls.mux.Lock()
-	delete(ls.activeListeners, listenerID)
+	delete(ls.activeListeners, listener.ID)
 	ls.mux.Unlock()
 
-	// Remove from DAL
-	if err := ls.listenerDal.DeleteListener(ctx, listenerID); err != nil {
-		return fmt.Errorf("failed to delete listener from storage: %w", err)
-	}
-
-	return nil
 }
 
 func (ls *ListenerService) UpdateListener(ctx context.Context, listenerModel models.Listener) error {
@@ -213,6 +182,8 @@ func (ls *ListenerService) UpdateListener(ctx context.Context, listenerModel mod
 	return ls.listenerDal.UpdateListener(ctx, listener.ID, updates)
 }
 
+// TODO: I think this will not happen through here but from the external package
+// it should start up a server to receive requests from the external listeners, whenever there are any
 func (ls *ListenerService) UpdateListenerStatus(ctx context.Context, listenerID, status string) error {
 	// First check if we have it in our active map
 	ls.mux.RLock()
