@@ -7,7 +7,7 @@ import (
 	listenerService "github.com/ksel172/Meduza/teamserver/internal/services/listener"
 
 	// services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
-	external_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/external"
+
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -49,14 +49,12 @@ func NewContainer() (*Container, error) {
 	payloadDal := dal.NewPayloadDAL(pgsql, schema)
 	moduleDal := dal.NewModuleDAL(pgsql, schema)
 	certificateDal := dal.NewCertificateDAL(pgsql, schema)
-	controllerDal := dal.NewControllerDal(pgsql, schema)
 
 	// Initialize services
 	redisService := repos.NewRedisService()
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
 	listenerService := listenerService.NewListenerService(listenerDal)
 
-	listenerClient := external_listener.NewListenerClient("Somekeyfornow", listenerDal)
 	//Type assertion error fix
 	// autoStart, ok := listenerDal.(*dal.ListenerDAL)
 	// if !ok {
@@ -70,7 +68,7 @@ func NewContainer() (*Container, error) {
 		TeamController:     handlers.NewTeamController(teamDal),
 		JwtService:         jwtService,
 		AgentController:    handlers.NewAgentController(agentDal, moduleDal),
-		ListenerController: handlers.NewListenersHandler(listenerService, listenerClient, listenerDal, controllerDal),
+		ListenerController: handlers.NewListenersHandler(listenerService, listenerDal),
 		// ListenerController:    handlers.NewListenersHandler(listenerDal, listenersService),
 		// ListenerService:       listenersService,
 		// ListenerDal:           autoStart,

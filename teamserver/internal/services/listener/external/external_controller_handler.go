@@ -1,4 +1,4 @@
-package external_listener
+package external
 
 import (
 	"net/http"
