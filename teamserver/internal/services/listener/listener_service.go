@@ -8,7 +8,13 @@ import (
 
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
+
+type statusUpdate struct {
+	listenerID string
+	status     string
+}
 
 // ListenerService is the entrypoint for listener operations exposed to clients
 type ListenerService struct {
@@ -18,16 +24,45 @@ type ListenerService struct {
 	listenerDal dal.IListenerDAL
 
 	// Keep track of the runtime listener representations
-	activeListeners map[string]*Listener // TODO: move into its own data structure to handle updates to mapped listeners
+	activeListeners map[string]*Listener
+	statusUpdates   chan statusUpdate
 	mux             sync.RWMutex
 }
 
 func NewListenerService(listenerDAL dal.IListenerDAL) *ListenerService {
-	return &ListenerService{
+	ls := &ListenerService{
 		startTimeout:    15,
 		stopTimeout:     15,
 		listenerDal:     listenerDAL,
 		activeListeners: make(map[string]*Listener),
+		statusUpdates:   make(chan statusUpdate, 100), // Buffer for status updates
+	}
+
+	// Start the status update processor
+	go ls.processStatusUpdates()
+
+	return ls
+}
+
+func (ls *ListenerService) processStatusUpdates() {
+	for update := range ls.statusUpdates {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		updates := map[string]any{"status": update.status}
+
+		if err := ls.listenerDal.UpdateListener(ctx, update.listenerID, updates); err != nil {
+			logger.Error(fmt.Sprintf("Failed to update listener status: %v", err))
+		}
+
+		cancel()
+	}
+}
+
+func (ls *ListenerService) monitorListenerStatus(listener *Listener) {
+	for status := range listener.statusUpdatesCh {
+		ls.statusUpdates <- statusUpdate{
+			listenerID: listener.ID,
+			status:     status,
+		}
 	}
 }
 
@@ -47,6 +82,9 @@ func (ls *ListenerService) StartListener(ctx context.Context, listenerID string)
 		if err != nil {
 			return fmt.Errorf("failed to create listener from model: %w", err)
 		}
+
+		// Start monitoring this listener's status updates
+		go ls.monitorListenerStatus(listener)
 	}
 
 	return ls.startListener(ctx, listener)
@@ -62,26 +100,18 @@ func (ls *ListenerService) startListener(ctx context.Context, listener *Listener
 		close(startCh)
 	}()
 
-	for {
-		select {
-		case err := <-startCh:
-			if err != nil {
-				return err
-			}
-			ls.mux.Lock()
-			ls.activeListeners[listener.ID] = listener
-			ls.mux.Unlock()
-			return nil
-
-		case status := <-listener.statusUpdatesCh:
-			updates := map[string]any{"status": status}
-			if err := ls.listenerDal.UpdateListener(ctx, listener.ID, updates); err != nil {
-				return fmt.Errorf("failed to update listener status: %w", err)
-			}
-
-		case <-ctx.Done():
-			return ctx.Err()
+	select {
+	case err := <-startCh:
+		if err != nil {
+			return err
 		}
+		ls.mux.Lock()
+		ls.activeListeners[listener.ID] = listener
+		ls.mux.Unlock()
+		return nil
+
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
@@ -109,18 +139,11 @@ func (ls *ListenerService) stopListener(ctx context.Context, listener *Listener)
 		close(stopCh)
 	}()
 
-	for {
-		select {
-		case err := <-stopCh:
-			return err
-		case status := <-listener.statusUpdatesCh:
-			updates := map[string]any{"status": status}
-			if err := ls.listenerDal.UpdateListener(ctx, listener.ID, updates); err != nil {
-				return fmt.Errorf("failed to update listener status: %w", err)
-			}
-		case <-ctx.Done():
-			return ctx.Err()
-		}
+	select {
+	case err := <-stopCh:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
@@ -147,26 +170,18 @@ func (ls *ListenerService) terminateListener(ctx context.Context, listener *List
 		close(terminateCh)
 	}()
 
-	for {
-		select {
-		case err := <-terminateCh:
-			if err != nil {
-				return err
-			}
-			ls.mux.Lock()
-			delete(ls.activeListeners, listener.ID)
-			ls.mux.Unlock()
-			return nil
-
-		case status := <-listener.statusUpdatesCh:
-			updates := map[string]any{"status": status}
-			if err := ls.listenerDal.UpdateListener(ctx, listener.ID, updates); err != nil {
-				return fmt.Errorf("failed to update listener status: %w", err)
-			}
-
-		case <-ctx.Done():
-			return ctx.Err()
+	select {
+	case err := <-terminateCh:
+		if err != nil {
+			return err
 		}
+		ls.mux.Lock()
+		delete(ls.activeListeners, listener.ID)
+		ls.mux.Unlock()
+		return nil
+
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
