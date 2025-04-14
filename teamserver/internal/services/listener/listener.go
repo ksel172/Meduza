@@ -4,23 +4,16 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
 	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 // Listener is a representation of a listener of any kind
 type Listener struct {
 	models.Listener // embed all of the data fields in the listener data model
-
-	mux sync.RWMutex
-
-	// Lifecycle manager, differ based on the listener lifecycle
-	lifecycleManager ListenerLifecycleManager
-
-	// Listener concrete implementation
-	listener ListenerImplementation
+	listener        ListenerImplementation
+	mux             sync.RWMutex
+	statusUpdatesCh chan string
 }
 
 func (l *Listener) Start(ctx context.Context) error {
@@ -31,7 +24,14 @@ func (l *Listener) Start(ctx context.Context) error {
 		return errors.New("listener is not ready to start")
 	}
 
-	return l.lifecycleManager.Start(ctx, l)
+	l.updateStatus(StatusStarting)
+	if err := l.listener.Start(ctx); err != nil {
+		l.updateStatus(StatusFailed)
+		return err
+	}
+	l.updateStatus(StatusRunning)
+
+	return nil
 }
 
 func (l *Listener) Stop(ctx context.Context) error {
@@ -42,43 +42,51 @@ func (l *Listener) Stop(ctx context.Context) error {
 		return errors.New("listener is not running")
 	}
 
-	return l.lifecycleManager.Stop(ctx, l)
+	l.updateStatus(StatusStopping)
+	if err := l.listener.Stop(ctx); err != nil {
+		l.updateStatus(StatusFailed)
+		return err
+	}
+	l.updateStatus(StatusReady)
+
+	return nil
 }
 
 func (l *Listener) Terminate(ctx context.Context) error {
 	l.mux.Lock()
 	defer l.mux.Unlock()
 
-	return l.lifecycleManager.Terminate(ctx, l)
-}
-
-// This operation should not affect running listeners depending on the update
-func (l *Listener) UpdateConfig(ctx context.Context, newConfig *Listener) error {
-	l.mux.Lock()
-	defer l.mux.Unlock()
-
-	// Update the listener configuration
-	l.Kind = newConfig.Kind
-	l.Name = newConfig.Name
-	l.Description = newConfig.Description
-	l.Status = newConfig.Status
-	l.Heartbeat = newConfig.Heartbeat
-	l.RawConfig = newConfig.RawConfig
-	l.Lifecycle = newConfig.Lifecycle
-	l.UpdatedAt = time.Now()
+	l.updateStatus(StatusTerminating)
+	if err := l.listener.Terminate(ctx); err != nil {
+		l.updateStatus(StatusFailed)
+		return err
+	}
+	l.updateStatus(StatusPending)
 
 	return nil
 }
 
-// External listeners should use this to update listener status
-// The listener is sendign a response back to confirm it received and performed
-// the requested operation asynchronously
-func (l *Listener) UpdateStatus(ctx context.Context, status string) {
-	// Ensure this is only called for external listeners
-	utils.AssertTrue(!IsBuiltinListenerKind(l.Kind), "UpdateStatus can only be called for external listeners")
-
+// This operation should not affect running listeners depending on the update
+func (l *Listener) UpdateConfig(ctx context.Context, listenerUpdate models.Listener) error {
 	l.mux.Lock()
 	defer l.mux.Unlock()
 
+	l.Name = listenerUpdate.Name
+	l.Description = listenerUpdate.Description
+	l.Heartbeat = listenerUpdate.Heartbeat
+	l.RawConfig = listenerUpdate.RawConfig
+
+	return nil
+}
+
+// This function assumes the lock is already held
+// Updates the listener status and sends status update to channel
+func (l *Listener) updateStatus(status string) {
+	prevStatus := l.Status
 	l.Status = status
+
+	// Notify if channel is provided and status changed
+	if l.statusUpdatesCh != nil && prevStatus != status {
+		l.statusUpdatesCh <- status
+	}
 }

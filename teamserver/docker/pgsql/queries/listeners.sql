@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS  {POSTGRES_SCHEMA}.{TABLE_NAME} (
    description TEXT,
    status VARCHAR(255) NOT NULL,
    heartbeat INTEGER,
-   lifecycle VARCHAR(20),
    deployment VARCHAR(20),
    config JSONB,
    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

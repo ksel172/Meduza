@@ -1,4 +1,4 @@
-package handlers
+package checkin
 
 // import (
 // 	"bytes"

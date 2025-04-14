@@ -27,9 +27,6 @@ type Listener struct {
 	// Config holds implementation specific configs for external listeners, otherwise they are accessed from the listener field
 	RawConfig json.RawMessage `json:"config" validate:"required"`
 
-	// Listener operation methodology
-	Lifecycle string `json:"lifecycle" validate:"oneof:scheduled managed"`
-
 	// Auditability fields
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

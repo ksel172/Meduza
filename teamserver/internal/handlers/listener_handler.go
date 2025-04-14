@@ -8,33 +8,28 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	listenerService "github.com/ksel172/Meduza/teamserver/internal/services/listener"
-	external_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/external"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
 type ListenerController struct {
-	service        *listenerService.ListenerService
-	listenerClient *external_listener.ListenerClient
-	listenerDal    dal.IListenerDAL
-	controllerDal  dal.IControllerDal
+	service *listenerService.ListenerService
+	// listenerClient *external_listener.ListenerClient
+	listenerDal dal.IListenerDAL
+	// controllerDal  dal.IControllerDal
 }
 
-func NewListenersHandler(
-	service *listenerService.ListenerService,
-	listenerClient *external_listener.ListenerClient,
-	listenerDAL dal.IListenerDAL,
-	controllerDAL dal.IControllerDal) *ListenerController {
+func NewListenersHandler(service *listenerService.ListenerService, listenerDAL dal.IListenerDAL) *ListenerController {
 	return &ListenerController{
-		service:        service,
-		listenerClient: listenerClient,
-		listenerDal:    listenerDAL,
-		controllerDal:  controllerDAL,
+		service: service,
+		// listenerClient: listenerClient,
+		listenerDal: listenerDAL,
+		// controllerDal:  controllerDAL,
 	}
 }
 
 func (lc *ListenerController) GetAllListeners(ctx *gin.Context) {
-	listeners, err := lc.listenerDal.GetAllListeners(ctx)
+	listeners, err := lc.listenerDal.GetAllListeners(ctx.Request.Context())
 	if err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Error getting listeners", err.Error())
 		return
@@ -49,7 +44,7 @@ func (lc *ListenerController) GetListener(ctx *gin.Context) {
 		return
 	}
 
-	listener, err := lc.listenerDal.GetListenerById(ctx, listenerID)
+	listener, err := lc.listenerDal.GetListenerById(ctx.Request.Context(), listenerID)
 	if err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Error getting listener", err.Error())
 		return
@@ -59,7 +54,7 @@ func (lc *ListenerController) GetListener(ctx *gin.Context) {
 }
 
 func (lc *ListenerController) GetListenerStatuses(ctx *gin.Context) {
-	listeners, err := lc.listenerDal.GetAllListeners(ctx)
+	listeners, err := lc.listenerDal.GetAllListeners(ctx.Request.Context())
 	if err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Error getting listeners", err.Error())
 		return
@@ -80,33 +75,14 @@ func (lc *ListenerController) CreateListener(ctx *gin.Context) {
 		return
 	}
 
-	listenerModel.ID = uuid.NewString()
-
-	// If the listener is not of the built in ones (http, tcp, smb),
-	// attempt to query for controllers that host listeners of that type
-	if !listenerService.IsBuiltinListenerKind(listenerModel.Kind) {
-
-		// Attempt to query by kind
-		controller, err := lc.controllerDal.QueryByKind(ctx, listenerModel.Kind)
-		if err != nil {
-			models.ResponseError(ctx, http.StatusBadRequest,
-				fmt.Sprintf("No controller found for listener kind: %s", listenerModel.Kind),
-				err.Error())
-			return
-		}
-
-		callbackURL := fmt.Sprintf("http://%s:%s", controller.CallbackIP, controller.CallbackPort)
-		if err := lc.listenerClient.AddListener(listenerModel, callbackURL); err != nil {
-			models.ResponseError(ctx, http.StatusInternalServerError,
-				"Failed to register listener with external controller",
-				err.Error())
-			return
-		}
-
-		listenerModel.Status = listenerService.StatusReady
+	// TODO: external listeners registration
+	if listenerModel.Kind == listenerService.ExternalListenerKind {
+		models.ResponseError(ctx, http.StatusBadRequest, "external listeners should register themselves", nil)
 	}
 
-	if err := lc.listenerDal.CreateListener(ctx, &listenerModel); err != nil {
+	listenerModel.ID = uuid.NewString()
+
+	if err := lc.listenerDal.CreateListener(ctx.Request.Context(), &listenerModel); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create listener", err.Error())
 		return
 	}
@@ -121,38 +97,11 @@ func (lc *ListenerController) StartListener(ctx *gin.Context) {
 		return
 	}
 
-	listener, err := lc.listenerDal.GetListenerById(ctx, listenerID)
-	if err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Error getting listener", err.Error())
+	if err := lc.service.StartListener(ctx.Request.Context(), listenerID); err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "Error starting listener", err)
 		return
 	}
-
-	// TODO
-	if listenerService.IsBuiltinListenerKind(listener.Kind) {
-
-		if err := lc.service.StartListener(ctx, listenerID, make(chan<- error)); err != nil {
-			models.ResponseError(ctx, http.StatusInternalServerError, "Error starting listener", err.Error())
-			return
-		}
-	} else if !listenerService.IsBuiltinListenerKind(listener.Kind) {
-
-		controller, err := lc.controllerDal.QueryByKind(ctx, listener.Kind)
-		if err != nil {
-			models.ResponseError(ctx, http.StatusBadRequest,
-				fmt.Sprintf("No controller found for listener kind: %s", listener.Kind),
-				err.Error())
-			return
-		}
-
-		callbackURL := fmt.Sprintf("http://%s:%s", controller.CallbackIP, controller.CallbackPort)
-		if err := lc.listenerClient.StartListener(listenerID, callbackURL); err != nil {
-			models.ResponseError(ctx, http.StatusInternalServerError,
-				"Failed to start external listener",
-				err.Error())
-			return
-		}
-	}
-	models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("Successfully started listener with ID: %s", listenerID), nil)
+	models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("listener %s started", listenerID), nil)
 }
 
 func (lc *ListenerController) StopListener(ctx *gin.Context) {
@@ -162,37 +111,26 @@ func (lc *ListenerController) StopListener(ctx *gin.Context) {
 		return
 	}
 
-	listener, err := lc.listenerDal.GetListenerById(ctx, listenerID)
-	if err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Error getting listener", err.Error())
+	if err := lc.service.StopListener(ctx.Request.Context(), listenerID); err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "Error stopping listener", err)
+	}
+	models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("Successfully stopped listener with ID: %s", listenerID), nil)
+}
+
+func (lc *ListenerController) TerminateListener(ctx *gin.Context) {
+	listenerID := ctx.Param(models.ParamListenerID)
+	if listenerID == "" {
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid listener ID", "Listener ID is required")
 		return
 	}
 
-	// TODO
-	if listenerService.IsBuiltinListenerKind(listener.Kind) {
-		if err := lc.service.StopListener(ctx, listenerID, make(chan<- error)); err != nil {
-			models.ResponseError(ctx, http.StatusInternalServerError, "Error stopping listener", err.Error())
-		}
-	} else if !listenerService.IsBuiltinListenerKind(listener.Kind) {
-
-		controller, err := lc.controllerDal.QueryByKind(ctx, listener.Kind)
-		if err != nil {
-			models.ResponseError(ctx, http.StatusBadRequest,
-				fmt.Sprintf("No controller found for listener kind: %s", listener.Kind),
-				err.Error())
-			return
-		}
-
-		callbackURL := fmt.Sprintf("http://%s:%s", controller.CallbackIP, controller.CallbackPort)
-		if err := lc.listenerClient.StopListener(listenerID, callbackURL); err != nil {
-			models.ResponseError(ctx, http.StatusInternalServerError,
-				"Failed to stop external listener",
-				err.Error())
-			return
-		}
+	err := lc.service.TerminateListener(ctx, listenerID)
+	if err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "Error deleting listener", err.Error())
+		return
 	}
 
-	models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("Successfully stopped listener with ID: %s", listenerID), nil)
+	models.ResponseSuccess(ctx, http.StatusOK, "Listener deleted successfully", nil)
 }
 
 func (lc *ListenerController) UpdateListener(ctx *gin.Context) {
@@ -216,22 +154,6 @@ func (lc *ListenerController) UpdateListener(ctx *gin.Context) {
 	}
 
 	models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("Successfully updated listener %s", listener.ID), nil)
-}
-
-func (lc *ListenerController) TerminateListener(ctx *gin.Context) {
-	listenerID := ctx.Param(models.ParamListenerID)
-	if listenerID == "" {
-		models.ResponseError(ctx, http.StatusBadRequest, "Invalid listener ID", "Listener ID is required")
-		return
-	}
-
-	err := lc.service.TerminateListener(ctx, listenerID)
-	if err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Error deleting listener", err.Error())
-		return
-	}
-
-	models.ResponseSuccess(ctx, http.StatusOK, "Listener deleted successfully", nil)
 }
 
 func (lc *ListenerController) AutoStart(ctx context.Context) error {

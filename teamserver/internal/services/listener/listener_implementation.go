@@ -31,21 +31,16 @@ func createListenerFromModel(listenerModel models.Listener) (*Listener, error) {
 	listener := Listener{}
 	listener.Listener = listenerModel
 
-	switch listener.Lifecycle {
-	case LifecycleManaged:
-		listener.lifecycleManager = NewManagedLifecycleManager()
-	case LifecycleScheduled:
-		listener.lifecycleManager = NewScheduledLifecycleManager()
-	default:
-		return nil, fmt.Errorf("invalid lifecycle: %s", listener.Lifecycle)
-	}
-
 	// Create the concrete listener implementation
 	listenerImplementation, err := createListenerImplementation(listener.Kind, listener.RawConfig)
 	if err != nil {
 		return nil, err
 	}
 	listener.listener = listenerImplementation
+
+	// Initialize statusUpdates channel
+	// Allow buffered updates
+	listener.statusUpdatesCh = make(chan string, 3)
 
 	// Validate configuration
 	if err := listener.ValidateConfig(); err != nil {
