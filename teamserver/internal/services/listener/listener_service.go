@@ -71,19 +71,23 @@ func (ls *ListenerService) StartListener(ctx context.Context, listenerID string)
 	listener, exists := ls.activeListeners[listenerID]
 	ls.mux.RUnlock()
 
-	if !exists {
+	if exists {
+		if listener.Status == StatusStarting {
+			return fmt.Errorf("listener with ID %s is starting", listenerID)
+		} else if listener.Status == StatusRunning {
+			return fmt.Errorf("listener with ID %s is already running", listenerID)
+		}
+	} else {
 		listenerModel, err := ls.listenerDal.GetListenerById(ctx, listenerID)
 		if err != nil {
 			return fmt.Errorf("listener with ID %s not found: %w", listenerID, err)
 		}
 
-		// Listener needs to be setup once data fields are read from storage
 		listener, err = createListenerFromModel(listenerModel)
 		if err != nil {
 			return fmt.Errorf("failed to create listener from model: %w", err)
 		}
 
-		// Start monitoring this listener's status updates
 		go ls.monitorListenerStatus(listener)
 	}
 
@@ -121,6 +125,12 @@ func (ls *ListenerService) StopListener(ctx context.Context, listenerID string) 
 	ls.mux.RLock()
 	listener, exists := ls.activeListeners[listenerID]
 	ls.mux.RUnlock()
+
+	if listener.Status == StatusStopping {
+		return fmt.Errorf("listener with ID %s is already stopping", listenerID)
+	} else if listener.Status == StatusReady {
+		return fmt.Errorf("listener with ID %s is already stopped", listenerID)
+	}
 
 	if !exists {
 		return fmt.Errorf("trying to stop listener that is not mapped")
