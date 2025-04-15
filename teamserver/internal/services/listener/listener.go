@@ -20,6 +20,10 @@ func (l *Listener) Start(ctx context.Context) error {
 	l.mux.Lock()
 	defer l.mux.Unlock()
 
+	// Initialize channel for the duration of the operation
+	l.statusUpdatesCh = make(chan string, 3)
+	defer close(l.statusUpdatesCh)
+
 	if l.Status != StatusReady {
 		return errors.New("listener is not ready to start")
 	}
@@ -38,6 +42,10 @@ func (l *Listener) Stop(ctx context.Context) error {
 	l.mux.Lock()
 	defer l.mux.Unlock()
 
+	// Initialize channel for the duration of the operation
+	l.statusUpdatesCh = make(chan string, 3)
+	defer close(l.statusUpdatesCh)
+
 	if l.Status != StatusRunning {
 		return errors.New("listener is not running")
 	}
@@ -55,6 +63,10 @@ func (l *Listener) Stop(ctx context.Context) error {
 func (l *Listener) Terminate(ctx context.Context) error {
 	l.mux.Lock()
 	defer l.mux.Unlock()
+
+	// Initialize channel for the duration of the operation
+	l.statusUpdatesCh = make(chan string, 3)
+	defer close(l.statusUpdatesCh)
 
 	l.updateStatus(StatusTerminating)
 	if err := l.listener.Terminate(ctx); err != nil {
