@@ -222,6 +222,7 @@ func (dal *ListenerDAL) GetActiveListeners(ctx context.Context) ([]models.Listen
 
 		for rows.Next() {
 			var listener models.Listener
+			var startedAt, stoppedAt sql.NullTime
 
 			err := rows.Scan(
 				&listener.ID,
@@ -233,14 +234,20 @@ func (dal *ListenerDAL) GetActiveListeners(ctx context.Context) ([]models.Listen
 				&listener.Heartbeat,
 				&listener.CreatedAt,
 				&listener.UpdatedAt,
-				&listener.StartedAt,
-				&listener.StoppedAt,
+				&startedAt,
+				&stoppedAt,
 			)
 			if err != nil {
 				logger.Error(logLevel, logDetailListener, "Failed to scan listener: ", err)
 				return fmt.Errorf("failed to scan listener: %w", err)
 			}
 
+			if startedAt.Valid {
+				listener.StartedAt = startedAt.Time
+			}
+			if stoppedAt.Valid {
+				listener.StoppedAt = stoppedAt.Time
+			}
 			listeners = append(listeners, listener)
 		}
 
@@ -256,6 +263,7 @@ func (dal *ListenerDAL) GetListenerByName(ctx context.Context, name string) (mod
         FROM %s.listeners WHERE name = $1`, dal.schema)
 
 	var listener models.Listener
+	var startedAt, stoppedAt sql.NullTime
 	err := utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		row := stmt.QueryRowContext(ctx, name)
 
@@ -269,14 +277,22 @@ func (dal *ListenerDAL) GetListenerByName(ctx context.Context, name string) (mod
 			&listener.Heartbeat,
 			&listener.CreatedAt,
 			&listener.UpdatedAt,
-			&listener.StartedAt,
-			&listener.StoppedAt,
+			&startedAt,
+			&stoppedAt,
 		)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				logger.Debug(logLevel, logDetailListener, fmt.Sprintf("No listener found with name: %s", name))
 				return nil
 			}
+
+			if startedAt.Valid {
+				listener.StartedAt = startedAt.Time
+			}
+			if stoppedAt.Valid {
+				listener.StoppedAt = stoppedAt.Time
+			}
+
 			logger.Error(logLevel, logDetailListener, "Failed to get listener by name: ", err)
 			return fmt.Errorf("failed to get listener by name: %w", err)
 		}
