@@ -286,15 +286,15 @@ func (dal *ListenerDAL) GetListenerByName(ctx context.Context, name string) (mod
 				return nil
 			}
 
-			if startedAt.Valid {
-				listener.StartedAt = startedAt.Time
-			}
-			if stoppedAt.Valid {
-				listener.StoppedAt = stoppedAt.Time
-			}
-
 			logger.Error(logLevel, logDetailListener, "Failed to get listener by name: ", err)
 			return fmt.Errorf("failed to get listener by name: %w", err)
+		}
+
+		if startedAt.Valid {
+			listener.StartedAt = startedAt.Time
+		}
+		if stoppedAt.Valid {
+			listener.StoppedAt = stoppedAt.Time
 		}
 
 		return nil

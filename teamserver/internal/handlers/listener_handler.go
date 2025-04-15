@@ -78,6 +78,7 @@ func (lc *ListenerController) CreateListener(ctx *gin.Context) {
 	// TODO: external listeners registration
 	if listenerModel.Kind == listenerService.ExternalListenerKind {
 		models.ResponseError(ctx, http.StatusBadRequest, "external listeners should register themselves", nil)
+		return
 	}
 
 	listenerModel.ID = uuid.NewString()
@@ -98,10 +99,10 @@ func (lc *ListenerController) StartListener(ctx *gin.Context) {
 	}
 
 	if err := lc.service.StartListener(ctx.Request.Context(), listenerID); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Error starting listener", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Error starting listener", err.Error())
 		return
 	}
-	models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("listener %s started", listenerID), nil)
+	models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("Successfully started listener with ID: %s", listenerID), nil)
 }
 
 func (lc *ListenerController) StopListener(ctx *gin.Context) {
@@ -112,7 +113,8 @@ func (lc *ListenerController) StopListener(ctx *gin.Context) {
 	}
 
 	if err := lc.service.StopListener(ctx.Request.Context(), listenerID); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Error stopping listener", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Error stopping listener", err.Error())
+		return
 	}
 	models.ResponseSuccess(ctx, http.StatusOK, fmt.Sprintf("Successfully stopped listener with ID: %s", listenerID), nil)
 }

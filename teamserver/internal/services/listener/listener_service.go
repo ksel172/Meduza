@@ -35,7 +35,7 @@ func NewListenerService(listenerDAL dal.IListenerDAL) *ListenerService {
 		stopTimeout:     15,
 		listenerDal:     listenerDAL,
 		activeListeners: make(map[string]*Listener),
-		statusUpdates:   make(chan statusUpdate, 100), // Buffer for status updates
+		statusUpdates:   make(chan statusUpdate, 100),
 	}
 
 	// Start the status update processor
@@ -212,21 +212,38 @@ func (ls *ListenerService) AutoStart(ctx context.Context) error {
 	}
 
 	for _, listener := range listeners {
-		if listener.Status == StatusRunning {
-			// Create instance and add to active listeners map
-			listenerInstance, err := createListenerFromModel(listener)
-			if err != nil {
-				return fmt.Errorf("failed to create listener instance: %w", err)
-			}
+		// Create listener instance first
 
-			ls.mux.Lock()
-			ls.activeListeners[listener.ID] = listenerInstance
-			ls.mux.Unlock()
-			continue
+		listenerInstance, err := createListenerFromModel(listener)
+		if err != nil {
+			return fmt.Errorf("failed to create listener instance: %w", err)
 		}
 
-		if err := ls.StartListener(ctx, listener.ID); err != nil {
-			return fmt.Errorf("failed to start listener: %w", err)
+		// Start monitoring status updates for all listeners
+		go ls.monitorListenerStatus(listenerInstance)
+
+		// Add to active listeners map regardless of status
+		ls.mux.Lock()
+		ls.activeListeners[listener.ID] = listenerInstance
+		ls.mux.Unlock()
+
+		if listener.Status == StatusRunning {
+
+			// Set status as ready, because otherwise listener won't be ready to start
+			// another option could be to clean up the listeners when the server is force shutdown
+			// but what if the server dies. Listeners will cease to work simply because there is no
+			// full-proof feature to get them up and running. We know listeners die on shutdown, so let
+			// us just set as ready.
+			listenerInstance.Status = StatusReady
+
+			if err := ls.startListener(ctx, listenerInstance); err != nil {
+				logger.Error(fmt.Sprintf("Failed to start listener %s during AutoStart: %v", listener.ID, err))
+
+				updates := map[string]any{"status": StatusFailed}
+				if updateErr := ls.listenerDal.UpdateListener(ctx, listener.ID, updates); updateErr != nil {
+					logger.Error(fmt.Sprintf("Failed to update listener status: %v", updateErr))
+				}
+			}
 		}
 	}
 
