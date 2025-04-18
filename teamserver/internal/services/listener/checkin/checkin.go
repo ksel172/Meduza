@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -25,10 +25,12 @@ var (
 	ErrDatabase       = errors.New("database error")
 	ErrInternalServer = errors.New("internal server error")
 	ErrUnauthorized   = errors.New("unauthorized")
+	ErrInvalidData    = errors.New("invalid data")
+	ErrConflict       = errors.New("conflict")
 )
 
 type CheckInController struct {
-	agentDAL dal.AgentDAL
+	agentDAL dal.IAgentDAL
 }
 
 type AuthResponse struct {
@@ -65,7 +67,7 @@ func (cc *CheckInController) Authenticate(agentPublicKey string, authToken strin
 func (cc *CheckInController) HandleTaskRequest(ctx context.Context, c2request models.C2Request, sessionToken string) ([]byte, error) {
 	tasks, err := cc.agentDAL.GetAgentTasks(ctx, c2request.AgentID)
 	if err != nil {
-		log.Printf("Failed to get tasks for agent %s: %v", c2request.AgentID, err)
+		logger.Info(fmt.Sprintf("Failed to get tasks for agent %s: %v", c2request.AgentID, err))
 		return nil, fmt.Errorf("failed to get tasks: %w", ErrDatabase)
 	}
 
@@ -86,7 +88,7 @@ func (cc *CheckInController) HandleTaskRequest(ctx context.Context, c2request mo
 			modulePath := filepath.Join(moduleDirPath, moduleName)
 			mainModuleBytes, err := utils.LoadAssembly(filepath.Join(modulePath, moduleName+".dll"))
 			if err != nil {
-				log.Printf("Failed to load main module: %v", err)
+				logger.Info(fmt.Sprintf("Failed to load main module: %v", err))
 				return nil, fmt.Errorf("failed to load main module: %w", ErrInternalServer)
 			}
 
@@ -94,7 +96,7 @@ func (cc *CheckInController) HandleTaskRequest(ctx context.Context, c2request mo
 			dependencyBytes := make(map[string][]byte)
 			files, err := os.ReadDir(loadingModulePath)
 			if err != nil {
-				log.Printf("Failed to read module directory: %v", err)
+				logger.Info(fmt.Sprintf("Failed to read module directory: %v", err))
 				return nil, fmt.Errorf("failed to read module directory: %w", ErrInternalServer)
 			}
 
@@ -102,7 +104,7 @@ func (cc *CheckInController) HandleTaskRequest(ctx context.Context, c2request mo
 				if file.Name() != moduleName+".dll" && strings.HasSuffix(file.Name(), ".dll") {
 					depBytes, err := utils.LoadAssembly(filepath.Join(loadingModulePath, file.Name()))
 					if err != nil {
-						log.Printf("Failed to load dependency: %v", err)
+						logger.Info(fmt.Sprintf("Failed to load main module: %v", err))
 						return nil, fmt.Errorf("failed to load dependency :%w", ErrInternalServer)
 					}
 					dependencyBytes[file.Name()] = depBytes
@@ -116,7 +118,7 @@ func (cc *CheckInController) HandleTaskRequest(ctx context.Context, c2request mo
 
 			moduleBytesJSON, err := json.Marshal(moduleBytes)
 			if err != nil {
-				log.Printf("Failed to marshal module bytes: %v", err)
+				logger.Info(fmt.Sprintf("Failed to marshal module bytes: %v", err))
 				return nil, fmt.Errorf("failed to marshal module: %w", ErrInternalServer)
 			}
 
@@ -130,14 +132,14 @@ func (cc *CheckInController) HandleTaskRequest(ctx context.Context, c2request mo
 	// Update the agent's last callback time
 	lastCallback := time.Now().Format(time.RFC3339)
 	if err := cc.agentDAL.UpdateAgentLastCallback(ctx, c2request.AgentID, lastCallback); err != nil {
-		log.Printf("Failed to update agent last callback: %v", err)
+		logger.Info(fmt.Sprintf("Failed to update agent last callback: %v", err))
 		return nil, fmt.Errorf("failed to update agent last callback: %w", ErrInternalServer)
 	}
 
 	// Use pendingTasks instead of tasks for the response
 	tasksJSON, err := json.Marshal(pendingTasks)
 	if err != nil {
-		log.Printf("Failed to marshal tasks: %v", err)
+		logger.Info(fmt.Sprintf("Failed to marshal tasks: %v", err))
 		return nil, fmt.Errorf("failed to marshal tasks: %w", ErrInternalServer)
 	}
 
@@ -153,7 +155,7 @@ func (cc *CheckInController) HandleTaskRequest(ctx context.Context, c2request mo
 
 	responseBytes, err := json.Marshal(c2response)
 	if err != nil {
-		log.Printf("Failed to marshal response: %v", err)
+		logger.Info(fmt.Sprintf("Failed to marshal response: %v", err))
 		return nil, fmt.Errorf("failed to marshal response: %w", ErrInternalServer)
 	}
 
@@ -165,62 +167,49 @@ func (cc *CheckInController) HandleTaskRequest(ctx context.Context, c2request mo
 	return encryptedC2Response, nil
 }
 
-// func (cc *CheckInController) HandleResponseRequest(ctx *gin.Context, c2request models.C2Request) {
-// 	/*
-// 		aesKey, exists := KeyRegistry.getKey(sessionToken)
-// 		if !exists {
-// 			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid session token"})
-// 			return
-// 		}
-// 	*/
-// 	var agentTask models.AgentTask
-// 	if err := json.Unmarshal([]byte(c2request.Message), &agentTask); err != nil {
-// 		log.Printffmt.Sprintf("Failed to unmarshal agent message: %v", err))
-// 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
-// 		return
-// 	}
+func (cc *CheckInController) HandleResponseRequest(ctx context.Context, c2request models.C2Request) error {
+	var agentTask models.AgentTask
+	if err := json.Unmarshal([]byte(c2request.Message), &agentTask); err != nil {
+		logger.Info(fmt.Sprintf("Failed to unmarshal agent message: %v", err))
+		return ErrInvalidData
+	}
 
-// 	err := cc.agentDAL.UpdateAgentTask(ctx.Request.Context(), agentTask)
-// 	if err != nil {
-// 		log.Printffmt.Sprintf("Failed to update agent task: %v", err))
-// 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
+	err := cc.agentDAL.UpdateAgentTask(ctx, agentTask)
+	if err != nil {
+		logger.Info(fmt.Sprintf("Failed to update agent task: %v", err))
+		return ErrInternalServer
+	}
 
-// 	log.Printf("Successfully updated agent task: %s", agentTask.TaskID))
-// 	ctx.JSON(http.StatusOK, "successfully updated")
-// }
+	logger.Info(fmt.Sprintf("Successfully updated agent task: %s", agentTask.TaskID))
+	return nil
+}
 
-// func (cc *CheckInController) HandleRegisterRequest(ctx *gin.Context, c2request models.C2Request) {
-// 	log.Printf("Received register request from agent: %s", c2request.AgentID))
+func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2request models.C2Request) error {
+	logger.Info(fmt.Sprintf("Received register request from agent: %s", c2request.AgentID))
 
-// 	var agentInfo models.AgentInfo
-// 	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
-// 		log.Printffmt.Sprintf("Failed to parse agent info from decrypted message: %v", err))
-// 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent info"})
-// 		return
-// 	}
+	var agentInfo models.AgentInfo
+	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
+		logger.Info(fmt.Sprintf("Failed to parse agent info from decrypted message: %v", err))
+		return ErrInvalidData
+	}
 
-// 	if _, err := cc.agentDAL.GetAgent(ctx.Request.Context(), agentInfo.AgentID); err == nil {
-// 		log.Printf"Agent already exists:", c2request.AgentID)
-// 		ctx.JSON(http.StatusConflict, gin.H{"error": "agent already exists"})
-// 		return
-// 	}
+	if _, err := cc.agentDAL.GetAgent(ctx, agentInfo.AgentID); err == nil {
+		logger.Info("Agent already exists:", c2request.AgentID)
+		return ErrConflict
+	}
 
-// 	newAgent := c2request.IntoNewAgent()
-// 	newAgent.Name = utils.RandomString(6)
+	newAgent := c2request.IntoNewAgent()
+	newAgent.Name = utils.RandomString(6)
 
-// 	if err := cc.checkInDAL.CreateAgent(ctx.Request.Context(), newAgent); err != nil {
-// 		log.Printffmt.Sprintf("Failed to create agent: %v", err))
-// 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
+	if err := cc.agentDAL.RegisterAgent(ctx, newAgent); err != nil {
+		logger.Info(fmt.Sprintf("Failed to create agent: %v", err))
+		return ErrInternalServer
+	}
 
-// 	if err := cc.agentDAL.CreateAgentInfo(ctx.Request.Context(), agentInfo); err != nil {
-// 		log.Printffmt.Sprintf("Failed to create agent info: %v", err))
-// 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
+	if err := cc.agentDAL.CreateAgentInfo(ctx, agentInfo); err != nil {
+		logger.Info(fmt.Sprintf("Failed to create agent info: %v", err))
+		return ErrInternalServer
+	}
 
-// 	ctx.JSON(http.StatusCreated, gin.H{})
-// }
+	return nil
+}

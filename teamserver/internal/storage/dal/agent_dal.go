@@ -14,6 +14,7 @@ import (
 type IAgentDAL interface {
 	GetAgent(ctx context.Context, agentID string) (models.Agent, error)
 	GetAgents(ctx context.Context) ([]models.Agent, error)
+	RegisterAgent(ctx context.Context, agent models.Agent) error
 	UpdateAgent(ctx context.Context, agent models.UpdateAgentRequest) (models.Agent, error)
 	DeleteAgent(ctx context.Context, agentID string) error
 	CreateAgentTask(ctx context.Context, task models.AgentTask) error
@@ -101,6 +102,24 @@ func (dal *AgentDAL) GetAgents(ctx context.Context) ([]models.Agent, error) {
 		}
 
 		return agents, nil
+	})
+}
+
+// Used in checkin by agents registering themselves, not by the user in the client
+func (dal *AgentDAL) RegisterAgent(ctx context.Context, agent models.Agent) error {
+
+	query := fmt.Sprintf(`
+		INSERT INTO %s.agents (id, config_id, name, note, status, first_callback, last_callback, modified_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
+
+	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		_, err := stmt.ExecContext(ctx, agent.AgentID, agent.ConfigID, agent.Name, agent.Note, agent.Status,
+			agent.FirstCallback, agent.LastCallback, agent.ModifiedAt)
+		if err != nil {
+			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to create agent: %v", err))
+			return fmt.Errorf("failed to create agent: %w", err)
+		}
+		return nil
 	})
 }
 

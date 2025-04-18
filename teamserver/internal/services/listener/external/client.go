@@ -13,15 +13,15 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
-// ListenerClient handles communication with external listener implementations
-type ListenerClient struct {
+// ExternalClient handles communication with external listeners
+type ExternalClient struct {
 	apiKey      string
 	httpClient  *http.Client
 	listenerDal dal.IListenerDAL
 }
 
-func NewListenerClient(apiKey string, listenerDal dal.IListenerDAL) *ListenerClient {
-	return &ListenerClient{
+func NewExternalClient(apiKey string, listenerDal dal.IListenerDAL) *ExternalClient {
+	return &ExternalClient{
 		apiKey:      apiKey,
 		httpClient:  &http.Client{Timeout: 10 * time.Second},
 		listenerDal: listenerDal,
@@ -29,7 +29,7 @@ func NewListenerClient(apiKey string, listenerDal dal.IListenerDAL) *ListenerCli
 }
 
 // AddListener contacts the external listener controller to add a new listener
-func (lc *ListenerClient) AddListener(listener models.Listener, url string) error {
+func (lc *ExternalClient) AddListener(listener models.Listener, url string) error {
 	data := map[string]string{
 		"id":     listener.ID,
 		"config": string(listener.RawConfig),
@@ -38,8 +38,7 @@ func (lc *ListenerClient) AddListener(listener models.Listener, url string) erro
 	return lc.sendRequest(http.MethodPost, fmt.Sprintf("%s/listeners", url), data)
 }
 
-// UpdateListener contacts the external listener controller to update a listener
-func (lc *ListenerClient) UpdateListener(listenerID string, config string, url string) error {
+func (lc *ExternalClient) UpdateListener(listenerID string, config string, url string) error {
 	data := map[string]string{
 		"id":     listenerID,
 		"config": config,
@@ -48,8 +47,7 @@ func (lc *ListenerClient) UpdateListener(listenerID string, config string, url s
 	return lc.sendRequest(http.MethodPut, fmt.Sprintf("%s/listeners/%s", url, listenerID), data)
 }
 
-// StartListener contacts the external listener controller to start a listener
-func (lc *ListenerClient) StartListener(listenerID string, url string) error {
+func (lc *ExternalClient) StartListener(listenerID string, url string) error {
 	data := map[string]string{
 		"id": listenerID,
 	}
@@ -57,8 +55,7 @@ func (lc *ListenerClient) StartListener(listenerID string, url string) error {
 	return lc.sendRequest(http.MethodPost, fmt.Sprintf("%s/listeners/%s/start", url, listenerID), data)
 }
 
-// StopListener contacts the external listener controller to stop a listener
-func (lc *ListenerClient) StopListener(listenerID string, url string) error {
+func (lc *ExternalClient) StopListener(listenerID string, url string) error {
 	data := map[string]string{
 		"id": listenerID,
 	}
@@ -66,8 +63,7 @@ func (lc *ListenerClient) StopListener(listenerID string, url string) error {
 	return lc.sendRequest(http.MethodPost, fmt.Sprintf("%s/listeners/%s/stop", url, listenerID), data)
 }
 
-// TerminateListener contacts the external listener controller to terminate listener
-func (lc *ListenerClient) TerminateListener(listenerID string, url string) error {
+func (lc *ExternalClient) TerminateListener(listenerID string, url string) error {
 	data := map[string]string{
 		"id": listenerID,
 	}
@@ -75,8 +71,7 @@ func (lc *ListenerClient) TerminateListener(listenerID string, url string) error
 	return lc.sendRequest(http.MethodDelete, fmt.Sprintf("%s/listeners/%s", url, listenerID), data)
 }
 
-// Helper function to send requests
-func (lc *ListenerClient) sendRequest(method, url string, data interface{}) error {
+func (lc *ExternalClient) sendRequest(method, url string, data interface{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -121,8 +116,7 @@ func (lc *ListenerClient) sendRequest(method, url string, data interface{}) erro
 	return nil
 }
 
-// GetListenerStatus queries the external controller for the current status of a listener
-func (lc *ListenerClient) GetListenerStatus(listenerID string, url string) (string, error) {
+func (lc *ExternalClient) GetListenerStatus(listenerID string, url string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

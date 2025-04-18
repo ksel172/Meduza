@@ -44,7 +44,6 @@ func NewContainer() (*Container, error) {
 	userDal := dal.NewUsersDAL(pgsql, schema)
 	teamDal := dal.NewTeamDAL(pgsql, schema)
 	agentDal := dal.NewAgentDAL(pgsql, schema)
-	// checkInDal := dal.NewCheckInDAL(pgsql, schema)
 	listenerDal := dal.NewListenerDAL(pgsql, schema)
 	payloadDal := dal.NewPayloadDAL(pgsql, schema)
 	moduleDal := dal.NewModuleDAL(pgsql, schema)

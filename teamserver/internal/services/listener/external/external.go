@@ -1,6 +1,8 @@
 package external
 
-import "sync"
+import (
+	"context"
+)
 
 // Create external listener type
 // It should have:
@@ -9,8 +11,31 @@ import "sync"
 // 3. Tracking information of how to reach the listener, IP and Port
 
 type ExternalListener struct {
-	Config any
+	// host   string
+	// port   int
+	client *ExternalClient
+}
 
-	isRunning bool
-	mu        sync.RWMutex
+func NewExternalListener(client *ExternalClient) (*ExternalListener, error) {
+	return &ExternalListener{
+		client: client,
+	}, nil
+}
+
+func (l *ExternalListener) Start(context.Context) error {
+	// if err := l.client.start,
+
+	return nil
+}
+
+func (l *ExternalListener) Stop(context.Context) error {
+	return nil
+}
+
+func (l *ExternalListener) Terminate(context.Context) error {
+	return nil
+}
+
+func (l *ExternalListener) UpdateConfig(context.Context) error {
+	return nil
 }
