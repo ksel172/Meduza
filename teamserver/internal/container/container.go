@@ -26,9 +26,10 @@ type Container struct {
 	ListenerController *handlers.ListenerController
 	// ListenerService       *services.ListenersService // for autostart
 	// ListenerDal           *dal.ListenerDAL
-	PayloadController     *handlers.PayloadHandler
-	ModuleController      *handlers.ModuleController
-	CertificateController *handlers.CertificateHandler
+	PayloadController          *handlers.PayloadHandler
+	ModuleController           *handlers.ModuleController
+	CertificateController      *handlers.CertificateHandler
+	ExternalListenerController *handlers.ExternalServer
 }
 
 func NewContainer() (*Container, error) {
@@ -48,7 +49,7 @@ func NewContainer() (*Container, error) {
 	payloadDal := dal.NewPayloadDAL(pgsql, schema)
 	moduleDal := dal.NewModuleDAL(pgsql, schema)
 	certificateDal := dal.NewCertificateDAL(pgsql, schema)
-
+	checkinController := checkin.NewCheckInController(agentDal)
 	// Initialize services
 	redisService := repos.NewRedisService()
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
@@ -77,5 +78,6 @@ func NewContainer() (*Container, error) {
 		// ListenerContainer: ListenerContainer{
 		// 	CheckInController: checkInController,
 		// },
+		ExternalListenerController: handlers.NewExternalServer(checkinController),
 	}, nil
 }

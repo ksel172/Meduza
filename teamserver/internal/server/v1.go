@@ -80,6 +80,19 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 		uiListenersGroup.POST(fmt.Sprintf("/:%s/stop", models.ParamListenerID), s.dependencies.ListenerController.StopListener)
 	}
 }
+
+// API to handle external listener requests
+func (s *Server) ListenersAPIV1(group *gin.RouterGroup) {
+	externalListenersGroup := group.Group("/")
+	{
+		externalListenersGroup.POST(fmt.Sprintf("/"), s.dependencies.ExternalListenerController.RegisterListener)
+		externalListenersGroup.POST(fmt.Sprintf("/authenticate"), s.dependencies.ExternalListenerController.HandleAuthentication)
+		externalListenersGroup.POST(fmt.Sprintf("/task"), s.dependencies.ExternalListenerController.HandleTaskRequest)
+		externalListenersGroup.POST(fmt.Sprintf("/response"), s.dependencies.ExternalListenerController.HandleResponseSubmission)
+		externalListenersGroup.POST(fmt.Sprintf("/register"), s.dependencies.ExternalListenerController.HandleAgentRegistration)
+	}
+}
+
 func (s *Server) PayloadV1(group *gin.RouterGroup) {
 
 	payloadsGroup := group.Group("/payloads")
@@ -138,8 +151,4 @@ func (s *Server) CertificatesV1(group *gin.RouterGroup) {
 		certsGroup.GET("", s.dependencies.CertificateController.GetCertificates)
 		certsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamCertificateID), s.AdminMiddleware(), s.dependencies.CertificateController.DeleteCertificate)
 	}
-}
-
-func (s *Server) ListenersAPIV1(group *gin.RouterGroup) {
-
 }
