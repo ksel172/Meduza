@@ -38,13 +38,13 @@ func NewListenerDAL(db *sql.DB, schema string) IListenerDAL {
 
 func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *models.Listener) error {
 	query := fmt.Sprintf(`
-        INSERT INTO %s.listeners (kind, name, description, status, heartbeat, config) 
+        INSERT INTO %s.listeners (kind, is_external, name, description, status, heartbeat, config) 
         VALUES ($1, $2, $3, $4, $5, $6)`, dal.schema)
 
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		logger.Debug(logLevel, logDetailListener, fmt.Sprintf("Creating listener: %s", listener.ID))
 
-		_, err := stmt.ExecContext(ctx, listener.Kind, listener.Name, listener.Description, listener.Status, listener.Heartbeat, listener.RawConfig)
+		_, err := stmt.ExecContext(ctx, listener.Kind, listener.IsExternal, listener.Name, listener.Description, listener.Status, listener.Heartbeat, listener.RawConfig)
 		if err != nil {
 			logger.Error(logLevel, logDetailListener, "Failed to create listener: ", err)
 			return fmt.Errorf("failed to create listener: %w", err)
@@ -55,7 +55,7 @@ func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *models.Lis
 
 func (dal *ListenerDAL) GetListenerById(ctx context.Context, listenerID string) (models.Listener, error) {
 	query := fmt.Sprintf(`
-        SELECT id, kind, name, description, status, config, heartbeat, created_at, updated_at, started_at, stopped_at 
+        SELECT id, kind, is_external, name, description, status, config, heartbeat, created_at, updated_at, started_at, stopped_at 
         FROM %s.listeners WHERE id = $1`, dal.schema)
 
 	var listener models.Listener
@@ -67,6 +67,7 @@ func (dal *ListenerDAL) GetListenerById(ctx context.Context, listenerID string) 
 		err := row.Scan(
 			&listener.ID,
 			&listener.Kind,
+			&listener.IsExternal,
 			&listener.Name,
 			&listener.Description,
 			&listener.Status,
@@ -97,7 +98,7 @@ func (dal *ListenerDAL) GetListenerById(ctx context.Context, listenerID string) 
 
 func (dal *ListenerDAL) GetAllListeners(ctx context.Context) ([]models.Listener, error) {
 	query := fmt.Sprintf(`
-        SELECT id, kind, name, description, status, config, heartbeat, created_at, updated_at, started_at, stopped_at 
+        SELECT id, kind, is_external, name, description, status, config, heartbeat, created_at, updated_at, started_at, stopped_at 
         FROM %s.listeners`, dal.schema)
 
 	var listeners []models.Listener
@@ -116,6 +117,7 @@ func (dal *ListenerDAL) GetAllListeners(ctx context.Context) ([]models.Listener,
 			err := rows.Scan(
 				&listener.ID,
 				&listener.Kind,
+				&listener.IsExternal,
 				&listener.Name,
 				&listener.Description,
 				&listener.Status,
@@ -208,7 +210,7 @@ func (dal *ListenerDAL) UpdateListener(ctx context.Context, listenerID string, u
 
 func (dal *ListenerDAL) GetActiveListeners(ctx context.Context) ([]models.Listener, error) {
 	query := fmt.Sprintf(`
-        SELECT id, kind, name, description, status, config, heartbeat, created_at, updated_at, started_at, stopped_at 
+        SELECT id, kind, is_external, name, description, status, config, heartbeat, created_at, updated_at, started_at, stopped_at 
         FROM %s.listeners WHERE status = 'running'`, dal.schema)
 
 	var listeners []models.Listener
@@ -227,6 +229,7 @@ func (dal *ListenerDAL) GetActiveListeners(ctx context.Context) ([]models.Listen
 			err := rows.Scan(
 				&listener.ID,
 				&listener.Kind,
+				&listener.IsExternal,
 				&listener.Name,
 				&listener.Description,
 				&listener.Status,
@@ -259,7 +262,7 @@ func (dal *ListenerDAL) GetActiveListeners(ctx context.Context) ([]models.Listen
 
 func (dal *ListenerDAL) GetListenerByName(ctx context.Context, name string) (models.Listener, error) {
 	query := fmt.Sprintf(`
-        SELECT id, kind, name, description, status, config, heartbeat, created_at, updated_at, started_at, stopped_at 
+        SELECT id, kind, is_external, name, description, status, config, heartbeat, created_at, updated_at, started_at, stopped_at 
         FROM %s.listeners WHERE name = $1`, dal.schema)
 
 	var listener models.Listener
@@ -270,6 +273,7 @@ func (dal *ListenerDAL) GetListenerByName(ctx context.Context, name string) (mod
 		err := row.Scan(
 			&listener.ID,
 			&listener.Kind,
+			&listener.IsExternal,
 			&listener.Name,
 			&listener.Description,
 			&listener.Status,
