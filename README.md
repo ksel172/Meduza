@@ -1,6 +1,13 @@
 # Meduza
 
-Command and Control Framework
+Meduza is a modular, collaborative C2 framework written in Go and Docker. The [Meduza Framework](https://github.com/Meduza-Framework) also features a client written in React and an agent written in C#.
+
+## Features
+W.I.P
+
+## Quick Start
+
+A detailed guide on installation, configuration and usage as well as the project's architecture and development information can be found in the official [Meduza Documentation](https://meduza-framework.github.io/meduza-documentation/)
 
 ## Development
 
@@ -54,20 +61,7 @@ JWT_SECRET=your_generated_secret
 
 WIP:
 Before creating a listener, an array of ports that will be opened in the docker container of the teamserver should be specified. 
-If we are planning to spawn listeners on ports from 8000 to 8010 we can go into the `docker-compose.yml` and add the following line:
-```shell
-  ...
-  teamserver:
-    container_name: ${TEAMSERVER_HOSTNAME}
-    build:
-      context: teamserver
-      dockerfile: docker/Dockerfile
-    ports:
-      - "${TEAMSERVER_PORT}:${TEAMSERVER_PORT}"
-      - "${DLV_PORT:-2345}:${DLV_PORT:-2345}"
-      - "8000-8010:8000-8010" // Individual ports can be specified as well with "<some_port>:<some_port>"
-    ...
-```
+That can be done in the `.env` file using the `LISTENER_PORT_RANGE_START` and `LISTENER_PORT_RANGE_END` variables.
 
 - To start a listener, a `POST` request should be sent to `http://<server_ip>:<server_port>/api/v1/listeners` with the following body:
 ```shell
