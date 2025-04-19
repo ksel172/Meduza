@@ -39,7 +39,7 @@ func NewListenerDAL(db *sql.DB, schema string) IListenerDAL {
 func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *models.Listener) error {
 	query := fmt.Sprintf(`
         INSERT INTO %s.listeners (kind, is_external, name, description, status, heartbeat, config) 
-        VALUES ($1, $2, $3, $4, $5, $6)`, dal.schema)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`, dal.schema)
 
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		logger.Debug(logLevel, logDetailListener, fmt.Sprintf("Creating listener: %s", listener.ID))
