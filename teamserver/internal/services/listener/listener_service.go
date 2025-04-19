@@ -71,13 +71,14 @@ func (ls *ListenerService) StartListener(ctx context.Context, listenerID string)
 	listener, exists := ls.activeListeners[listenerID]
 	ls.mux.RUnlock()
 
-	if exists {
-		if listener.Status == StatusStarting {
-			return fmt.Errorf("listener with ID %s is starting", listenerID)
-		} else if listener.Status == StatusRunning {
-			return fmt.Errorf("listener with ID %s is already running", listenerID)
-		}
-	} else {
+	// if exists {
+	// if listener.Status == StatusStarting {
+	// 	return fmt.Errorf("listener with ID %s is starting", listenerID)
+	// } else if listener.Status == StatusRunning {
+	// 	return fmt.Errorf("listener with ID %s is already running", listenerID)
+	// }
+	// } else {
+	if !exists {
 		listenerModel, err := ls.listenerDal.GetListenerById(ctx, listenerID)
 		if err != nil {
 			return fmt.Errorf("listener with ID %s not found: %w", listenerID, err)
@@ -91,7 +92,12 @@ func (ls *ListenerService) StartListener(ctx context.Context, listenerID string)
 		go ls.monitorListenerStatus(listener)
 	}
 
-	return ls.startListener(ctx, listener)
+	if listener.IsExternal {
+		// If external, handle through the external listener package
+		return nil
+	} else {
+		return ls.startListener(ctx, listener)
+	}
 }
 
 func (ls *ListenerService) startListener(ctx context.Context, listener *Listener) error {
@@ -126,17 +132,22 @@ func (ls *ListenerService) StopListener(ctx context.Context, listenerID string) 
 	listener, exists := ls.activeListeners[listenerID]
 	ls.mux.RUnlock()
 
-	if listener.Status == StatusStopping {
-		return fmt.Errorf("listener with ID %s is already stopping", listenerID)
-	} else if listener.Status == StatusReady {
-		return fmt.Errorf("listener with ID %s is already stopped", listenerID)
-	}
+	// if listener.Status == StatusStopping {
+	// 	return fmt.Errorf("listener with ID %s is already stopping", listenerID)
+	// } else if listener.Status == StatusReady {
+	// 	return fmt.Errorf("listener with ID %s is already stopped", listenerID)
+	// }
 
 	if !exists {
 		return fmt.Errorf("trying to stop listener that is not mapped")
 	}
 
-	return ls.stopListener(ctx, listener)
+	if listener.IsExternal {
+		// If external, handle through the external listener package
+		return nil
+	} else {
+		return ls.stopListener(ctx, listener)
+	}
 }
 
 func (ls *ListenerService) stopListener(ctx context.Context, listener *Listener) error {
@@ -167,7 +178,12 @@ func (ls *ListenerService) TerminateListener(ctx context.Context, listenerID str
 		return fmt.Errorf("trying to terminate listener that is not mapped")
 	}
 
-	return ls.terminateListener(ctx, listener)
+	if listener.IsExternal {
+		// If external, handle through the external listener package
+		return nil
+	} else {
+		return ls.terminateListener(ctx, listener)
+	}
 }
 
 func (ls *ListenerService) terminateListener(ctx context.Context, listener *Listener) error {
@@ -245,13 +261,16 @@ func (ls *ListenerService) AutoStart(ctx context.Context) error {
 			// full-proof feature to get them up and running. We know listeners die on shutdown, so let
 			// us just set as ready.
 			listenerInstance.Status = StatusReady
+			if listener.IsExternal {
+				// If external, handle through the external listener package
+			} else {
+				if err := ls.startListener(ctx, listenerInstance); err != nil {
+					logger.Error(fmt.Sprintf("Failed to start listener %s during AutoStart: %v", listener.ID, err))
 
-			if err := ls.startListener(ctx, listenerInstance); err != nil {
-				logger.Error(fmt.Sprintf("Failed to start listener %s during AutoStart: %v", listener.ID, err))
-
-				updates := map[string]any{"status": StatusFailed}
-				if updateErr := ls.listenerDal.UpdateListener(ctx, listener.ID, updates); updateErr != nil {
-					logger.Error(fmt.Sprintf("Failed to update listener status: %v", updateErr))
+					updates := map[string]any{"status": StatusFailed}
+					if updateErr := ls.listenerDal.UpdateListener(ctx, listener.ID, updates); updateErr != nil {
+						logger.Error(fmt.Sprintf("Failed to update listener status: %v", updateErr))
+					}
 				}
 			}
 		}

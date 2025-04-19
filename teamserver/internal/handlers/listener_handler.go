@@ -76,7 +76,14 @@ func (lc *ListenerController) CreateListener(ctx *gin.Context) {
 	}
 
 	// TODO: external listeners registration
-	if listenerModel.Kind == listenerService.ExternalListenerKind {
+
+	// Perhaps we will need to look into the registration process. The fact that it is created from
+	// the handler does not mean that it isn't external. CreateListener only creates the config for the
+	// listener. If external listeners are registered this is still relevant.
+
+	// Either we use a different API when handling external listeners (since we need to fill params
+	// dynamically anyways) or we use some other way to seperate concerns.
+	if listenerModel.IsExternal {
 		models.ResponseError(ctx, http.StatusBadRequest, "external listeners should register themselves", nil)
 		return
 	}
