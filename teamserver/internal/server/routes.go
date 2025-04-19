@@ -11,9 +11,14 @@ func (s *Server) RegisterRoutes() {
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 	}))
 
+	// Client API
 	apiGroup := s.engine.Group("/api")
 	/* 	apiGroup.Use(s.HandleCors()) */
 	v1Group := apiGroup.Group("/v1")
+
+	// Listener API
+	listenersAPIGroup := s.engine.Group("/listener")
+	listenersV1Group := listenersAPIGroup.Group("/v1")
 
 	s.AuthV1(v1Group)
 	s.UsersV1(v1Group)
@@ -24,4 +29,6 @@ func (s *Server) RegisterRoutes() {
 	s.ModuleV1(v1Group)
 	s.TeamsV1(v1Group)
 	s.CertificatesV1(v1Group)
+
+	s.ListenersAPIV1(listenersV1Group)
 }

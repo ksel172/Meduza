@@ -22,20 +22,22 @@ func NewExternalListener(client *ExternalClient) (*ExternalListener, error) {
 	}, nil
 }
 
-func (l *ExternalListener) Start(context.Context) error {
-	// if err := l.client.start,
-
+func (l *ExternalListener) Start(ctx context.Context) error {
 	return nil
 }
 
-func (l *ExternalListener) Stop(context.Context) error {
+func (l *ExternalListener) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (l *ExternalListener) Terminate(context.Context) error {
+func (l *ExternalListener) Terminate(ctx context.Context) error {
 	return nil
 }
 
-func (l *ExternalListener) UpdateConfig(context.Context) error {
+func (l *ExternalListener) UpdateConfig(ctx context.Context) error {
+	return nil
+}
+
+func (l *ExternalListener) Validate() error {
 	return nil
 }

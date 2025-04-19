@@ -13,10 +13,8 @@ import (
 )
 
 type ListenerController struct {
-	service *listenerService.ListenerService
-	// listenerClient *external_listener.ListenerClient
+	service     *listenerService.ListenerService
 	listenerDal dal.IListenerDAL
-	// controllerDal  dal.IControllerDal
 }
 
 func NewListenersHandler(service *listenerService.ListenerService, listenerDAL dal.IListenerDAL) *ListenerController {
@@ -83,7 +81,7 @@ func (lc *ListenerController) CreateListener(ctx *gin.Context) {
 
 	// Either we use a different API when handling external listeners (since we need to fill params
 	// dynamically anyways) or we use some other way to seperate concerns.
-	if listenerModel.IsExternal {
+	if listenerModel.External {
 		models.ResponseError(ctx, http.StatusBadRequest, "external listeners should register themselves", nil)
 		return
 	}

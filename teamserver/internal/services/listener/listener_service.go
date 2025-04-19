@@ -92,12 +92,7 @@ func (ls *ListenerService) StartListener(ctx context.Context, listenerID string)
 		go ls.monitorListenerStatus(listener)
 	}
 
-	if listener.IsExternal {
-		// If external, handle through the external listener package
-		return nil
-	} else {
-		return ls.startListener(ctx, listener)
-	}
+	return ls.startListener(ctx, listener)
 }
 
 func (ls *ListenerService) startListener(ctx context.Context, listener *Listener) error {
@@ -142,12 +137,7 @@ func (ls *ListenerService) StopListener(ctx context.Context, listenerID string) 
 		return fmt.Errorf("trying to stop listener that is not mapped")
 	}
 
-	if listener.IsExternal {
-		// If external, handle through the external listener package
-		return nil
-	} else {
-		return ls.stopListener(ctx, listener)
-	}
+	return ls.stopListener(ctx, listener)
 }
 
 func (ls *ListenerService) stopListener(ctx context.Context, listener *Listener) error {
@@ -178,12 +168,7 @@ func (ls *ListenerService) TerminateListener(ctx context.Context, listenerID str
 		return fmt.Errorf("trying to terminate listener that is not mapped")
 	}
 
-	if listener.IsExternal {
-		// If external, handle through the external listener package
-		return nil
-	} else {
-		return ls.terminateListener(ctx, listener)
-	}
+	return ls.terminateListener(ctx, listener)
 }
 
 func (ls *ListenerService) terminateListener(ctx context.Context, listener *Listener) error {
@@ -261,16 +246,12 @@ func (ls *ListenerService) AutoStart(ctx context.Context) error {
 			// full-proof feature to get them up and running. We know listeners die on shutdown, so let
 			// us just set as ready.
 			listenerInstance.Status = StatusReady
-			if listener.IsExternal {
-				// If external, handle through the external listener package
-			} else {
-				if err := ls.startListener(ctx, listenerInstance); err != nil {
-					logger.Error(fmt.Sprintf("Failed to start listener %s during AutoStart: %v", listener.ID, err))
+			if err := ls.startListener(ctx, listenerInstance); err != nil {
+				logger.Error(fmt.Sprintf("Failed to start listener %s during AutoStart: %v", listener.ID, err))
 
-					updates := map[string]any{"status": StatusFailed}
-					if updateErr := ls.listenerDal.UpdateListener(ctx, listener.ID, updates); updateErr != nil {
-						logger.Error(fmt.Sprintf("Failed to update listener status: %v", updateErr))
-					}
+				updates := map[string]any{"status": StatusFailed}
+				if updateErr := ls.listenerDal.UpdateListener(ctx, listener.ID, updates); updateErr != nil {
+					logger.Error(fmt.Sprintf("Failed to update listener status: %v", updateErr))
 				}
 			}
 		}

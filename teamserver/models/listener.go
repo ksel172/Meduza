@@ -12,10 +12,14 @@ const ParamListenerID string = "listener_id"
 type Listener struct {
 	ID          string `json:"id"`
 	Kind        string `json:"kind" validate:"required"` // http, tcp, smb, custom, etc
-	IsExternal  bool   `json:"is_external"`              // true if the listener is external, false if it is local
 	Status      string `json:"status"`                   // running, stopped etc
 	Name        string `json:"name"`
 	Description string `json:"description"`
+
+	// External only fields
+	External bool   `json:"external"` // true if the listener is external, false if it is local
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
 
 	// eventually add tags, tags can be created and are stored in another table
 	// reference from tags table, many to many relationship

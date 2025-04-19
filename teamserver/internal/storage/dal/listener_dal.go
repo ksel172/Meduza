@@ -44,7 +44,7 @@ func (dal *ListenerDAL) CreateListener(ctx context.Context, listener *models.Lis
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		logger.Debug(logLevel, logDetailListener, fmt.Sprintf("Creating listener: %s", listener.ID))
 
-		_, err := stmt.ExecContext(ctx, listener.Kind, listener.IsExternal, listener.Name, listener.Description, listener.Status, listener.Heartbeat, listener.RawConfig)
+		_, err := stmt.ExecContext(ctx, listener.Kind, listener.External, listener.Name, listener.Description, listener.Status, listener.Heartbeat, listener.RawConfig)
 		if err != nil {
 			logger.Error(logLevel, logDetailListener, "Failed to create listener: ", err)
 			return fmt.Errorf("failed to create listener: %w", err)
@@ -67,7 +67,7 @@ func (dal *ListenerDAL) GetListenerById(ctx context.Context, listenerID string) 
 		err := row.Scan(
 			&listener.ID,
 			&listener.Kind,
-			&listener.IsExternal,
+			&listener.External,
 			&listener.Name,
 			&listener.Description,
 			&listener.Status,
@@ -117,7 +117,7 @@ func (dal *ListenerDAL) GetAllListeners(ctx context.Context) ([]models.Listener,
 			err := rows.Scan(
 				&listener.ID,
 				&listener.Kind,
-				&listener.IsExternal,
+				&listener.External,
 				&listener.Name,
 				&listener.Description,
 				&listener.Status,
@@ -229,7 +229,7 @@ func (dal *ListenerDAL) GetActiveListeners(ctx context.Context) ([]models.Listen
 			err := rows.Scan(
 				&listener.ID,
 				&listener.Kind,
-				&listener.IsExternal,
+				&listener.External,
 				&listener.Name,
 				&listener.Description,
 				&listener.Status,
@@ -273,7 +273,7 @@ func (dal *ListenerDAL) GetListenerByName(ctx context.Context, name string) (mod
 		err := row.Scan(
 			&listener.ID,
 			&listener.Kind,
-			&listener.IsExternal,
+			&listener.External,
 			&listener.Name,
 			&listener.Description,
 			&listener.Status,

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
+	"github.com/ksel172/Meduza/teamserver/internal/services/listener/external"
 	http_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/http"
 	smb_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/smb"
 	tcp_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/tcp"
@@ -72,8 +73,8 @@ func createListenerImplementation(kind string, config json.RawMessage) (Listener
 	case SMBListenerKind:
 		return &smb_listener.SMBListener{}, nil
 
-	// case ExternalListenerKind:
-	// 	return &external.ExternalListener{}, nil
+	case ExternalListenerKind:
+		return &external.ExternalListener{}, nil
 
 	default:
 		return nil, fmt.Errorf("unsupported listener kind: %s", kind)
