@@ -53,7 +53,6 @@ func NewContainer() (*Container, error) {
 	redisService := repos.NewRedisService()
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
 	listenerService := listenerService.NewListenerService(listenerDal)
-
 	//Type assertion error fix
 	// autoStart, ok := listenerDal.(*dal.ListenerDAL)
 	// if !ok {
@@ -77,6 +76,6 @@ func NewContainer() (*Container, error) {
 		// ListenerContainer: ListenerContainer{
 		// 	CheckInController: checkInController,
 		// },
-		ExternalListenerController: handlers.NewExternalServer(),
+		ExternalListenerController: handlers.NewExternalServer(agentDal),
 	}, nil
 }

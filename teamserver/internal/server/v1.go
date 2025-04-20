@@ -86,10 +86,11 @@ func (s *Server) ListenersAPIV1(group *gin.RouterGroup) {
 	externalListenersGroup := group.Group("/")
 	{
 		externalListenersGroup.POST(fmt.Sprintf("/"), s.dependencies.ExternalListenerController.RegisterListener)
-		externalListenersGroup.POST(fmt.Sprintf("/authenticate"), s.dependencies.ExternalListenerController.HandleAuthentication)
-		externalListenersGroup.POST(fmt.Sprintf("/task"), s.dependencies.ExternalListenerController.HandleTaskRequest)
-		externalListenersGroup.POST(fmt.Sprintf("/response"), s.dependencies.ExternalListenerController.HandleResponseSubmission)
-		externalListenersGroup.POST(fmt.Sprintf("/register"), s.dependencies.ExternalListenerController.HandleAgentRegistration)
+		externalListenersGroup.POST(fmt.Sprintf("/checkin"), s.dependencies.ExternalListenerController.HandleCheckIn)
+		// externalListenersGroup.POST(fmt.Sprintf("/authenticate"), s.dependencies.ExternalListenerController.HandleAuthentication)
+		// externalListenersGroup.POST(fmt.Sprintf("/task"), s.dependencies.ExternalListenerController.HandleTaskRequest)
+		// externalListenersGroup.POST(fmt.Sprintf("/response"), s.dependencies.ExternalListenerController.HandleResponseSubmission)
+		// externalListenersGroup.POST(fmt.Sprintf("/register"), s.dependencies.ExternalListenerController.HandleAgentRegistration)
 	}
 }
 
