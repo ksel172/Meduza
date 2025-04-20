@@ -76,6 +76,6 @@ func NewContainer() (*Container, error) {
 		// ListenerContainer: ListenerContainer{
 		// 	CheckInController: checkInController,
 		// },
-		ExternalListenerController: handlers.NewExternalServer(agentDal),
+		ExternalListenerController: handlers.NewExternalServer(agentDal, listenerDal),
 	}, nil
 }

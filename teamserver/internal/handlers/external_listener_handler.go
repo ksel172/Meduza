@@ -34,8 +34,8 @@ func NewExternalServer(agentDal dal.IAgentDAL, listenerDal dal.IListenerDAL) *Ex
 	}
 }
 
-// TODO: Implement listener registration and place data about the listener (host and port)
-// into the database under "Host" and "Port" fields of the listener model. IsExternal MUST BE true.
+// TODO: Implement registration of listener paramaters to dynamically display them on the client application
+
 func (es *ExternalServer) RegisterListener(ctx *gin.Context) {
 	var listenerModel models.Listener
 
