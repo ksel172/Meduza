@@ -19,16 +19,18 @@ import (
 // All external listeners call back to this server
 // The server is responsible for receiving listener C2 requests
 type ExternalServer struct {
-	host     string
-	port     int
-	server   *gin.Engine
-	registry *listener.ListenerRegistry
-	agentDAL dal.IAgentDAL
+	host        string
+	port        int
+	server      *gin.Engine
+	registry    *listener.ListenerRegistry
+	agentDAL    dal.IAgentDAL
+	listenerDAL dal.IListenerDAL
 }
 
-func NewExternalServer(agentDal dal.IAgentDAL) *ExternalServer {
+func NewExternalServer(agentDal dal.IAgentDAL, listenerDal dal.IListenerDAL) *ExternalServer {
 	return &ExternalServer{
-		agentDAL: agentDal,
+		agentDAL:    agentDal,
+		listenerDAL: listenerDal,
 	}
 }
 
@@ -39,6 +41,20 @@ func (es *ExternalServer) RegisterListener(ctx *gin.Context) {
 
 	if err := ctx.ShouldBindJSON(&listenerModel); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Invalid request body", err.Error())
+		return
+	}
+
+	if listenerModel.Host == "" || listenerModel.Port < 1 || listenerModel.Port > 65535 {
+		models.ResponseError(ctx, http.StatusBadRequest, "Missing or invalid required fields", "Host and Port are required. Port must be between 1 and 65535")
+		return
+	}
+	// Make sure the listener is marked as external, there is no way a listener registered this way
+	// isn't external
+	listenerModel.External = true
+
+	err := es.listenerDAL.CreateListener(ctx, &listenerModel)
+	if err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, fmt.Sprintf("Failed to create external listener of kind: %s", listenerModel.Kind), err.Error())
 		return
 	}
 
@@ -74,6 +90,10 @@ func (es *ExternalServer) HandleTaskRequest(ctx *gin.Context) {
 		if task.Status == models.TaskComplete {
 			continue
 		}
+
+		// The modules will be revived as an agent specific command later.
+		// It shouldn't be handled from here because it forces the agent to support modules which
+		// can't be done with every codebase.
 
 		// Handle module commands
 		// 	if task.Type == models.ModuleCommand {

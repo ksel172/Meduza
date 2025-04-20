@@ -85,10 +85,10 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 func (s *Server) ListenersAPIV1(group *gin.RouterGroup) {
 	externalListenersGroup := group.Group("/")
 	{
-		externalListenersGroup.POST(fmt.Sprintf("/"), s.dependencies.ExternalListenerController.RegisterListener)
-		externalListenersGroup.POST(fmt.Sprintf("/task"), s.dependencies.ExternalListenerController.HandleTaskRequest)
-		externalListenersGroup.POST(fmt.Sprintf("/response"), s.dependencies.ExternalListenerController.HandleResponseSubmission)
-		externalListenersGroup.POST(fmt.Sprintf("/register"), s.dependencies.ExternalListenerController.HandleAgentRegistration)
+		externalListenersGroup.POST("/", s.dependencies.ExternalListenerController.RegisterListener)
+		externalListenersGroup.POST("/task", s.dependencies.ExternalListenerController.HandleTaskRequest)
+		externalListenersGroup.POST("/response", s.dependencies.ExternalListenerController.HandleResponseSubmission)
+		externalListenersGroup.POST("/register", s.dependencies.ExternalListenerController.HandleAgentRegistration)
 	}
 }
 
