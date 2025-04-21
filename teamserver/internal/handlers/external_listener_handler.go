@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/services/listener"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
@@ -19,10 +18,6 @@ import (
 // All external listeners call back to this server
 // The server is responsible for receiving listener C2 requests
 type ExternalServer struct {
-	host        string
-	port        int
-	server      *gin.Engine
-	registry    *listener.ListenerRegistry
 	agentDAL    dal.IAgentDAL
 	listenerDAL dal.IListenerDAL
 }
@@ -34,7 +29,13 @@ func NewExternalServer(agentDal dal.IAgentDAL, listenerDal dal.IListenerDAL) *Ex
 	}
 }
 
-// TODO: Implement registration of listener paramaters to dynamically display them on the client application
+// TODO: We need to figure out how exactly to handle the registration process of listeners.
+// First we need to save the parameters and only then can we create a config.
+// The most viable approach for now seems to be to create an empty config and have the
+// listener not be able to start/stop until it is updated with a config.
+
+// We can also save the parameters under a different table but that can and most likely
+// will create routing problems when creating multiple listeners of the same external kind.
 
 func (es *ExternalServer) RegisterListener(ctx *gin.Context) {
 	var listenerModel models.Listener
@@ -48,6 +49,9 @@ func (es *ExternalServer) RegisterListener(ctx *gin.Context) {
 		models.ResponseError(ctx, http.StatusBadRequest, "Missing or invalid required fields", "Host and Port are required. Port must be between 1 and 65535")
 		return
 	}
+
+	// TODO: Need to make paramater regisration so that we could display them on the client application
+
 	// Make sure the listener is marked as external, there is no way a listener registered this way
 	// isn't external
 	listenerModel.External = true
