@@ -17,13 +17,13 @@ import (
 
 // All external listeners call back to this server
 // The server is responsible for receiving listener C2 requests
-type ExternalServer struct {
+type ExternalController struct {
 	agentDAL    dal.IAgentDAL
 	listenerDAL dal.IListenerDAL
 }
 
-func NewExternalServer(agentDal dal.IAgentDAL, listenerDal dal.IListenerDAL) *ExternalServer {
-	return &ExternalServer{
+func NewExternalController(agentDal dal.IAgentDAL, listenerDal dal.IListenerDAL) *ExternalController {
+	return &ExternalController{
 		agentDAL:    agentDal,
 		listenerDAL: listenerDal,
 	}
@@ -37,7 +37,7 @@ func NewExternalServer(agentDal dal.IAgentDAL, listenerDal dal.IListenerDAL) *Ex
 // We can also save the parameters under a different table but that can and most likely
 // will create routing problems when creating multiple listeners of the same external kind.
 
-func (es *ExternalServer) RegisterListener(ctx *gin.Context) {
+func (es *ExternalController) RegisterListener(ctx *gin.Context) {
 	var listenerModel models.Listener
 
 	if err := ctx.ShouldBindJSON(&listenerModel); err != nil {
@@ -71,7 +71,7 @@ func (es *ExternalServer) RegisterListener(ctx *gin.Context) {
 // the algorithms that are used for encryption and decryption interchangeable.
 
 // HandleTaskRequest handles a task request from an agent
-func (es *ExternalServer) HandleTaskRequest(ctx *gin.Context) {
+func (es *ExternalController) HandleTaskRequest(ctx *gin.Context) {
 
 	var c2request models.C2Request
 	if err := ctx.ShouldBindJSON(&c2request); err != nil {
@@ -173,7 +173,7 @@ func (es *ExternalServer) HandleTaskRequest(ctx *gin.Context) {
 }
 
 // HandleResponseSubmission processes the response from a task executed by an agent
-func (es *ExternalServer) HandleResponseSubmission(ctx *gin.Context) {
+func (es *ExternalController) HandleResponseSubmission(ctx *gin.Context) {
 	var c2request models.C2Request
 	if err := ctx.ShouldBindJSON(&c2request); err != nil {
 		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request body", err.Error())
@@ -198,7 +198,7 @@ func (es *ExternalServer) HandleResponseSubmission(ctx *gin.Context) {
 }
 
 // HandleAgentRegistration handles the registration of an agent
-func (es *ExternalServer) HandleAgentRegistration(ctx *gin.Context) {
+func (es *ExternalController) HandleAgentRegistration(ctx *gin.Context) {
 
 	var c2request models.C2Request
 	if err := ctx.ShouldBindJSON(&c2request); err != nil {

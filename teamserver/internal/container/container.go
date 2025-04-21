@@ -29,7 +29,7 @@ type Container struct {
 	PayloadController          *handlers.PayloadHandler
 	ModuleController           *handlers.ModuleController
 	CertificateController      *handlers.CertificateHandler
-	ExternalListenerController *handlers.ExternalServer
+	ExternalListenerController *handlers.ExternalController
 }
 
 func NewContainer() (*Container, error) {
@@ -76,6 +76,6 @@ func NewContainer() (*Container, error) {
 		// ListenerContainer: ListenerContainer{
 		// 	CheckInController: checkInController,
 		// },
-		ExternalListenerController: handlers.NewExternalServer(agentDal, listenerDal),
+		ExternalListenerController: handlers.NewExternalController(agentDal, listenerDal),
 	}, nil
 }
