@@ -19,10 +19,8 @@ type ListenerController struct {
 
 func NewListenersHandler(service *listenerService.ListenerService, listenerDAL dal.IListenerDAL) *ListenerController {
 	return &ListenerController{
-		service: service,
-		// listenerClient: listenerClient,
+		service:     service,
 		listenerDal: listenerDAL,
-		// controllerDal:  controllerDAL,
 	}
 }
 
