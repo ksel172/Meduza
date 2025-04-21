@@ -84,6 +84,7 @@ func (s *Server) ListenersV1(group *gin.RouterGroup) {
 // API to handle external listener requests
 func (s *Server) ListenersAPIV1(group *gin.RouterGroup) {
 	externalListenersGroup := group.Group("/")
+	externalListenersGroup.Use(s.ListenerAuthMiddleware())
 	{
 		externalListenersGroup.POST("/", s.dependencies.ExternalListenerController.RegisterListener)
 		externalListenersGroup.POST("/task", s.dependencies.ExternalListenerController.HandleTaskRequest)

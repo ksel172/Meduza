@@ -43,6 +43,7 @@ const (
 	ListenPortRangeEndEnvVar    = "LISTENER_PORT_RANGE_END"
 	MeduzaCertUploadPathEnvVar  = "CERT_UPLOAD_PATH"
 	MeduzaCertUploadPathDefault = "./teamserver/certs"
+	ListenerAPIKey              = "HGJfAXBQw8wrJ2iezPrV9xJKfbRBkFqGtWRVJBWBpyLHhgKJ2EvgcrMuO8flXq0lHAFb3mVaVRYQcRBwQBj1gpxBlOLtqO24D8mqdMQyA0K5Kyqbujtf8pph98AKGbaT"
 )
 
 func GetMeduzaServerHostname() string {
@@ -129,4 +130,8 @@ func GetListenerPortRangeStart() int {
 
 func GetListenerPortRangeEnd() int {
 	return utils.GetEnvInt(ListenPortRangeEndEnvVar, 8010)
+}
+
+func GetListenerAPIKey() string {
+	return utils.GetEnvString("LISTENER_API_KEY", ListenerAPIKey)
 }
