@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -9,8 +8,6 @@ import (
 	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/pkg/logger"
-	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 // Entrypoint for external listener requests
@@ -66,14 +63,8 @@ func (ec *ExternalController) RegisterListener(ctx *gin.Context) {
 	models.ResponseSuccess(ctx, http.StatusOK, "Listener controller registered successfully", nil)
 }
 
-// The external listener handler processes the incoming requests from the agent
-// which were already processed by the external listener. It shouldn't be responsible for
-// encryption because the external listener already handles that part. This makes
-// the algorithms that are used for encryption and decryption interchangeable.
-
 // HandleTaskRequest handles a task request from an agent
 func (ec *ExternalController) HandleTaskRequest(ctx *gin.Context) {
-
 	var c2request models.C2Request
 	if err := ctx.ShouldBindJSON(&c2request); err != nil {
 		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request body", err.Error())
@@ -104,56 +95,42 @@ func (ec *ExternalController) HandleResponseSubmission(ctx *gin.Context) {
 		return
 	}
 
-	var agentTask models.AgentTask
-	if err := json.Unmarshal([]byte(c2request.Message), &agentTask); err != nil {
-		logger.Info(fmt.Sprintf("Failed to unmarshal agent message: %v", err))
-		models.ResponseError(ctx, http.StatusBadRequest, "Failed to unmarshal agent message", err.Error())
+	// Temporary X-Session-Token header
+	sessionToken := ctx.Request.Header.Get("X-Session-Token")
+	if sessionToken == "" {
+		models.ResponseError(ctx, http.StatusBadRequest, "missing session token header", "")
 		return
 	}
 
-	err := es.agentDAL.UpdateAgentTask(ctx, agentTask)
+	err := ec.checkinController.HandleResponseRequest(ctx, c2request)
 	if err != nil {
-		logger.Info(fmt.Sprintf("Failed to update agent task: %v", err))
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to update agent task", err.Error())
+		models.ResponseError(ctx, http.StatusInternalServerError, "failed to handle response submission", err.Error())
+		return
 	}
 
-	logger.Info(fmt.Sprintf("Successfully updated agent task: %s", agentTask.TaskID))
 	models.ResponseSuccess(ctx, http.StatusOK, "Response submission processed successfully", nil)
 }
 
 // HandleAgentRegistration handles the registration of an agent
-func (es *ExternalController) HandleAgentRegistration(ctx *gin.Context) {
-
+func (ec *ExternalController) HandleAgentRegistration(ctx *gin.Context) {
 	var c2request models.C2Request
 	if err := ctx.ShouldBindJSON(&c2request); err != nil {
 		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
 
-	logger.Info(fmt.Sprintf("Received register request from agent: %s", c2request.AgentID))
-
-	var agentInfo models.AgentInfo
-	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
-		logger.Info(fmt.Sprintf("Failed to parse agent info from decrypted message: %v", err))
-		models.ResponseError(ctx, http.StatusBadRequest, "Failed to parse agent info", err.Error())
+	// Temporary X-Session-Token header
+	sessionToken := ctx.Request.Header.Get("X-Session-Token")
+	if sessionToken == "" {
+		models.ResponseError(ctx, http.StatusBadRequest, "missing session token header", "")
 		return
 	}
 
-	if _, err := es.agentDAL.GetAgent(ctx, agentInfo.AgentID); err == nil {
-		logger.Info("Agent already exists:", c2request.AgentID)
-		models.ResponseError(ctx, http.StatusConflict, "Agent already exists", nil)
+	err := ec.checkinController.HandleRegisterRequest(ctx, c2request)
+	if err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "failed to handle agent registration", err.Error())
+		return
 	}
 
-	newAgent := c2request.IntoNewAgent()
-	newAgent.Name = utils.RandomString(6)
-
-	if err := es.agentDAL.RegisterAgent(ctx, newAgent); err != nil {
-		logger.Info(fmt.Sprintf("Failed to create agent: %v", err))
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create agent", err.Error())
-	}
-
-	if err := es.agentDAL.CreateAgentInfo(ctx, agentInfo); err != nil {
-		logger.Info(fmt.Sprintf("Failed to create agent info: %v", err))
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create agent info", err.Error())
-	}
+	models.ResponseSuccess(ctx, http.StatusOK, "Agent registration processed successfully", nil)
 }

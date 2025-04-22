@@ -5,6 +5,7 @@ import (
 
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
 	listenerService "github.com/ksel172/Meduza/teamserver/internal/services/listener"
+	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
 
 	// services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 
@@ -76,6 +77,6 @@ func NewContainer() (*Container, error) {
 		// ListenerContainer: ListenerContainer{
 		// 	CheckInController: checkInController,
 		// },
-		ExternalListenerController: handlers.NewExternalController(agentDal, listenerDal),
+		ExternalListenerController: handlers.NewExternalController(agentDal, listenerDal, checkin.CheckInController{}),
 	}, nil
 }
