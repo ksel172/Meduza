@@ -44,9 +44,8 @@ func (ec *ExternalController) RegisterListener(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: Move all data validation as methods to the model in models
-	if listenerModel.Host == "" || listenerModel.Port < 1 || listenerModel.Port > 65535 {
-		models.ResponseError(ctx, http.StatusBadRequest, "Missing or invalid required fields", "Host and Port are required. Port must be between 1 and 65535")
+	if err := listenerModel.Validate(); err != nil {
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid listener data", err.Error())
 		return
 	}
 

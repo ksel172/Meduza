@@ -2,7 +2,10 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
+
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 )
 
 const ParamListenerID string = "listener_id"
@@ -37,4 +40,29 @@ type Listener struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	StartedAt time.Time `json:"started_at,omitempty"`
 	StoppedAt time.Time `json:"stopped_at,omitempty"`
+}
+
+func (l *Listener) Validate() error {
+
+	portRangeStart := conf.GetListenerPortRangeStart()
+	portRangeEnd := conf.GetListenerPortRangeEnd()
+
+	if l.External {
+		if l.Host == "" {
+			return fmt.Errorf("host is required")
+		}
+		if l.Port == 0 {
+			return fmt.Errorf("port is required")
+		}
+	}
+
+	if l.Kind == "" {
+		return fmt.Errorf("kind is required")
+	}
+
+	if l.Port < portRangeStart || l.Port > portRangeEnd {
+		return fmt.Errorf("port must be between %d and %d", portRangeStart, portRangeEnd)
+	}
+
+	return nil
 }
