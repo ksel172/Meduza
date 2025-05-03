@@ -63,23 +63,36 @@ func (s *Server) AgentsV1(group *gin.RouterGroup) {
 
 func (s *Server) ListenersV1(group *gin.RouterGroup) {
 
-	listenersGroup := group.Group("/listeners")
+	uiListenersGroup := group.Group("/listeners")
 	{
-		listenersGroup.Use(s.UserMiddleware())
+		uiListenersGroup.Use(s.UserMiddleware())
 
 		// Listener CRUD operations and status info
-		listenersGroup.POST("", s.dependencies.ListenerController.CreateListener)
-		listenersGroup.GET("", s.dependencies.ListenerController.GetAllListeners)
-		listenersGroup.GET(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.GetListenerById)
-		listenersGroup.PUT(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.UpdateListener)
-		listenersGroup.DELETE(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.DeleteListener)
+		uiListenersGroup.POST("", s.dependencies.ListenerController.CreateListener)
+		uiListenersGroup.GET("", s.dependencies.ListenerController.GetAllListeners)
+		uiListenersGroup.GET(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.GetListener)
+		uiListenersGroup.PUT(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.UpdateListener)
+		uiListenersGroup.DELETE(fmt.Sprintf("/:%s", models.ParamListenerID), s.dependencies.ListenerController.TerminateListener)
 
 		// Listener operations and status
-		listenersGroup.GET(fmt.Sprintf("/:%s/status", models.ParamListenerID), s.dependencies.ListenerController.CheckRunningListener)
-		listenersGroup.POST(fmt.Sprintf("/:%s/start", models.ParamListenerID), s.dependencies.ListenerController.StartListener)
-		listenersGroup.POST(fmt.Sprintf("/:%s/stop", models.ParamListenerID), s.dependencies.ListenerController.StopListener)
+		uiListenersGroup.GET("/status", s.dependencies.ListenerController.GetListenerStatuses)
+		uiListenersGroup.POST(fmt.Sprintf("/:%s/start", models.ParamListenerID), s.dependencies.ListenerController.StartListener)
+		uiListenersGroup.POST(fmt.Sprintf("/:%s/stop", models.ParamListenerID), s.dependencies.ListenerController.StopListener)
 	}
 }
+
+// API to handle external listener requests
+func (s *Server) ListenersAPIV1(group *gin.RouterGroup) {
+	externalListenersGroup := group.Group("/")
+	externalListenersGroup.Use(s.ListenerAuthMiddleware())
+	{
+		externalListenersGroup.POST("/", s.dependencies.ExternalListenerController.RegisterListener)
+		externalListenersGroup.POST("/task", s.dependencies.ExternalListenerController.HandleTaskRequest)
+		externalListenersGroup.POST("/response", s.dependencies.ExternalListenerController.HandleResponseSubmission)
+		externalListenersGroup.POST("/register", s.dependencies.ExternalListenerController.HandleAgentRegistration)
+	}
+}
+
 func (s *Server) PayloadV1(group *gin.RouterGroup) {
 
 	payloadsGroup := group.Group("/payloads")

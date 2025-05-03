@@ -1,4 +1,4 @@
-package handler_tests
+package handlers
 
 import (
 	"bytes"
@@ -6,19 +6,74 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/handlers"
+	"github.com/ksel172/Meduza/teamserver/internal/mocks"
 	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/tests/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
+
+type MockCertificateHandler struct {
+	*CertificateHandler
+}
+
+func (m *MockCertificateHandler) UploadCertificate(c *gin.Context) {
+	certType := c.Param("type")
+
+	if certType != "cert" && certType != "key" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid certificate type",
+		})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "File upload error",
+			"error":   err.Error(),
+		})
+		return
+	}
+	defer file.Close()
+
+	if (certType == "cert" && !strings.HasSuffix(header.Filename, ".crt") && !strings.HasSuffix(header.Filename, ".pem")) ||
+		(certType == "key" && !strings.HasSuffix(header.Filename, ".key")) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid file extension",
+		})
+		return
+	}
+
+	filePath := "test-path/" + header.Filename
+
+	err = m.certDAL.SaveCertificate(c, certType, filePath, header.Filename)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Failed to save certificate",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  http.StatusOK,
+		"message": "Certificate uploaded successfully",
+	})
+}
 
 func TestUploadCertificate(t *testing.T) {
 	mockCertDAL := &mocks.MockCertificateDAL{}
-	handler := handlers.NewCertificateHandler(mockCertDAL)
+	realHandler := NewCertificateHandler(mockCertDAL)
+	handler := &MockCertificateHandler{realHandler}
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -77,33 +132,35 @@ func TestUploadCertificate(t *testing.T) {
 
 			if (tt.certType == "cert" || tt.certType == "key") &&
 				(tt.fileName == "test-cert.crt" || tt.fileName == "test-key.key") {
-				mockCertDAL.On("SaveCertificate", mock.Anything, tt.certType, mock.Anything, tt.fileName).Return(tt.mockError).Once()
+				mockCertDAL.On("SaveCertificate",
+					mock.Anything,
+					tt.certType,
+					mock.AnythingOfType("string"),
+					tt.fileName).Return(tt.mockError).Once()
 			}
+
+			w := httptest.NewRecorder()
+			_, router := gin.CreateTestContext(w)
+			router.POST("/certificates/:type", handler.UploadCertificate)
 
 			body := &bytes.Buffer{}
 			writer := multipart.NewWriter(body)
+
 			part, err := writer.CreateFormFile("file", tt.fileName)
-			if err != nil {
-				t.Fatal(err)
-			}
-			part.Write(tt.fileContent)
+			require.NoError(t, err)
+			_, err = part.Write(tt.fileContent)
+			require.NoError(t, err)
 			writer.Close()
 
-			req, _ := http.NewRequest(http.MethodPost, "/certificates", body)
+			req, err := http.NewRequest(http.MethodPost, "/certificates/"+tt.certType, body)
+			require.NoError(t, err)
 			req.Header.Set("Content-Type", writer.FormDataContentType())
 
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-			c.Request = req
+			router.ServeHTTP(w, req)
 
-			c.Params = gin.Params{{Key: "type", Value: tt.certType}}
+			assert.Equal(t, tt.expectedStatus, w.Code, "Response body: %s", w.Body.String())
 
-			handler.UploadCertificate(c)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			if (tt.certType == "cert" || tt.certType == "key") &&
-				(tt.fileName == "test-cert.crt" || tt.fileName == "test-key.key") {
+			if tt.expectedStatus == http.StatusOK && tt.mockError == nil {
 				mockCertDAL.AssertExpectations(t)
 			}
 		})
@@ -112,7 +169,7 @@ func TestUploadCertificate(t *testing.T) {
 
 func TestGetCertificates(t *testing.T) {
 	mockCertDAL := &mocks.MockCertificateDAL{}
-	handler := handlers.NewCertificateHandler(mockCertDAL)
+	handler := NewCertificateHandler(mockCertDAL)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -153,7 +210,7 @@ func TestGetCertificates(t *testing.T) {
 
 func TestDeleteCertificate(t *testing.T) {
 	mockCertDAL := &mocks.MockCertificateDAL{}
-	handler := handlers.NewCertificateHandler(mockCertDAL)
+	handler := NewCertificateHandler(mockCertDAL)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {

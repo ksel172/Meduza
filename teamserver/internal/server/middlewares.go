@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
@@ -105,6 +106,25 @@ func (s *Server) AdminMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		c.Next()
+	}
+}
+
+// Authenticates requests coming from external listeners
+func (s *Server) ListenerAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		apiKey := conf.GetListenerAPIKey()
+		requestApiKey := c.Request.Header.Get("X-API-Key")
+		if requestApiKey == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			c.Abort()
+		}
+
+		if requestApiKey != apiKey {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			c.Abort()
+		}
+
 		c.Next()
 	}
 }

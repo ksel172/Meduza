@@ -26,6 +26,11 @@ func (m *MockAgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgent
 	return args.Get(0).(models.Agent), args.Error(1)
 }
 
+func (m *MockAgentDAL) RegisterAgent(ctx context.Context, agent models.Agent) error {
+	args := m.Called(agent)
+	return args.Error(0)
+}
+
 func (m *MockAgentDAL) DeleteAgent(ctx context.Context, agentID string) error {
 	args := m.Called(agentID)
 	return args.Error(0)

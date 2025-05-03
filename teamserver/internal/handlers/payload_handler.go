@@ -57,7 +57,9 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	payloadConfig := models.IntoPayloadConfig(payloadRequest)
 	payloadConfig.ConfigID = uuid.New().String()
 	payloadConfig.PayloadID = uuid.New().String()
-	payloadConfig.ListenerConfig = listener.Config
+
+	// TODO: might have to first marshal here, maybe update the listener config into json.RawMessage?
+	payloadConfig.ListenerConfig = listener.RawConfig
 
 	privateKey, publicKey, err := utils.GenerateECDHKeyPair()
 	if err != nil {
@@ -90,7 +92,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		"--self-contained", strings.ToLower(fmt.Sprintf("%t", payloadRequest.SelfContained)),
 		"-o", "/app/build/payload-" + payloadConfig.PayloadID,
 		"-p:PublishSingleFile=true",
-		"-p:DefineConstants=TYPE_" + listener.Type,
+		// "-p:DefineConstants=TYPE_" + listener.Type,
 		"-r", payloadConfig.Arch,
 		"agent/Agent/Agent.csproj",
 	}

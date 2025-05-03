@@ -1,4 +1,4 @@
-package handler_tests
+package handlers
 
 import (
 	"bytes"
@@ -10,9 +10,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/handlers"
+	"github.com/ksel172/Meduza/teamserver/internal/mocks"
 	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/tests/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -20,7 +19,7 @@ import (
 func TestGetAgent(t *testing.T) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
 	mockModuleDAL := new(mocks.MockModuleDAL)
-	handler := handlers.NewAgentController(mockAgentDAL, mockModuleDAL)
+	handler := NewAgentController(mockAgentDAL, mockModuleDAL)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -75,7 +74,7 @@ func TestGetAgent(t *testing.T) {
 func TestGetAgents(t *testing.T) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
 	mockModuleDAL := new(mocks.MockModuleDAL)
-	handler := handlers.NewAgentController(mockAgentDAL, mockModuleDAL)
+	handler := NewAgentController(mockAgentDAL, mockModuleDAL)
 	gin.SetMode(gin.TestMode)
 
 	mockAgents := []models.Agent{
@@ -136,7 +135,7 @@ func TestGetAgents(t *testing.T) {
 func TestUpdateAgent(t *testing.T) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
 	mockModuleDAL := new(mocks.MockModuleDAL)
-	handler := handlers.NewAgentController(mockAgentDAL, mockModuleDAL)
+	handler := NewAgentController(mockAgentDAL, mockModuleDAL)
 	gin.SetMode(gin.TestMode)
 
 	// Below agent is sent as JSON to the handler
@@ -197,7 +196,7 @@ func TestUpdateAgent(t *testing.T) {
 func TestDeleteAgent(t *testing.T) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
 	mockModuleDAL := new(mocks.MockModuleDAL)
-	handler := handlers.NewAgentController(mockAgentDAL, mockModuleDAL)
+	handler := NewAgentController(mockAgentDAL, mockModuleDAL)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -249,7 +248,7 @@ func TestDeleteAgent(t *testing.T) {
 func TestGetAgentTasks(t *testing.T) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
 	mockModuleDAL := new(mocks.MockModuleDAL)
-	handler := handlers.NewAgentController(mockAgentDAL, mockModuleDAL)
+	handler := NewAgentController(mockAgentDAL, mockModuleDAL)
 	gin.SetMode(gin.TestMode)
 
 	tasks := []models.AgentTask{
@@ -376,7 +375,7 @@ func TestGetAgentTasks(t *testing.T) {
 func TestDeleteAgentTasks(t *testing.T) {
 	mockAgentDAL := new(mocks.MockAgentDAL)
 	mockModuleDAL := new(mocks.MockModuleDAL)
-	handler := handlers.NewAgentController(mockAgentDAL, mockModuleDAL)
+	handler := NewAgentController(mockAgentDAL, mockModuleDAL)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -426,7 +425,7 @@ func TestDeleteAgentTasks(t *testing.T) {
 func TestDeleteAgentTask(t *testing.T) {
 	mockDAL := new(mocks.MockAgentDAL)
 	mockModuleDAL := new(mocks.MockModuleDAL)
-	handler := handlers.NewAgentController(mockDAL, mockModuleDAL)
+	handler := NewAgentController(mockDAL, mockModuleDAL)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {

@@ -1,4 +1,4 @@
-package handler_tests
+package handlers
 
 import (
 	"bytes"
@@ -11,16 +11,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/handlers"
+	"github.com/ksel172/Meduza/teamserver/internal/mocks"
 	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/tests/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLogin(t *testing.T) {
 	mockUserDAL := &mocks.MockUserDAL{}
 	mockAuthProvider := &mocks.MockJWTService{}
-	handler := handlers.NewAuthController(mockUserDAL, mockAuthProvider)
+	handler := NewAuthController(mockUserDAL, mockAuthProvider)
 	gin.SetMode(gin.TestMode)
 
 	loginR := models.AuthRequest{
@@ -115,7 +114,7 @@ func TestLogin(t *testing.T) {
 func TestLogout(t *testing.T) {
 	mockUserDAL := &mocks.MockUserDAL{}
 	mockAuthProvider := &mocks.MockJWTService{}
-	handler := handlers.NewAuthController(mockUserDAL, mockAuthProvider)
+	handler := NewAuthController(mockUserDAL, mockAuthProvider)
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
