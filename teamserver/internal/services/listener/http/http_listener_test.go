@@ -1,12 +1,13 @@
 package http_listener
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"net/http"
-// 	"testing"
-// 	"time"
-// )
+import (
+	"testing"
+)
+
+func TestStart(t *testing.T) {
+	// mockAgentDal := mocks.MockAgentDAL{}
+	// mockCheckinController := checkin.CheckInController{}
+}
 
 // func TestHTTPListenerEndToEnd(t *testing.T) {
 // 	// Use a random port to avoid conflicts

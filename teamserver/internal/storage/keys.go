@@ -6,8 +6,12 @@ import "sync"
 
 // Singleton implementations for now
 var (
-	KeyRegistry           = keyRegistry{}
-	AsymmetricKeyRegistry = asymmetricKeyRegistry{}
+	KeyRegistry = keyRegistry{
+		registry: make(map[string][]byte),
+	}
+	AsymmetricKeyRegistry = asymmetricKeyRegistry{
+		registry: make(map[string]KeyPair),
+	}
 )
 
 // keyRegistry is used for mapping agent session tokens to AES keys
@@ -22,8 +26,8 @@ type keyRegistry struct {
 // The Controller is responsible for writing all of the agents keys into the storage
 // when the controller is added
 type asymmetricKeyRegistry struct {
-	mu    sync.Mutex
-	store map[string]KeyPair
+	mu       sync.Mutex
+	registry map[string]KeyPair
 }
 
 type KeyPair struct {
@@ -47,12 +51,18 @@ func (k *keyRegistry) GetKey(sessionToken string) ([]byte, bool) {
 func (k *asymmetricKeyRegistry) WriteKey(authToken string, keyPair KeyPair) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	k.store[authToken] = keyPair
+	k.registry[authToken] = keyPair
 }
 
 func (k *asymmetricKeyRegistry) GetKeys(authToken string) (KeyPair, bool) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	key, exists := k.store[authToken]
+	key, exists := k.registry[authToken]
 	return key, exists
+}
+
+func (k *asymmetricKeyRegistry) DeleteKey(authToken string) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	delete(k.registry, authToken)
 }

@@ -1,172 +1,107 @@
 package checkin
 
-// import (
-// 	"bytes"
-// 	"database/sql"
-// 	"encoding/base64"
-// 	"encoding/json"
-// 	"errors"
-// 	"fmt"
-// 	"net/http"
-// 	"net/http/httptest"
-// 	"testing"
+import (
+	"testing"
 
-// 	"github.com/gin-gonic/gin"
-// 	services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
-// 	"github.com/ksel172/Meduza/teamserver/models"
-// 	"github.com/ksel172/Meduza/teamserver/tests/mocks"
-// 	"github.com/ksel172/Meduza/teamserver/utils"
-// 	"github.com/stretchr/testify/assert"
-// 	"github.com/stretchr/testify/mock"
-// )
+	"github.com/gin-gonic/gin"
+	// services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
+	"github.com/ksel172/Meduza/teamserver/internal/mocks"
+	"github.com/ksel172/Meduza/teamserver/internal/storage"
 
-// func TestAgentAuthRequest(t *testing.T) {
-// 	mockCheckInDal := new(mocks.MockCheckInDal)
-// 	mockAgentDAL := new(mocks.MockAgentDAL)
-// 	mockPayloaDAL := new(mocks.MockPayloadDAL)
-// 	controller := services.NewCheckInController(mockCheckInDal, mockAgentDAL, mockPayloaDAL)
-// 	gin.SetMode(gin.TestMode)
+	// "github.com/ksel172/Meduza/teamserver/tests/mocks"
+	"github.com/ksel172/Meduza/teamserver/utils"
+	"github.com/stretchr/testify/assert"
+)
 
-// 	// Create a mock public key for the agent and server
-// 	_, agentPubKey, err := utils.GenerateECDHKeyPair()
-// 	if err != nil {
-// 		t.Fatal("failed to generate agent ecdh key pair")
-// 	}
-// 	agentPubKeyBase64 := base64.StdEncoding.EncodeToString(agentPubKey)
-// 	serverPrivKey, serverPubKey, err := utils.GenerateECDHKeyPair()
-// 	if err != nil {
-// 		t.Fatal("failed to generate server ecdh key pair")
-// 	}
+func TestAuthenticate(t *testing.T) {
+	gin.SetMode(gin.TestMode)
 
-// 	prepareRequestBody := func(c2request models.C2Request, encode bool) []byte {
-// 		// Prepare request body by base64 encoding it entirely
-// 		bodyRawBytes, err := json.Marshal(c2request)
-// 		if err != nil {
-// 			t.Fatal("failed to marshal request c2request body")
-// 		}
-// 		if !encode {
-// 			return bodyRawBytes
-// 		}
-// 		encodedBodyString := base64.StdEncoding.EncodeToString(bodyRawBytes)
-// 		return []byte(encodedBodyString)
-// 	}
+	// Requirements
+	mockAgentDAL := new(mocks.MockAgentDAL)
+	controller := NewCheckInController(mockAgentDAL)
 
-// 	tests := []struct {
-// 		name           string
-// 		authToken      string
-// 		c2request      models.C2Request
-// 		encodeBody     bool
-// 		expectedStatus int
-// 	}{
-// 		{
-// 			name:           "agent authentication: success",
-// 			authToken:      base64.StdEncoding.EncodeToString([]byte("test-auth-token")),
-// 			c2request:      models.C2Request{Message: agentPubKeyBase64},
-// 			encodeBody:     true,
-// 			expectedStatus: http.StatusAccepted,
-// 		},
-// 		{
-// 			name:           "agent authentication: missing Auth-Token header",
-// 			c2request:      models.C2Request{Message: agentPubKeyBase64},
-// 			encodeBody:     true,
-// 			expectedStatus: http.StatusUnauthorized,
-// 		},
-// 		{
-// 			name:           "agent authentication: Auth-Token header with no encoding",
-// 			authToken:      "test-auth-token",
-// 			c2request:      models.C2Request{Message: agentPubKeyBase64},
-// 			encodeBody:     true,
-// 			expectedStatus: http.StatusBadRequest,
-// 		},
-// 		{
-// 			name:           "agent authentication: request body with no encoding",
-// 			authToken:      base64.StdEncoding.EncodeToString([]byte("test-auth-token")),
-// 			c2request:      models.C2Request{Message: agentPubKeyBase64},
-// 			encodeBody:     false,
-// 			expectedStatus: http.StatusBadRequest,
-// 		},
-// 		{
-// 			name:           "agent authentication: missing public key",
-// 			authToken:      base64.StdEncoding.EncodeToString([]byte("test-auth-token")),
-// 			c2request:      models.C2Request{},
-// 			encodeBody:     true,
-// 			expectedStatus: http.StatusBadRequest,
-// 		},
-// 		{
-// 			name:           "agent authentication: dal error: keys not found",
-// 			authToken:      base64.StdEncoding.EncodeToString([]byte("test-auth-token")),
-// 			c2request:      models.C2Request{Message: agentPubKeyBase64},
-// 			encodeBody:     true,
-// 			expectedStatus: http.StatusNotFound,
-// 		},
-// 		{
-// 			name:           "agent authentication: dal error: server error",
-// 			authToken:      base64.StdEncoding.EncodeToString([]byte("test-auth-token")),
-// 			c2request:      models.C2Request{Message: agentPubKeyBase64},
-// 			encodeBody:     true,
-// 			expectedStatus: http.StatusInternalServerError,
-// 		},
-// 	}
+	// Test agent auth token
+	testAuthToken := "test-auth-token"
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			// Prepare mock DAL calls in order
-// 			switch tt.name {
-// 			case "agent authentication: success":
-// 				mockPayloaDAL.On("GetKeys", "test-auth-token").Return(serverPrivKey, serverPubKey, nil).Once()
-// 			case "agent authentication: dal error: keys not found":
-// 				mockPayloaDAL.On("GetKeys", "test-auth-token").Return(([]byte)(nil), ([]byte)(nil), sql.ErrNoRows).Once()
-// 			case "agent authentication: dal error: server error":
-// 				mockPayloaDAL.On("GetKeys", "test-auth-token").Return(([]byte)(nil), ([]byte)(nil), errors.New("dal error")).Once()
-// 			}
+	// Create a mock public key for the agent and server
+	_, agentPubKeyBytes, err := utils.GenerateECDHKeyPair()
+	if err != nil {
+		t.Fatal("failed to generate agent ecdh key pair")
+	}
+	testAgentPubKey := string(agentPubKeyBytes)
 
-// 			w := httptest.NewRecorder()
-// 			c, _ := gin.CreateTestContext(w)
+	serverPrivKey, serverPubKey, err := utils.GenerateECDHKeyPair()
+	if err != nil {
+		t.Fatal("failed to generate server ecdh key pair")
+	}
 
-// 			// Create request body from the c2request, encode it or not, depending on the test
-// 			body := prepareRequestBody(tt.c2request, tt.encodeBody)
-// 			c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
+	// Prepare the key store for use on this test
+	storage.AsymmetricKeyRegistry.WriteKey(testAuthToken, storage.KeyPair{
+		PublicKey:  serverPubKey,
+		PrivateKey: serverPrivKey,
+	})
 
-// 			// Add Auth-Token header
-// 			if tt.authToken != "" {
-// 				c.Request.Header.Add("Auth-Token", tt.authToken)
-// 			}
+	tests := []struct {
+		name        string
+		agentPubKey string
+		authToken   string
+		expectError bool
+	}{
+		{
+			name:        "agent authentication: success",
+			agentPubKey: testAgentPubKey,
+			authToken:   testAuthToken,
+			expectError: false,
+		},
+		{
+			name:        "agent authentication: invalid auth token",
+			agentPubKey: testAgentPubKey,
+			authToken:   "invalid-auth-token",
+			expectError: true,
+		},
+		{ // This must be the last test in the grid
+			name:        "agent authentication: key not in registry",
+			agentPubKey: testAgentPubKey,
+			authToken:   testAuthToken,
+			expectError: true,
+		},
+	}
 
-// 			// Submit request
-// 			controller.Checkin(c)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Prepare mock DAL calls in order
+			switch tt.name {
+			case "agent authentication: key not in registry":
+				storage.AsymmetricKeyRegistry.DeleteKey(testAuthToken)
+			}
 
-// 			// Verify expectations
-// 			assert.Equal(t, tt.expectedStatus, w.Code)
-// 			mockCheckInDal.AssertExpectations(t)
-// 			mockAgentDAL.AssertExpectations(t)
-// 			mockPayloaDAL.AssertExpectations(t)
+			// Submit request
+			response, err := controller.Authenticate(tt.agentPubKey, tt.authToken)
 
-// 			// Verify returned values
-// 			switch tt.name {
-// 			case "agent authentication: success":
-// 				serverResponse := struct {
-// 					PublicKey    string `json:"public_key"`
-// 					SessionToken string `json:"session_token"`
-// 				}{}
-// 				err := json.Unmarshal(w.Body.Bytes(), &serverResponse)
-// 				if assert.Nil(t, err) {
-// 					_, err = base64.StdEncoding.DecodeString(serverResponse.PublicKey)
-// 					assert.Nil(t, err)
-// 					_, err = base64.StdEncoding.DecodeString(serverResponse.SessionToken)
-// 					assert.Nil(t, err)
-// 				}
-// 			}
+			// Check error
+			if !tt.expectError {
+				assert.Nil(t, err)
+			}
 
-// 		})
-// 	}
-// }
+			// Verify returned values
+			switch tt.name {
+			case "agent authentication: success":
+				assert.Equal(t, serverPubKey, response.PublicKey)
+			}
+		})
+	}
+}
 
-// // Function to simulate agent authentication and retrieve sessiontoken + AES key for message encryption
+/*
+Below here could be reused for HTTP Listener tests
+Looks more like that than checkInController functionality currently
+*/
+// Function to simulate agent authentication and retrieve sessiontoken + AES key for message encryption
 // func authenticateAgent() (string, []byte, error) {
 // 	mockAgentDAL := new(mocks.MockAgentDAL)
 // 	mockCheckInDal := new(mocks.MockCheckInDal)
 // 	mockPayloaDAL := new(mocks.MockPayloadDAL)
-// 	controller := services.NewCheckInController(mockCheckInDal, mockAgentDAL, mockPayloaDAL)
+// 	controller := NewCheckInController(mockAgentDAL)
 
 // 	// Generates agent and server keys
 // 	agentPrivKey, agentPubKey, err := utils.GenerateECDHKeyPair()
@@ -188,7 +123,7 @@ package checkin
 // 	w := httptest.NewRecorder()
 // 	c, _ := gin.CreateTestContext(w)
 // 	c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
-// 	c.Request.Header.Add("Auth-Token", base64.StdEncoding.EncodeToString([]byte("test-auth-token")))
+// 	c.Request.Header.Add("Auth-Token", "testAuthToken")
 
 // 	// Ensure auth-token is accepted using the payloadDAL mock, which will also return the server keys
 // 	mockPayloaDAL.On("GetKeys", "test-auth-token").Return(serverPrivKey, serverPubKey, nil).Once()

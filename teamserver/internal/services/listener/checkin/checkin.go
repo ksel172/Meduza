@@ -38,6 +38,12 @@ type AuthResponse struct {
 	SessionToken string
 }
 
+func NewCheckInController(agentDal dal.IAgentDAL) *CheckInController {
+	return &CheckInController{
+		agentDAL: agentDal,
+	}
+}
+
 func (cc *CheckInController) Authenticate(agentPublicKey string, authToken string) (AuthResponse, error) {
 	// Retrieve the server private key to derive shared key
 	// and the public key to send to the agent
