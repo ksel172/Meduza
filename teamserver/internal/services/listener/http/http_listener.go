@@ -21,6 +21,9 @@ import (
 	// "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
 )
 
+// Function type for starting the server
+type serverStartFunc func(errChan chan<- error, readyChan chan<- struct{})
+
 // HTTPListener implements ListenerImplementation for HTTP/HTTPS servers
 type HTTPListener struct {
 	Config HTTPListenerConfig
@@ -28,10 +31,12 @@ type HTTPListener struct {
 	isRunning bool
 	mu        sync.RWMutex
 
-	server            *http.Server
-	router            *gin.Engine
+	server *http.Server
+	// router            *gin.Engine
 	checkinController *checkin.CheckInController
 	shutdownSignal    chan struct{}
+
+	startServerGoroutine serverStartFunc
 }
 
 // NewHTTPListener creates and returns a new HTTP listener
@@ -54,21 +59,56 @@ func (l *HTTPListener) configure() error {
 	}
 
 	// Initialize the router if not already done
-	if l.router == nil {
-		l.router = gin.Default()
-		l.router.POST("/", l.HandleCheckIn)
-	}
+	router := gin.Default()
+	router.POST("/", l.HandleCheckIn)
 
 	// Configure the server
 	address := fmt.Sprintf("%s:%d", l.Config.Host, l.Config.Port)
 	l.server = &http.Server{
 		Addr:         address,
-		Handler:      l.router,
+		Handler:      router,
 		ReadTimeout:  l.Config.ReadTimeout,
 		WriteTimeout: l.Config.WriteTimeout,
 	}
 
+	// Set default server start goroutine
+	l.startServerGoroutine = l.defaultStartServer
+
 	return nil
+}
+
+// This goroutine always exists while the server is running
+// Whenever a Stop/Terminate function is called, it will stop the underlying server
+// That will cause this function to exit the listen and server loop
+// Pushing the shutdown signal to the Stop/Terminate functions
+func (l *HTTPListener) defaultStartServer(errChan chan<- error, readyChan chan<- struct{}) {
+	go func() {
+		var err error
+		if l.Config.EnableTLS {
+			// Validate certificates
+			if err := l.validateCertificate(); err != nil {
+				errChan <- err
+				return
+			}
+			l.server.TLSConfig = &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			}
+			err = l.server.ListenAndServeTLS(l.Config.CertPath, l.Config.KeyPath)
+		} else {
+			err = l.server.ListenAndServe()
+		}
+		// If server exits with an error other than shutdown, report it
+		if err != nil && err != http.ErrServerClosed {
+			errChan <- err
+		}
+		close(l.shutdownSignal)
+	}()
+
+	// Signal that we're ready AFTER attempting to bind to the port
+	// TODO: implement some sort of port check to ensure the server is listening
+	// For now, we are sleeping for 500ms
+	time.Sleep(500 * time.Millisecond)
+	readyChan <- struct{}{}
 }
 
 // Start begins the HTTP listener
@@ -83,33 +123,8 @@ func (l *HTTPListener) Start(ctx context.Context) error {
 	readyChan := make(chan struct{}, 1)
 	l.shutdownSignal = make(chan struct{})
 
-	// Start the server in a goroutine
-	go func() {
-		readyChan <- struct{}{}
-
-		var err error
-		if l.Config.EnableTLS {
-			// Validate certificates
-			if err := l.validateCertificate(); err != nil {
-				errChan <- err
-				return
-			}
-
-			l.server.TLSConfig = &tls.Config{
-				MinVersion: tls.VersionTLS12,
-			}
-			err = l.server.ListenAndServeTLS(l.Config.CertPath, l.Config.KeyPath)
-		} else {
-			err = l.server.ListenAndServe()
-		}
-
-		// If server exits with an error other than shutdown, report it
-		if err != nil && err != http.ErrServerClosed {
-			errChan <- err
-		}
-
-		close(l.shutdownSignal)
-	}()
+	// Start server goroutine
+	l.startServerGoroutine(errChan, readyChan)
 
 	// Wait for either ready signal or error
 	select {
@@ -142,7 +157,10 @@ func (l *HTTPListener) Stop(ctx context.Context) error {
 	// Attempt graceful shutdown
 	err := l.server.Shutdown(shutdownCtx)
 	if err != nil {
-		l.server.Close()
+		err := l.server.Close()
+		if err != nil {
+			return fmt.Errorf("failed to shutdown HTTP Listener server: %w", err)
+		}
 		l.isRunning = false
 		return fmt.Errorf("forced shutdown of HTTP listener: %w", err)
 	}
