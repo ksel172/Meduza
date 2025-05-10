@@ -11,14 +11,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/mocks"
+	"github.com/ksel172/Meduza/teamserver/internal/dal_mocks"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLogin(t *testing.T) {
-	mockUserDAL := &mocks.MockUserDAL{}
-	mockAuthProvider := &mocks.MockJWTService{}
+	mockUserDAL := &dal_mocks.MockUserDAL{}
+	mockAuthProvider := &dal_mocks.MockJWTService{}
 	handler := NewAuthController(mockUserDAL, mockAuthProvider)
 	gin.SetMode(gin.TestMode)
 
@@ -112,8 +112,8 @@ func TestLogin(t *testing.T) {
 
 // TODO: Add cookie validation post request
 func TestLogout(t *testing.T) {
-	mockUserDAL := &mocks.MockUserDAL{}
-	mockAuthProvider := &mocks.MockJWTService{}
+	mockUserDAL := &dal_mocks.MockUserDAL{}
+	mockAuthProvider := &dal_mocks.MockJWTService{}
 	handler := NewAuthController(mockUserDAL, mockAuthProvider)
 	gin.SetMode(gin.TestMode)
 

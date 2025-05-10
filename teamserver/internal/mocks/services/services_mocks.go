@@ -1,4 +1,4 @@
-package mocks
+package services_mocks
 
 import (
 	"time"

@@ -27,6 +27,8 @@ type ListenerService struct {
 	activeListeners map[string]*Listener
 	statusUpdates   chan statusUpdate
 	mux             sync.RWMutex
+
+	rootCtx context.Context
 }
 
 func NewListenerService(listenerDAL dal.IListenerDAL) *ListenerService {
@@ -92,32 +94,22 @@ func (ls *ListenerService) StartListener(ctx context.Context, listenerID string)
 		go ls.monitorListenerStatus(listener)
 	}
 
-	return ls.startListener(ctx, listener)
+	return ls.startListener(listener)
 }
 
-func (ls *ListenerService) startListener(ctx context.Context, listener *Listener) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.startTimeout)*time.Second)
+func (ls *ListenerService) startListener(listener *Listener) error {
+	// Create a context from the service root context
+	ctx, cancel := context.WithTimeout(ls.rootCtx, time.Duration(ls.startTimeout)*time.Second)
 	defer cancel()
 
-	startCh := make(chan error, 1)
-	go func() {
-		startCh <- listener.Start(ctx)
-		close(startCh)
-	}()
-
-	select {
-	case err := <-startCh:
-		if err != nil {
-			return err
-		}
-		ls.mux.Lock()
-		ls.activeListeners[listener.ID] = listener
-		ls.mux.Unlock()
-		return nil
-
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := listener.Start(ctx); err != nil {
+		return err
 	}
+
+	ls.mux.Lock()
+	ls.activeListeners[listener.ID] = listener
+	ls.mux.Unlock()
+	return nil
 }
 
 // The expected behavior, and since all listeners that are running should be kept track of, return an error if the listener is not mapped
@@ -144,18 +136,11 @@ func (ls *ListenerService) stopListener(ctx context.Context, listener *Listener)
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.stopTimeout)*time.Second)
 	defer cancel()
 
-	stopCh := make(chan error, 1)
-	go func() {
-		stopCh <- listener.Stop(ctx)
-		close(stopCh)
-	}()
-
-	select {
-	case err := <-stopCh:
+	if err := listener.Stop(ctx); err != nil {
 		return err
-	case <-ctx.Done():
-		return ctx.Err()
 	}
+
+	return nil
 }
 
 // Terminate is an operation that fully stops a listener, killing processes and removing from active listeners map
@@ -175,25 +160,14 @@ func (ls *ListenerService) terminateListener(ctx context.Context, listener *List
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.stopTimeout)*time.Second)
 	defer cancel()
 
-	terminateCh := make(chan error, 1)
-	go func() {
-		terminateCh <- listener.Terminate(ctx)
-		close(terminateCh)
-	}()
-
-	select {
-	case err := <-terminateCh:
-		if err != nil {
-			return err
-		}
-		ls.mux.Lock()
-		delete(ls.activeListeners, listener.ID)
-		ls.mux.Unlock()
-		return nil
-
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := listener.Terminate(ctx); err != nil {
+		return err
 	}
+
+	ls.mux.Lock()
+	delete(ls.activeListeners, listener.ID)
+	ls.mux.Unlock()
+	return nil
 }
 
 func (ls *ListenerService) UpdateListener(ctx context.Context, listenerModel models.Listener) error {
@@ -246,7 +220,7 @@ func (ls *ListenerService) AutoStart(ctx context.Context) error {
 			// full-proof feature to get them up and running. We know listeners die on shutdown, so let
 			// us just set as ready.
 			listenerInstance.Status = StatusReady
-			if err := ls.startListener(ctx, listenerInstance); err != nil {
+			if err := ls.startListener(listenerInstance); err != nil {
 				logger.Error(fmt.Sprintf("Failed to start listener %s during AutoStart: %v", listener.ID, err))
 
 				updates := map[string]any{"status": StatusFailed}

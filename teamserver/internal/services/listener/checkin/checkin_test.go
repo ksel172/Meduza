@@ -5,10 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	// services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
-	"github.com/ksel172/Meduza/teamserver/internal/mocks"
+	dal_mocks "github.com/ksel172/Meduza/teamserver/internal/mocks/dal"
 	"github.com/ksel172/Meduza/teamserver/internal/storage"
 
-	// "github.com/ksel172/Meduza/teamserver/tests/mocks"
 	"github.com/ksel172/Meduza/teamserver/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,7 +16,7 @@ func TestAuthenticate(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	// Requirements
-	mockAgentDAL := new(mocks.MockAgentDAL)
+	mockAgentDAL := new(dal_mocks.MockAgentDAL)
 	controller := NewCheckInController(mockAgentDAL)
 
 	// Test agent auth token

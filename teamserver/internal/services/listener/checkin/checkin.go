@@ -29,6 +29,13 @@ var (
 	ErrConflict       = errors.New("conflict")
 )
 
+type ICheckInController interface {
+	Authenticate(agentPublicKey string, authToken string) (AuthResponse, error)
+	HandleTaskRequest(ctx context.Context, c2request models.C2Request, sessionToken string) ([]byte, error)
+	HandleResponseRequest(ctx context.Context, c2request models.C2Request) error
+	HandleRegisterRequest(ctx context.Context, c2request models.C2Request) error
+}
+
 type CheckInController struct {
 	agentDAL dal.IAgentDAL
 }

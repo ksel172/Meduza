@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/mocks"
+	"github.com/ksel172/Meduza/teamserver/internal/dal_mocks"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestGetUsers(t *testing.T) {
-	mockUserDAL := &mocks.MockUserDAL{}
+	mockUserDAL := &dal_mocks.MockUserDAL{}
 	handler := NewUserController(mockUserDAL)
 	gin.SetMode(gin.TestMode)
 
@@ -55,7 +55,7 @@ func TestGetUsers(t *testing.T) {
 }
 
 func TestAddUsers(t *testing.T) {
-	mockUserDAL := &mocks.MockUserDAL{}
+	mockUserDAL := &dal_mocks.MockUserDAL{}
 	handler := NewUserController(mockUserDAL)
 	gin.SetMode(gin.TestMode)
 

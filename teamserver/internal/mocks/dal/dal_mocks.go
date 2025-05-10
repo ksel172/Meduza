@@ -1,4 +1,4 @@
-package mocks
+package dal_mocks
 
 import (
 	"context"

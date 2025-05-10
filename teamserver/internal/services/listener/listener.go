@@ -8,6 +8,10 @@ import (
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
+// TODO
+// Recreate listener implementations after a cycle of running-stopping is finished
+// Internal server cannot be reused after Shutdown is called
+
 // Listener is a representation of a listener of any kind
 type Listener struct {
 	models.Listener // embed all of the data fields in the listener data model
