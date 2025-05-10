@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
-	listenerService "github.com/ksel172/Meduza/teamserver/internal/services/listener"
+	listener_service "github.com/ksel172/Meduza/teamserver/internal/services/listener"
 	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
 
 	// services "github.com/ksel172/Meduza/teamserver/internal/services/listeners"
@@ -53,7 +53,7 @@ func NewContainer() (*Container, error) {
 	// Initialize services
 	redisService := repos.NewRedisService()
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
-	listenerService := listenerService.NewListenerService(listenerDal)
+	listenerService := listener_service.NewListenerService(listenerDal)
 	//Type assertion error fix
 	// autoStart, ok := listenerDal.(*dal.ListenerDAL)
 	// if !ok {

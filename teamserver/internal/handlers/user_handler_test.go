@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/dal_mocks"
+	dal_mocks "github.com/ksel172/Meduza/teamserver/internal/mocks/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
