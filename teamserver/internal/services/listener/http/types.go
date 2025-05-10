@@ -1,7 +1,6 @@
 package http_listener
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -41,10 +40,6 @@ func NewHTTPListener(config HTTPListenerConfig, checkinController checkin.ICheck
 	}
 
 	return listener, nil
-}
-
-func (l *HTTPListener) SetListenerContext(ctx context.Context, cancelFunc context.CancelFunc) {
-
 }
 
 func (l *HTTPListener) configure() error {
