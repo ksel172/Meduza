@@ -1,6 +1,4 @@
-FROM golang:1.23.3
-
-ARG DLV_PORT=2345
+FROM golang:1.24
 
 # Set the working directory
 WORKDIR /app

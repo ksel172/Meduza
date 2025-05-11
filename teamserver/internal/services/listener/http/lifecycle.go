@@ -8,19 +8,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
-
-/*
-FOR TOMORROW
-
-1. Maybe the Start function shouldn't take in any context at all.
-	Is there a reason for caring about the request context?
-	Maybe the return message should only be "starting server" instead of server started
-	work on this async approach
-	the client will have to poll if the server has started
-
-*/
 
 // This goroutine always exists while the server is running
 // Whenever a Stop/Terminate function is called, it will stop the underlying server
@@ -39,6 +29,7 @@ func (l *HTTPListener) defaultStartServer(errChan chan<- error) {
 		}
 		err = l.server.ListenAndServeTLS(l.Config.CertPath, l.Config.KeyPath)
 	} else {
+		logger.Info("launching server...")
 		err = l.server.ListenAndServe()
 	}
 
@@ -59,10 +50,11 @@ func (l *HTTPListener) Start(ctx context.Context) error {
 	errChan := make(chan error, 1)
 
 	// Start server goroutine
+	logger.Info("Launching HTTP listener server...")
 	go l.startServerGoroutine(errChan)
 
 	// Monitor the server start
-	ticker := time.NewTicker(100 * time.Millisecond)
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
@@ -72,6 +64,7 @@ func (l *HTTPListener) Start(ctx context.Context) error {
 				Timeout: 1 * time.Second,
 			}
 			conn, err := dialer.DialContext(ctx, "tcp", l.server.Addr)
+			logger.Info(fmt.Sprintf("attemped to dial server address %s: %v", l.server.Addr, err))
 			if err == nil {
 				conn.Close()
 				l.isRunning = true

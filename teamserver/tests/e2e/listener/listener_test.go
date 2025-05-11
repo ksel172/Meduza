@@ -110,16 +110,14 @@ func TestHTTPListenerEndToEnd(t *testing.T) {
 
 	// seed the database with the listener
 	createListener(t, container, models.Listener{
+		Kind:        models.HTTPListenerKind,
 		Name:        "test-listener",
 		Description: "listener for end to end testings",
-		Status:      listener_service.StatusPending,
-		Host:        "localhost",
-		Port:        8080,
-		External:    false,
-		Heartbeat:   30,
 	})
+	t.Log("inserted listened into the database succesfully")
 
 	createdListener := getListener(t, container)
+	t.Logf("retrieved listener from database: %+v", createdListener)
 
 	// Create contexts for operations
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -127,7 +125,7 @@ func TestHTTPListenerEndToEnd(t *testing.T) {
 
 	// Start the listener that was created
 	if err := container.ListenerService.StartListener(ctx, createdListener.ID); err != nil {
-		t.Fatalf("failed to start listener")
+		t.Fatalf("failed to start listener: %v", err)
 	}
 
 	// // Start the listener
