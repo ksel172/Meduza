@@ -48,6 +48,22 @@ func (lc *ListenerController) GetListener(ctx *gin.Context) {
 	models.ResponseSuccess(ctx, http.StatusOK, "Listener retrieved successfully", listener)
 }
 
+func (lc *ListenerController) GetListenerByName(ctx *gin.Context) {
+	listenerName := ctx.Param(models.ParamListenerName)
+	if listenerName == "" {
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid listener name", "Listener name is required")
+		return
+	}
+
+	listener, err := lc.listenerDal.GetListenerByName(ctx.Request.Context(), listenerName)
+	if err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "Error getting listener", err.Error())
+		return
+	}
+
+	models.ResponseSuccess(ctx, http.StatusOK, "Listener retrieved successfully", listener)
+}
+
 func (lc *ListenerController) GetListenerStatuses(ctx *gin.Context) {
 	listeners, err := lc.listenerDal.GetAllListeners(ctx.Request.Context())
 	if err != nil {

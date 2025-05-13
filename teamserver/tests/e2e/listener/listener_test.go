@@ -1,155 +1,49 @@
 package listener_test
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/handlers"
-	listener_service "github.com/ksel172/Meduza/teamserver/internal/services/listener"
-	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
-	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/pkg/conf"
-	"github.com/stretchr/testify/require"
 )
 
-type Container struct {
-	ListenerController *handlers.ListenerController
-	ListenerService    *listener_service.ListenerService
-}
+func TestListenerService(t *testing.T) {
+	gin.SetMode("test")
 
-func setup(t *testing.T) (Container, error) {
-	// Setup db
-	schema := conf.GetMeduzaDbSchema()
-	db, err := repos.Setup()
-	if err != nil {
-		t.Fatalf("failed to setup database")
-	}
-
-	// Create required data layers
-	listenerDAL := dal.NewListenerDAL(db, schema)
-
-	// Create service and controller
-	listenerService := listener_service.NewListenerService(listenerDAL)
-	listenerController := handlers.NewListenersHandler(listenerService, listenerDAL)
-
-	return Container{
-		ListenerController: listenerController,
-		ListenerService:    listenerService,
-	}, nil
-}
-
-func createListener(t *testing.T, container Container, listenerModel models.Listener) {
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-
-	// Marshal the listener model into the request body
-	body, err := json.Marshal(listenerModel)
-	if err != nil {
-		t.Fatalf("failed to marshal listener model")
-	}
-
-	// Create the request
-	c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
-
-	// Create the listener by sending a request to the controller
-	container.ListenerController.CreateListener(c)
-
-	// Define response wrapper
-	var response struct {
-		Status  int               `json:"status"`
-		Message string            `json:"message"`
-		Data    []models.Listener `json:"data"`
-	}
-	json.Unmarshal(w.Body.Bytes(), &response)
-	fmt.Printf("%+v", response)
-
-	// Ensure it was created
-	require.Equal(t, http.StatusCreated, w.Code, "expected 201 CREATED response")
-}
-
-func getListener(t *testing.T, container Container) models.Listener {
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-
-	// Make request
-	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-	container.ListenerController.GetAllListeners(c)
-
-	require.Equal(t, http.StatusOK, w.Code, "expected 200 OK from GetAllListeners")
-
-	// Define response wrapper
-	var response struct {
-		Status  int               `json:"status"`
-		Message string            `json:"message"`
-		Data    []models.Listener `json:"data"`
-	}
-
-	// Parse response
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	require.NoError(t, err, "failed to parse response body")
-	require.Len(t, response.Data, 1, "expected exactly one listener")
-
-	return response.Data[0]
-}
-
-// e2e test for the listener service
-func TestHTTPListenerEndToEnd(t *testing.T) {
-
-	container, err := setup(t)
-	if err != nil {
-		t.Fatalf("failed to prepare test dependencies container")
-	}
-
-	// seed the database with the listener
-	createListener(t, container, models.Listener{
+	container, listener, authToken, err := setup(t, models.CreateLocalListenerRequest{
 		Kind:        models.HTTPListenerKind,
 		Name:        "test-listener",
 		Description: "listener for end to end testings",
 	})
-	t.Log("inserted listened into the database succesfully")
-
-	createdListener := getListener(t, container)
-	t.Logf("retrieved listener from database: %+v", createdListener)
+	if err != nil {
+		t.Fatalf("failed to prepare test dependencies container")
+	}
 
 	// Create contexts for operations
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	// Start the listener that was created
-	if err := container.ListenerService.StartListener(ctx, createdListener.ID); err != nil {
+	t.Log("Starting listener...")
+	if err := container.ListenerService.StartListener(ctx, listener.ID); err != nil {
 		t.Fatalf("failed to start listener: %v", err)
 	}
 
-	// // Start the listener
-	// t.Log("Starting HTTP listener")
-	// err = listener.Start(ctx)
-	// if err != nil {
-	// 	t.Fatalf("Failed to start HTTP listener: %v", err)
-	// }
+	// Create test agent to send requests to listener
+	testAgent := newTestHTTPAgent(listener.Host, listener.Port, authToken)
 
-	// // Give the server a moment to fully start
-	// time.Sleep(100 * time.Millisecond)
+	// Agent sends authentication request to listener
+	testAgent.Authenticate(t, listener.ID)
 
-	// // Test connectivity by pinging the
+	// Test connectivity by pinging the listener
 	// t.Log("Testing HTTP listener connectivity")
-	// url := fmt.Sprintf("http://%s:%d/", testHost, testPort)
-
-	// // Create a client with timeout
-	// client := &http.Client{Timeout: 5 * time.Second}
-
-	// resp, err := client.Get(url)
+	// response, err := testClient.Ping()
 	// if err != nil {
 	// 	t.Fatalf("Failed to connect to HTTP listener: %v", err)
 	// }
-	// defer resp.Body.Close()
+	// t.Logf("Ping response: %s", response)
 
 	// if resp.StatusCode != http.StatusOK {
 	// 	t.Fatalf("Expected status code 200, got %d", resp.StatusCode)

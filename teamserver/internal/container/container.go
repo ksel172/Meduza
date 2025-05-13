@@ -27,7 +27,7 @@ type Container struct {
 	ListenerController *handlers.ListenerController
 	// ListenerService       *services.ListenersService // for autostart
 	// ListenerDal           *dal.ListenerDAL
-	PayloadController          *handlers.PayloadHandler
+	PayloadController          *handlers.PayloadController
 	ModuleController           *handlers.ModuleController
 	CertificateController      *handlers.CertificateHandler
 	ExternalListenerController *handlers.ExternalController
@@ -71,7 +71,7 @@ func NewContainer() (*Container, error) {
 		// ListenerController:    handlers.NewListenersHandler(listenerDal, listenersService),
 		// ListenerService:       listenersService,
 		// ListenerDal:           autoStart,
-		PayloadController:     handlers.NewPayloadHandler(agentDal, listenerDal, payloadDal),
+		PayloadController:     handlers.NewPayloadController(agentDal, listenerDal, payloadDal),
 		ModuleController:      handlers.NewModuleController(moduleDal),
 		CertificateController: handlers.NewCertificateHandler(certificateDal),
 		// ListenerContainer: ListenerContainer{

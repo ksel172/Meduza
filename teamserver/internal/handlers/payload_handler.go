@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -18,21 +17,21 @@ import (
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
-type PayloadHandler struct {
+type PayloadController struct {
 	agentDAL    dal.IAgentDAL
 	listenerDAL dal.IListenerDAL
 	payloadDAL  dal.IPayloadDAL
 }
 
-func NewPayloadHandler(agentDAL dal.IAgentDAL, listenerDAL dal.IListenerDAL, payloadDAL dal.IPayloadDAL) *PayloadHandler {
-	return &PayloadHandler{
+func NewPayloadController(agentDAL dal.IAgentDAL, listenerDAL dal.IListenerDAL, payloadDAL dal.IPayloadDAL) *PayloadController {
+	return &PayloadController{
 		agentDAL:    agentDAL,
 		listenerDAL: listenerDAL,
 		payloadDAL:  payloadDAL,
 	}
 }
 
-func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
+func (h *PayloadController) CreatePayload(ctx *gin.Context) {
 	var payloadRequest models.PayloadRequest
 
 	if err := ctx.ShouldBindJSON(&payloadRequest); err != nil {
@@ -86,26 +85,26 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
-	args := []string{
-		"publish",
-		"--configuration", "Release",
-		"--self-contained", strings.ToLower(fmt.Sprintf("%t", payloadRequest.SelfContained)),
-		"-o", "/app/build/payload-" + payloadConfig.PayloadID,
-		"-p:PublishSingleFile=true",
-		// "-p:DefineConstants=TYPE_" + listener.Type,
-		"-r", payloadConfig.Arch,
-		"agent/Agent/Agent.csproj",
-	}
+	// args := []string{
+	// 	"publish",
+	// 	"--configuration", "Release",
+	// 	"--self-contained", strings.ToLower(fmt.Sprintf("%t", payloadRequest.SelfContained)),
+	// 	"-o", "/app/build/payload-" + payloadConfig.PayloadID,
+	// 	"-p:PublishSingleFile=true",
+	// 	// "-p:DefineConstants=TYPE_" + listener.Type,
+	// 	"-r", payloadConfig.Arch,
+	// 	conf.GetAgentProjectFilepath(),
+	// }
 
-	cmd := exec.Command("dotnet", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// cmd := exec.Command("dotnet", args...)
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
 
-	if err := cmd.Run(); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to compile payload", err.Error())
-		logger.Error("Error running Docker container to compile agent:", err)
-		return
-	}
+	// if err := cmd.Run(); err != nil {
+	// 	models.ResponseError(ctx, http.StatusInternalServerError, "Failed to compile payload", err.Error())
+	// 	logger.Error("Error running Docker container to compile agent:", err)
+	// 	return
+	// }
 
 	if err := h.payloadDAL.CreatePayload(ctx.Request.Context(), payloadConfig); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to save payload configuration", err.Error())
@@ -129,7 +128,7 @@ func (h *PayloadHandler) CreatePayload(ctx *gin.Context) {
 	models.ResponseSuccess(ctx, http.StatusCreated, "Payload created successfully", payloadConfig)
 }
 
-func (h *PayloadHandler) DeletePayload(ctx *gin.Context) {
+func (h *PayloadController) DeletePayload(ctx *gin.Context) {
 	payloadId := ctx.Param(models.ParamPayloadID)
 	if payloadId == "" {
 		models.ResponseError(ctx, http.StatusBadRequest, "Missing required parameter", fmt.Sprintf("%s is required", models.ParamPayloadID))
@@ -154,7 +153,7 @@ func (h *PayloadHandler) DeletePayload(ctx *gin.Context) {
 	models.ResponseSuccess(ctx, http.StatusOK, "Payload deleted successfully", nil)
 }
 
-func (h *PayloadHandler) DeleteAllPayloads(ctx *gin.Context) {
+func (h *PayloadController) DeleteAllPayloads(ctx *gin.Context) {
 	dirPath := "./teamserver/build"
 	files, err := os.ReadDir(dirPath)
 	if err != nil {
@@ -182,7 +181,7 @@ func (h *PayloadHandler) DeleteAllPayloads(ctx *gin.Context) {
 	models.ResponseSuccess(ctx, http.StatusOK, "All payloads deleted successfully", nil)
 }
 
-func (h *PayloadHandler) DownloadPayload(ctx *gin.Context) {
+func (h *PayloadController) DownloadPayload(ctx *gin.Context) {
 	payloadId := ctx.Param(models.ParamPayloadID)
 	if payloadId == "" {
 		models.ResponseError(ctx, http.StatusBadRequest, "Missing required parameter", fmt.Sprintf("%s is required", models.ParamPayloadID))
@@ -213,7 +212,7 @@ func (h *PayloadHandler) DownloadPayload(ctx *gin.Context) {
 	ctx.File(executablePath)
 }
 
-func (h *PayloadHandler) GetAllPayloads(ctx *gin.Context) {
+func (h *PayloadController) GetAllPayloads(ctx *gin.Context) {
 	payloads, err := h.payloadDAL.GetAllPayloads(ctx.Request.Context())
 	if err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payloads", err.Error())
@@ -222,4 +221,16 @@ func (h *PayloadHandler) GetAllPayloads(ctx *gin.Context) {
 	}
 
 	models.ResponseSuccess(ctx, http.StatusOK, "Payloads retrieved successfully", payloads)
+}
+
+func (h *PayloadController) GetToken(ctx *gin.Context) {
+	payloadID := ctx.Param(models.ParamPayloadID)
+
+	token, err := h.payloadDAL.GetToken(ctx, payloadID)
+	if err != nil {
+		logger.Error("Error getting payload token:", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payload token", err.Error())
+	}
+
+	models.ResponseSuccess(ctx, http.StatusOK, "Payloads retrieved successfully", token)
 }

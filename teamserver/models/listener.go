@@ -49,7 +49,8 @@ const (
 	ExternalListenerKind string = "external"
 
 	// Parameter names
-	ParamListenerID string = "listener_id"
+	ParamListenerID   string = "listener_id"
+	ParamListenerName string = "listener_name"
 )
 
 // Database returns only the data fields of a listener

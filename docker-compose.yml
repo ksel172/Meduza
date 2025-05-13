@@ -71,6 +71,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
       - "${REDIS_PORT}:${REDIS_PORT}"
+  
   meduza_jupyter:
     container_name: ${JUPYTER_HOST}
     image: jupyter/datascience-notebook:latest
@@ -91,6 +92,28 @@ services:
       bash -c "chmod +x /docker-entrypoint.d/init_jupyter.sh &&
                /docker-entrypoint.d/init_jupyter.sh &&
                start-notebook.sh --NotebookApp.token='${JUPYTER_TOKEN}'"
+
+  test_runner:
+    container_name: meduza_test_runner
+    build: 
+      context: .
+      dockerfile: ./teamserver/tests/Dockerfile
+    environment:
+      DB_HOST: meduza_db
+      DB_PORT: ${POSTGRES_PORT}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      DB_SCHEMA: ${POSTGRES_SCHEMA}
+      REDIS_HOST: meduza_redis
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      BASECONF_PATH: ${DOCKER_BASECONF_PATH}
+      AGENT_PROJECT_FILEPATH: ${DOCKER_AGENT_PROJECT_FILEPATH}
+    depends_on:
+      - meduza_db
+    working_dir: /app
+
 volumes:
   meduza_volume:
   jupyter_home:

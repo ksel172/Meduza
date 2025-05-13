@@ -37,6 +37,8 @@ const (
 	MeduzaJWTTokenEnvVar        = "JWT_TOKEN"
 	BaseConfPathEnvVar          = "BASECONF_PATH"
 	BaseConfPathDefault         = "./agent/Agent/baseconf.json"
+	AgentProjectFilepath        = "AGENT_PROJECT_FILEPATH"
+	AgentProjectFilepathDefault = "agent/Agent/Agent.csproj"
 	ModuleUploadPathEnvVar      = "MODULE_UPLOAD_PATH"
 	ModuleUploadPathDefault     = "./teamserver/modules"
 	ListenPortRangeStartEnvVar  = "LISTENER_PORT_RANGE_START"
@@ -106,6 +108,10 @@ func GetBaseConfPath() string {
 
 func GetModuleUploadPath() string {
 	return utils.GetEnvString(ModuleUploadPathEnvVar, ModuleUploadPathDefault)
+}
+
+func GetAgentProjectFilepath() string {
+	return utils.GetEnvString(AgentProjectFilepath, AgentProjectFilepathDefault)
 }
 
 func GetCertUploadPath() string {
