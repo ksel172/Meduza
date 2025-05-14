@@ -55,7 +55,7 @@ func (dal *AgentDAL) GetAgent(ctx context.Context, agentID string) (models.Agent
 		logger.Debug(logLevel, logDetailAgent, "Querying for agentID: "+agentID)
 		var agent models.Agent
 		if err := stmt.QueryRow(agentID).Scan(
-			&agent.AgentID, &agent.Name, &agent.Note, &agent.Status,
+			&agent.ID, &agent.Name, &agent.Note, &agent.Status,
 			&agent.FirstCallback, &agent.LastCallback, &agent.ModifiedAt,
 		); err != nil {
 			if err == sql.ErrNoRows {
@@ -87,7 +87,7 @@ func (dal *AgentDAL) GetAgents(ctx context.Context) ([]models.Agent, error) {
 		for rows.Next() {
 			var agent models.Agent
 			if err := rows.Scan(
-				&agent.AgentID, &agent.Name, &agent.Note, &agent.Status,
+				&agent.ID, &agent.Name, &agent.Note, &agent.Status,
 				&agent.FirstCallback, &agent.LastCallback, &agent.ModifiedAt,
 			); err != nil {
 				logger.Error(logLevel, logDetailAgent, fmt.Sprintf("failed to scan agent row: %v", err))
@@ -107,18 +107,41 @@ func (dal *AgentDAL) GetAgents(ctx context.Context) ([]models.Agent, error) {
 
 // Used in checkin by agents registering themselves, not by the user in the client
 func (dal *AgentDAL) RegisterAgent(ctx context.Context, agent models.Agent) error {
+	return utils.WithTransactionTimeout(ctx, dal.db, 5, sql.TxOptions{}, func(ctx context.Context, tx *sql.Tx) error {
+		// Queries
+		createAgentquery := fmt.Sprintf(`
+			INSERT INTO %s.agents (id, config_id, name, note, status, first_callback, last_callback, modified_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
+		createAgentInfoQuery := fmt.Sprintf(`
+			INSERT INTO %s.agent_info (agent_id, host_name, ip_address, user_name, system_info, os_info)
+			VALUES ($1, $2, $3, $4, $5, $6)`, dal.schema)
 
-	query := fmt.Sprintf(`
-		INSERT INTO %s.agents (id, config_id, name, note, status, first_callback, last_callback, modified_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
+		// Statements
+		createAgentStmt, err := tx.PrepareContext(ctx, createAgentquery)
+		if err != nil {
+			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to prepare create agent query: %v", err))
+			return fmt.Errorf("failed to prepare create agent query: %w", err)
+		}
+		createAgentInfoStmt, err := tx.PrepareContext(ctx, createAgentInfoQuery)
+		if err != nil {
+			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to prepare create agent query: %v", err))
+			return fmt.Errorf("failed to prepare create agent query: %w", err)
+		}
 
-	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
-		_, err := stmt.ExecContext(ctx, agent.AgentID, agent.ConfigID, agent.Name, agent.Note, agent.Status,
+		_, err = createAgentStmt.ExecContext(ctx, agent.ID, agent.ConfigID, agent.Name, agent.Note, agent.Status,
 			agent.FirstCallback, agent.LastCallback, agent.ModifiedAt)
 		if err != nil {
 			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to create agent: %v", err))
 			return fmt.Errorf("failed to create agent: %w", err)
 		}
+
+		_, err = createAgentInfoStmt.ExecContext(ctx, agent.AgentInfo.AgentID, agent.AgentInfo.HostName, agent.AgentInfo.IPAddress,
+			agent.AgentInfo.Username, agent.AgentInfo.SystemInfo, agent.AgentInfo.OSInfo)
+		if err != nil {
+			logger.Error(logLevel, logDetailAgent, fmt.Sprintf("Failed to create agent info: %v", err))
+			return fmt.Errorf("failed to create agent info: %w", err)
+		}
+
 		return nil
 	})
 }
@@ -135,7 +158,7 @@ func (dal *AgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgentRe
 
 		var updatedAgent models.Agent
 		if err := stmt.QueryRowContext(ctx, agent.Name, agent.Note, agent.Status, agent.ModifiedAt, agent.AgentID).Scan(
-			&updatedAgent.AgentID,
+			&updatedAgent.ID,
 			&updatedAgent.Name,
 			&updatedAgent.Note,
 			&updatedAgent.Status,
@@ -187,9 +210,9 @@ func (dal *AgentDAL) CreateAgentTask(ctx context.Context, task models.AgentTask)
 			return fmt.Errorf("failed to marshal command to JSON: %w", err)
 		}
 
-		logger.Debug(logLevel, logDetailAgent, fmt.Sprintf("Creating agent task: %s", task.TaskID))
-		_, err = stmt.ExecContext(ctx, task.TaskID, task.AgentID, task.Type, task.Status,
-			task.Module, commandJSON, task.Created, task.Started, task.Finished)
+		logger.Debug(logLevel, logDetailAgent, fmt.Sprintf("Creating agent task: %s", task.ID))
+		_, err = stmt.ExecContext(ctx, task.ID, task.AgentID, task.Type, task.Status,
+			task.Module, commandJSON, task.CreatedAt, task.StartedAt, task.FinishedAt)
 		if err != nil {
 			logger.Error(logLevel, logDetailAgent, fmt.Sprintf("failed to create agent task: %v", err))
 			return fmt.Errorf("failed to create agent task: %w", err)
@@ -211,7 +234,7 @@ func (dal *AgentDAL) UpdateAgentTask(ctx context.Context, task models.AgentTask)
 		}
 
 		_, err = stmt.ExecContext(ctx, task.Type, task.Status, task.Module, commandJSON,
-			task.Started, task.Finished, task.TaskID, task.AgentID)
+			task.StartedAt, task.FinishedAt, task.ID, task.AgentID)
 		if err != nil {
 			logger.Error(logLevel, logDetailAgent, fmt.Sprintf("Failed to update agent task: %v", err))
 			return fmt.Errorf("failed to update agent task: %w", err)
@@ -246,13 +269,13 @@ func (dal *AgentDAL) GetAgentTasks(ctx context.Context, agentID string) ([]model
 			var nullableFinished sql.NullTime
 
 			err := rows.Scan(
-				&task.TaskID,
+				&task.ID,
 				&task.AgentID,
 				&task.Type,
 				&task.Status,
 				&nullableModule,
 				&commandJSON,
-				&task.Created,
+				&task.CreatedAt,
 				&nullableStarted,
 				&nullableFinished,
 			)
@@ -268,11 +291,11 @@ func (dal *AgentDAL) GetAgentTasks(ctx context.Context, agentID string) ([]model
 			}
 
 			if nullableStarted.Valid {
-				task.Started = nullableStarted.Time
+				task.StartedAt = nullableStarted.Time
 			}
 
 			if nullableFinished.Valid {
-				task.Finished = nullableFinished.Time
+				task.FinishedAt = nullableFinished.Time
 			}
 
 			// Convert JSON to task.Command
@@ -343,7 +366,7 @@ func (dal *AgentDAL) CreateAgentConfig(ctx context.Context, agentConfig models.A
 
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		_, err := stmt.ExecContext(ctx,
-			agentConfig.ConfigID, agentConfig.ListenerID,
+			agentConfig.ID, agentConfig.ListenerID,
 			agentConfig.Sleep, agentConfig.Jitter, agentConfig.StartDate,
 			agentConfig.KillDate, agentConfig.WorkingHoursStart, agentConfig.WorkingHoursEnd)
 		if err != nil {
@@ -363,7 +386,7 @@ func (dal *AgentDAL) GetAgentConfig(ctx context.Context, agentID string) (models
 	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) (models.AgentConfig, error) {
 		var agentConfig models.AgentConfig
 		err := stmt.QueryRowContext(ctx, agentID).Scan(
-			&agentConfig.ConfigID, &agentConfig.ListenerID, &agentConfig.Sleep,
+			&agentConfig.ID, &agentConfig.ListenerID, &agentConfig.Sleep,
 			&agentConfig.Jitter, &agentConfig.StartDate, &agentConfig.KillDate,
 			&agentConfig.WorkingHoursStart, &agentConfig.WorkingHoursEnd)
 		if err != nil {
@@ -382,7 +405,7 @@ func (dal *AgentDAL) UpdateAgentConfig(ctx context.Context, agentID string, agen
 		WHERE agent_id = $9`, dal.schema)
 
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
-		_, err := stmt.ExecContext(ctx, agentConfig.ConfigID, agentConfig.ListenerID, agentConfig.Sleep, agentConfig.Jitter,
+		_, err := stmt.ExecContext(ctx, agentConfig.ID, agentConfig.ListenerID, agentConfig.Sleep, agentConfig.Jitter,
 			agentConfig.StartDate, agentConfig.KillDate, agentConfig.WorkingHoursStart, agentConfig.WorkingHoursEnd, agentID)
 		if err != nil {
 			logger.Error(logLevel, logDetailAgent, fmt.Sprintf("Failed to update agent config: %v", err))

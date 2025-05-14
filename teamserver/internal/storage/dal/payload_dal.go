@@ -47,7 +47,7 @@ func (dal *PayloadDAL) CreatePayload(ctx context.Context, config models.PayloadC
 			return fmt.Errorf("failed to marshal listener config to JSON: %w", err)
 		}
 
-		_, err = stmt.ExecContext(ctx, config.PayloadID, config.PayloadName, config.ConfigID,
+		_, err = stmt.ExecContext(ctx, config.ID, config.PayloadName, config.ConfigID,
 			config.ListenerID, config.PrivateKey, config.PublicKey, config.Token, config.Arch, listenerConfigJSON,
 			config.Sleep, config.Jitter, config.StartDate, config.KillDate, config.WorkingHoursStart,
 			config.WorkingHoursEnd, config.CreatedAt)
@@ -73,7 +73,7 @@ func (dal *PayloadDAL) GetPayloadByToken(ctx context.Context, payloadToken strin
 		var startDate, killDate sql.NullTime
 		var payload models.PayloadConfig
 		if err := row.Scan(
-			&payload.PayloadID,
+			&payload.ID,
 			&payload.PayloadName,
 			&payload.ConfigID,
 			&payload.ListenerID,
@@ -123,7 +123,7 @@ func (dal *PayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConf
 		var configs []models.PayloadConfig
 		for rows.Next() {
 			var config models.PayloadConfig
-			err := rows.Scan(&config.PayloadID, &config.PayloadName, &config.ConfigID, &config.ListenerID, &config.Arch, &config.ListenerConfig, &config.Sleep, &config.Jitter, &config.StartDate, &config.KillDate, &config.WorkingHoursStart, &config.WorkingHoursEnd, &config.CreatedAt)
+			err := rows.Scan(&config.ID, &config.PayloadName, &config.ConfigID, &config.ListenerID, &config.Arch, &config.ListenerConfig, &config.Sleep, &config.Jitter, &config.StartDate, &config.KillDate, &config.WorkingHoursStart, &config.WorkingHoursEnd, &config.CreatedAt)
 			if err != nil {
 				logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan payload: %v", err))
 				return nil, fmt.Errorf("failed to scan payload: %w", err)

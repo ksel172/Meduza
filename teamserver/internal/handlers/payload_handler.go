@@ -32,6 +32,7 @@ func NewPayloadController(agentDAL dal.IAgentDAL, listenerDAL dal.IListenerDAL, 
 	}
 }
 
+// TODO: added configID to payload request, verify config exists in handler
 func (h *PayloadController) CreatePayload(ctx *gin.Context) {
 	var payloadRequest models.PayloadRequest
 
@@ -47,19 +48,19 @@ func (h *PayloadController) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
-	listener, err := h.listenerDAL.GetListenerById(ctx.Request.Context(), payloadRequest.ListenerID)
-	if err != nil {
-		models.ResponseError(ctx, http.StatusNotFound, "Listener not found", err.Error())
-		logger.Error("Error retrieving the listener:", err)
-		return
-	}
+	// listener, err := h.listenerDAL.GetListenerById(ctx.Request.Context(), payloadRequest.ListenerID)
+	// if err != nil {
+	// 	models.ResponseError(ctx, http.StatusNotFound, "Listener not found", err.Error())
+	// 	logger.Error("Error retrieving the listener:", err)
+	// 	return
+	// }
 
 	payloadConfig := models.IntoPayloadConfig(payloadRequest)
 	payloadConfig.ConfigID = uuid.New().String()
-	payloadConfig.PayloadID = uuid.New().String()
+	payloadConfig.ID = uuid.New().String()
 
 	// TODO: might have to first marshal here, maybe update the listener config into json.RawMessage?
-	payloadConfig.ListenerConfig = listener.RawConfig
+	// payloadConfig.ListenerConfig = listener.RawConfig
 
 	privateKey, publicKey, err := utils.GenerateECDHKeyPair()
 	if err != nil {
@@ -113,12 +114,14 @@ func (h *PayloadController) CreatePayload(ctx *gin.Context) {
 		return
 	}
 
-	agentConfig := models.IntoAgentConfig(payloadConfig)
-	if err := h.agentDAL.CreateAgentConfig(ctx.Request.Context(), agentConfig); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to save agent configuration", err.Error())
-		logger.Error("Error saving agent configuration:", err)
-		return
-	}
+	// TODO: remove, to create a payload, an agent_config ID must be passed in
+	// No longer creating configs alongside the payload
+	// agentConfig := models.IntoAgentConfig(payloadConfig)
+	// if err := h.agentDAL.CreateAgentConfig(ctx.Request.Context(), agentConfig); err != nil {
+	// 	models.ResponseError(ctx, http.StatusInternalServerError, "Failed to save agent configuration", err.Error())
+	// 	logger.Error("Error saving agent configuration:", err)
+	// 	return
+	// }
 
 	defer func() {
 		if err := os.Truncate(baseconfPath, 0); err != nil {

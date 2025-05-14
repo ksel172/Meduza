@@ -11,7 +11,6 @@ import (
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
 	listener_service "github.com/ksel172/Meduza/teamserver/internal/services/listener"
 	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
-	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -231,25 +230,25 @@ func getPayloadToken(t *testing.T, container Container, payloadID string) string
 	return response.Data
 }
 
-func retrieveServerKeys(t *testing.T, container Container, authToken string) storage.KeyPair {
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
+// func retrieveServerKeys(t *testing.T, container Container, authToken string) storage.KeyPair {
+// 	w := httptest.NewRecorder()
+// 	c, _ := gin.CreateTestContext(w)
 
-	c.Request = httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(nil))
-	c.Params = gin.Params{{Key: models.ParamPayloadToken, Value: authToken}}
+// 	c.Request = httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(nil))
+// 	c.Params = gin.Params{{Key: models.ParamPayloadToken, Value: authToken}}
 
-	container.PayloadController.GetKeys(c)
+// 	container.PayloadController.GetKeys(c)
 
-	// Define response wrapper
-	var response struct {
-		Status  int             `json:"status"`
-		Message string          `json:"message"`
-		Data    storage.KeyPair `json:"data"`
-	}
+// 	// Define response wrapper
+// 	var response struct {
+// 		Status  int             `json:"status"`
+// 		Message string          `json:"message"`
+// 		Data    storage.KeyPair `json:"data"`
+// 	}
 
-	// Parse response
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	require.NoError(t, err, "failed to parse response body")
+// 	// Parse response
+// 	err := json.Unmarshal(w.Body.Bytes(), &response)
+// 	require.NoError(t, err, "failed to parse response body")
 
-	return response.Data
-}
+// 	return response.Data
+// }

@@ -8,66 +8,39 @@ const (
 	ParamPayloadToken string = "payload_token"
 )
 
-type PayloadRequest struct {
-	PayloadName       string    `json:"payload_name" validate:"required"`
-	ListenerID        string    `json:"listener_id" validate:"required"`
-	Arch              string    `json:"architecture" validate:"required,oneof=win-x64 win-x86 linux-x64 linux-x86"`
-	SelfContained     bool      `json:"self_contained" validate:"required,oneof=true false"`
-	Sleep             uint      `json:"sleep" validate:"required"`
-	Jitter            uint      `json:"jitter" validate:"required"`
-	StartDate         time.Time `json:"start_date" validate:"required"`
-	KillDate          time.Time `json:"kill_date" validate:"required"`
-	WorkingHoursStart uint8     `json:"working_hours_start" validate:"required"`
-	WorkingHoursEnd   uint8     `json:"working_hours_end" validate:"required"`
-}
+// TODO: add payload supported protocol kinds to validate listener
 
+// PayloadConfig represents a payload
 type PayloadConfig struct {
-	PayloadID         string    `json:"payload_id"`
-	PayloadName       string    `json:"payload_name"`
-	ConfigID          string    `json:"config_id"`
-	ListenerID        string    `json:"listener_id"`
-	PublicKey         []byte    `json:"-"`
-	PrivateKey        []byte    `json:"-"`
-	Token             string    `json:"token"`
-	Arch              string    `json:"architecture"`
-	ListenerConfig    any       `json:"config"`
-	Sleep             uint      `json:"sleep"`
-	Jitter            uint      `json:"jitter"` // Jitter as a percentage
-	StartDate         time.Time `json:"start_date"`
-	KillDate          time.Time `json:"kill_date"`
-	WorkingHoursStart uint8     `json:"working_hours_start"`
-	WorkingHoursEnd   uint8     `json:"working_hours_end"`
-	CreatedAt         time.Time `json:"created_at"`
-	//ListenerType   string        `json:"listenerType"`
+	ID          string `json:"id"`
+	ListenerID  string `json:"listener_id"` // FK to listeners.ID
+	ConfigID    string `json:"config_id"`   // FK to agent_config.ID
+	PayloadName string `json:"payload_name"`
+	Arch        string `json:"architecture"`
+
+	// Fields used by agents for checkin
+	PublicKey  []byte `json:"-"`
+	PrivateKey []byte `json:"-"`
+	Token      string `json:"-"`
+
+	CreatedAt time.Time `json:"created_at"`
 }
 
+// PayloadRequest represents the data the user sends to create a PayloadConfig
+type PayloadRequest struct {
+	ListenerID  string `json:"listener_id" validate:"required"` // The listener that is running this payload
+	ConfigID    string `json:"config_id" validate:"required"`   // The configuration to use for the payload agents initially
+	PayloadName string `json:"payload_name" validate:"required"`
+	Arch        string `json:"architecture" validate:"required,oneof=win-x64 win-x86 linux-x64 linux-x86"`
+}
+
+// IntoPayloadConfig is the function to convert a PayloadRequest into a PayloadConfig
 func IntoPayloadConfig(payloadRequest PayloadRequest) PayloadConfig {
 	return PayloadConfig{
-		PayloadName:       payloadRequest.PayloadName,
-		ConfigID:          "",
-		ListenerID:        payloadRequest.ListenerID,
-		Arch:              payloadRequest.Arch,
-		ListenerConfig:    nil,
-		Sleep:             payloadRequest.Sleep,
-		Jitter:            payloadRequest.Jitter,
-		StartDate:         payloadRequest.StartDate,
-		KillDate:          payloadRequest.KillDate,
-		WorkingHoursStart: payloadRequest.WorkingHoursStart,
-		WorkingHoursEnd:   payloadRequest.WorkingHoursEnd,
-		CreatedAt:         time.Now(),
-	}
-}
-
-func IntoAgentConfig(payloadConfig PayloadConfig) AgentConfig {
-	return AgentConfig{
-		ConfigID:          payloadConfig.ConfigID,
-		ListenerID:        payloadConfig.ListenerID,
-		Arch:              payloadConfig.Arch,
-		Sleep:             payloadConfig.Sleep,
-		Jitter:            payloadConfig.Jitter,
-		StartDate:         payloadConfig.StartDate,
-		KillDate:          payloadConfig.KillDate,
-		WorkingHoursStart: payloadConfig.WorkingHoursStart,
-		WorkingHoursEnd:   payloadConfig.WorkingHoursEnd,
+		PayloadName: payloadRequest.PayloadName,
+		ConfigID:    payloadRequest.ConfigID,
+		ListenerID:  payloadRequest.ListenerID,
+		Arch:        payloadRequest.Arch,
+		CreatedAt:   time.Now(),
 	}
 }

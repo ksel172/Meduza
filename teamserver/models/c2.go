@@ -15,11 +15,6 @@ type C2Request struct {
 	Message     string        `json:"message"`
 }
 
-// Initialize a new C2Request with status uninitialized, for use when creating a new agent
-func NewC2Request() C2Request {
-	return C2Request{AgentStatus: AgentUninitialized} // Default to uninitialized, if not provided
-}
-
 // Validates if the C2Request contains valid data
 func (r C2Request) Valid() bool {
 	return (r.AgentStatus == AgentUninitialized || r.AgentStatus == AgentActive || r.AgentStatus == AgentExited)
@@ -28,7 +23,7 @@ func (r C2Request) Valid() bool {
 // Converts a C2Request into a new Agent for registration
 func (r C2Request) IntoNewAgent() Agent {
 	return Agent{
-		AgentID:       uuid.NewString(),
+		ID:            uuid.NewString(),
 		ConfigID:      r.ConfigID,
 		Status:        r.AgentStatus,
 		FirstCallback: time.Now(),

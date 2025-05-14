@@ -24,7 +24,7 @@ func TestListenerService(t *testing.T) {
 
 	testAgent, err := newTestHTTPAgent(
 		models.Agent{
-			AgentID: uuid.New().String(),
+			ID: uuid.New().String(),
 		},
 		listener.Host,
 		listener.Port,

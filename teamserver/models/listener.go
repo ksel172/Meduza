@@ -110,7 +110,7 @@ type CreateLocalListenerRequest struct {
 	Kind        string `json:"kind" validate:"required"` // http, tcp, smb, custom, etc
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Heartbeat   int    `json:"heartbeat"` //
+	Heartbeat   int    `json:"heartbeat"`
 }
 
 func (clr CreateLocalListenerRequest) IntoListener() Listener {

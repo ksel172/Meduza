@@ -33,7 +33,7 @@ type ICheckInController interface {
 	Authenticate(agentPublicKey []byte, authToken string) (AuthResponse, error)
 	HandleTaskRequest(ctx context.Context, c2request models.C2Request, sessionToken string) ([]byte, error)
 	HandleResponseRequest(ctx context.Context, c2request models.C2Request) error
-	HandleRegisterRequest(ctx context.Context, c2request models.C2Request) error
+	HandleRegisterRequest(ctx context.Context, c2request models.C2Request, payloadToken string) error
 }
 
 type CheckInController struct {
@@ -195,11 +195,22 @@ func (cc *CheckInController) HandleResponseRequest(ctx context.Context, c2reques
 		return ErrInternalServer
 	}
 
-	logger.Info(fmt.Sprintf("Successfully updated agent task: %s", agentTask.TaskID))
+	logger.Info(fmt.Sprintf("Successfully updated agent task: %s", agentTask.ID))
 	return nil
 }
 
-func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2request models.C2Request) error {
+// Input: authToken (how the agent identifies the payload in the db)
+// Payload: is used to reach the payload config_id
+/*
+c2request {
+	reason: Register
+	message: {
+		models.AgentInfo
+	}
+}
+
+*/
+func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2request models.C2Request, payloadToken string) error {
 	logger.Info(fmt.Sprintf("Received register request from agent: %s", c2request.AgentID))
 
 	var agentInfo models.AgentInfo
@@ -210,24 +221,45 @@ func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2reques
 
 	// Get payload from db based on payloadToken
 	// to retrieve the config associated with the payload
+	payload, err := cc.payloadDAL.GetPayloadByToken(ctx, payloadToken)
+	if err != nil {
+		logger.Info(fmt.Sprintf("Failed to retrieve payload by token: %v", err))
+		return ErrDatabase
+	}
 
+	// Now, create the agent using data parsed from the Message field
+	agentID := uuid.NewString()
+	agentInfo.AgentID = agentID
+	newAgent := models.Agent{
+		ID:            agentID,
+		ConfigID:      payload.ConfigID,
+		PayloadID:     payload.ID,
+		Name:          utils.RandomString(6),
+		Status:        models.AgentUninitialized,
+		FirstCallback: time.Now(),
+		LastCallback:  time.Now(),
+		ModifiedAt:    time.Now(),
+		AgentInfo:     agentInfo,
+	}
+
+	// TODO: it will not be possible to implement this check, which kinda sucks
 	// if _, err := cc.agentDAL.GetAgent(ctx, c2request.AgentID); err == nil {
 	// 	logger.Info("Agent already exists:", c2request.AgentID)
 	// 	return ErrConflict
 	// }
 
 	// newAgent := c2request.IntoNewAgent()
-	newAgent.Name = utils.RandomString(6)
+	// newAgent.Name = utils.RandomString(6)
 
 	if err := cc.agentDAL.RegisterAgent(ctx, newAgent); err != nil {
 		logger.Info(fmt.Sprintf("Failed to create agent: %v", err))
 		return ErrInternalServer
 	}
 
-	if err := cc.agentDAL.CreateAgentInfo(ctx, agentInfo); err != nil {
-		logger.Info(fmt.Sprintf("Failed to create agent info: %v", err))
-		return ErrInternalServer
-	}
+	// if err := cc.agentDAL.CreateAgentInfo(ctx, agentInfo); err != nil {
+	// 	logger.Info(fmt.Sprintf("Failed to create agent info: %v", err))
+	// 	return ErrInternalServer
+	// }
 
 	return nil
 }

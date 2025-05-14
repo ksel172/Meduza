@@ -106,7 +106,7 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 
 	if agentTask.Type == models.HelpCommand {
 
-		agentTask.Started = time.Now()
+		agentTask.StartedAt = time.Now()
 
 		helpText := "Available commands:\n" +
 			"shell [command] - Execute a shell command\n" +
@@ -133,7 +133,7 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 		}
 
 		agentTask.Status = models.TaskComplete
-		agentTask.Finished = time.Now()
+		agentTask.FinishedAt = time.Now()
 		agentTask.Command.Output = helpText
 	}
 
@@ -160,7 +160,7 @@ func (ac *AgentController) UpdateAgentTask(ctx *gin.Context) {
 	}
 
 	agentTask.AgentID = agentID
-	agentTask.TaskID = taskID
+	agentTask.ID = taskID
 
 	if err := ac.agentDal.UpdateAgentTask(ctx, agentTask); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to update agent task", err.Error())
@@ -306,35 +306,39 @@ func (ac *AgentController) DeleteAgentConfig(ctx *gin.Context) {
 	models.ResponseSuccess(ctx, http.StatusOK, "Agent config deleted successfully", nil)
 }
 
-func (ac *AgentController) CreateAgentInfo(ctx *gin.Context) {
-	var agentInfo models.AgentInfo
-	if err := ctx.ShouldBindJSON(&agentInfo); err != nil {
-		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request format", err.Error())
-		return
-	}
+// TODO: this endpoint shouldn't be exposed to the front end?
+// Used only internally when registering users
+// func (ac *AgentController) CreateAgentInfo(ctx *gin.Context) {
+// 	var agentInfo models.AgentInfo
+// 	if err := ctx.ShouldBindJSON(&agentInfo); err != nil {
+// 		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request format", err.Error())
+// 		return
+// 	}
 
-	if err := ac.agentDal.CreateAgentInfo(ctx, agentInfo); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create agent info", err.Error())
-		return
-	}
+// 	if err := ac.agentDal.CreateAgentInfo(ctx, agentInfo); err != nil {
+// 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create agent info", err.Error())
+// 		return
+// 	}
 
-	models.ResponseSuccess(ctx, http.StatusCreated, "Agent info created successfully", agentInfo)
-}
+// 	models.ResponseSuccess(ctx, http.StatusCreated, "Agent info created successfully", agentInfo)
+// }
 
-func (ac *AgentController) UpdateAgentInfo(ctx *gin.Context) {
-	var agentInfo models.AgentInfo
-	if err := ctx.ShouldBindJSON(&agentInfo); err != nil {
-		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request format", err.Error())
-		return
-	}
+// TODO: this endpoint shouldn't be exposed to the front end?
+// Used only in the checkin process whenever the agent has any updates
+// func (ac *AgentController) UpdateAgentInfo(ctx *gin.Context) {
+// 	var agentInfo models.AgentInfo
+// 	if err := ctx.ShouldBindJSON(&agentInfo); err != nil {
+// 		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request format", err.Error())
+// 		return
+// 	}
 
-	if err := ac.agentDal.UpdateAgentInfo(ctx, agentInfo); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to update agent info", err.Error())
-		return
-	}
+// 	if err := ac.agentDal.UpdateAgentInfo(ctx, agentInfo); err != nil {
+// 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to update agent info", err.Error())
+// 		return
+// 	}
 
-	models.ResponseSuccess(ctx, http.StatusOK, "Agent info updated successfully", agentInfo)
-}
+// 	models.ResponseSuccess(ctx, http.StatusOK, "Agent info updated successfully", agentInfo)
+// }
 
 func (ac *AgentController) GetAgentInfo(ctx *gin.Context) {
 	agentID := ctx.Param(models.ParamAgentID)

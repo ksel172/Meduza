@@ -53,7 +53,7 @@ func newTestHTTPAgent(agent models.Agent, host string, port int, token string) (
 func (a *TestHTTPAgent) Authenticate(t *testing.T, listenerID string) {
 	// Prepare request body by encoding the c2request as base64 bytes
 	c2request := models.C2Request{
-		AgentID: a.AgentID,
+		AgentID: a.ID,
 		Message: base64.StdEncoding.EncodeToString(a.PublicKey),
 	}
 	c2requestBytes, err := json.Marshal(c2request)
@@ -119,9 +119,9 @@ func (a *TestHTTPAgent) Authenticate(t *testing.T, listenerID string) {
 func (a *TestHTTPAgent) Register(t *testing.T) {
 	// Marshal c2request
 	c2request := models.C2Request{
-		AgentID: a.AgentID,
+		// AgentID: a.ID,
 		Reason:  models.Register,
-		Message: fmt.Sprintf(`{"agent_id":"%s"}`, a.AgentID),
+		Message: fmt.Sprintf(`{"agent_id":"%s"}`, a.ID),
 	}
 	c2requestBytes, err := json.Marshal(c2request)
 	if err != nil {
@@ -141,6 +141,7 @@ func (a *TestHTTPAgent) Register(t *testing.T) {
 		t.Fatalf("failed to create HTTP request: %v", err)
 	}
 	req.Header.Add("Session-Token", base64.StdEncoding.EncodeToString(a.sessionToken))
+	req.Header.Add("Auth-Token", base64.StdEncoding.EncodeToString([]byte(a.authToken)))
 	req.Header.Add("Content-Type", "application/json")
 
 	// Make request

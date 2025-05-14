@@ -106,7 +106,7 @@ func TestHandleResponseRequest(t *testing.T) {
 
 	// Create a test task
 	testTask := models.AgentTask{
-		TaskID:  "task-1",
+		ID:      "task-1",
 		AgentID: agentID,
 		Status:  models.TaskComplete,
 		Command: models.AgentCommand{
@@ -130,7 +130,7 @@ func TestHandleResponseRequest(t *testing.T) {
 			mockSetup: func(mockAgentDAL *dal_mocks.MockAgentDAL) {
 				// Based on the error message, the mock expects one parameter of type models.AgentTask
 				mockAgentDAL.On("UpdateAgentTask", mock.MatchedBy(func(task models.AgentTask) bool {
-					return task.AgentID == agentID && task.TaskID == "task-1"
+					return task.AgentID == agentID && task.ID == "task-1"
 				})).Return(nil)
 			},
 			expectError: nil,
@@ -148,7 +148,7 @@ func TestHandleResponseRequest(t *testing.T) {
 			message: string(taskJSON),
 			mockSetup: func(mockAgentDAL *dal_mocks.MockAgentDAL) {
 				mockAgentDAL.On("UpdateAgentTask", mock.MatchedBy(func(task models.AgentTask) bool {
-					return task.AgentID == agentID && task.TaskID == "task-1"
+					return task.AgentID == agentID && task.ID == "task-1"
 				})).Return(errors.New("database error"))
 			},
 			expectError: ErrInternalServer,
@@ -192,7 +192,7 @@ func TestHandleRegisterRequest(t *testing.T) {
 
 	// Create agent info with the correct field names
 	agentInfo := models.AgentInfo{
-		AgentID:    agentID,
+		ID:         agentID,
 		HostName:   "test-host",
 		Username:   "test-user",
 		IPAddress:  "192.168.1.100",
@@ -217,10 +217,10 @@ func TestHandleRegisterRequest(t *testing.T) {
 				// we need to adjust the mock expectations to match the actual implementation
 				mockAgentDAL.On("GetAgent", agentID).Return(models.Agent{}, errors.New("not found"))
 				mockAgentDAL.On("RegisterAgent", mock.MatchedBy(func(agent models.Agent) bool {
-					return agent.AgentID == agentID
+					return agent.ID == agentID
 				})).Return(nil)
 				mockAgentDAL.On("CreateAgentInfo", mock.MatchedBy(func(info models.AgentInfo) bool {
-					return info.AgentID == agentID
+					return info.ID == agentID
 				})).Return(nil)
 			},
 			expectError: nil,
@@ -247,7 +247,7 @@ func TestHandleRegisterRequest(t *testing.T) {
 			mockSetup: func(mockAgentDAL *dal_mocks.MockAgentDAL) {
 				mockAgentDAL.On("GetAgent", agentID).Return(models.Agent{}, errors.New("not found"))
 				mockAgentDAL.On("RegisterAgent", mock.MatchedBy(func(agent models.Agent) bool {
-					return agent.AgentID == agentID
+					return agent.ID == agentID
 				})).Return(errors.New("database error"))
 			},
 			expectError: ErrInternalServer,
@@ -258,10 +258,10 @@ func TestHandleRegisterRequest(t *testing.T) {
 			mockSetup: func(mockAgentDAL *dal_mocks.MockAgentDAL) {
 				mockAgentDAL.On("GetAgent", agentID).Return(models.Agent{}, errors.New("not found"))
 				mockAgentDAL.On("RegisterAgent", mock.MatchedBy(func(agent models.Agent) bool {
-					return agent.AgentID == agentID
+					return agent.ID == agentID
 				})).Return(nil)
 				mockAgentDAL.On("CreateAgentInfo", mock.MatchedBy(func(info models.AgentInfo) bool {
-					return info.AgentID == agentID
+					return info.ID == agentID
 				})).Return(errors.New("database error"))
 			},
 			expectError: ErrInternalServer,

@@ -159,9 +159,21 @@ func (l *HTTPListener) HandleCheckIn(ctx *gin.Context) {
 		return
 
 	case models.Register:
-		logger.Info(fmt.Sprintf("Handling register request for agent %s", c2request.AgentID))
-		err := l.checkinController.HandleRegisterRequest(ctx.Request.Context(), c2request)
+		// Get base64 Auth-Token header and decode it
+		authTokenBase64 := ctx.GetHeader("Auth-Token")
+		if authTokenBase64 == "" {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "missing Auth-Token header"})
+			return
+		}
+		authToken, err := base64.StdEncoding.DecodeString(authTokenBase64)
 		if err != nil {
+			logger.Info(fmt.Sprintf("failed to base64 decode Auth-Token header: %v", authToken))
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid Auth-Token header"})
+			return
+		}
+
+		logger.Info(fmt.Sprintf("Handling register request for agent %s", c2request.AgentID))
+		if err := l.checkinController.HandleRegisterRequest(ctx.Request.Context(), c2request, string(authToken)); err != nil {
 			switch err {
 			case checkin.ErrInvalidData:
 				ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -172,6 +184,10 @@ func (l *HTTPListener) HandleCheckIn(ctx *gin.Context) {
 			case checkin.ErrInternalServer:
 				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
+			case checkin.ErrDatabase:
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+
 			}
 		}
 
