@@ -28,12 +28,12 @@ type ListenerImplementation interface {
 // The lifecycleManager and ListenerImplementation fields will be nil
 // we must check how the listener is setup to run and prepare the fields
 // for usage
-func createListenerFromModel(listenerModel models.Listener) (*Listener, error) {
+func createListenerFromModel(listenerModel models.Listener, checkinController checkin.ICheckInController) (*Listener, error) {
 	listener := Listener{}
 	listener.Listener = listenerModel
 
 	// Create the concrete listener implementation
-	listenerImplementation, err := createListenerImplementation(listener.Kind, listener.Host, listener.Port, listener.RawConfig)
+	listenerImplementation, err := createListenerImplementation(listener.Kind, listener.Host, listener.Port, listener.RawConfig, checkinController)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,8 @@ func createListenerFromModel(listenerModel models.Listener) (*Listener, error) {
 }
 
 // Creates the local listener implementation based on the provided config byte array
-func createListenerImplementation(kind string, host string, port int, config json.RawMessage) (ListenerImplementation, error) {
+func createListenerImplementation(kind string, host string, port int, config json.RawMessage,
+	checkinController checkin.ICheckInController) (ListenerImplementation, error) {
 	switch kind {
 
 	case models.HTTPListenerKind:
@@ -65,7 +66,7 @@ func createListenerImplementation(kind string, host string, port int, config jso
 		httpConfig.Host = host
 		httpConfig.Port = port
 
-		implementation, err := http_listener.NewHTTPListener(httpConfig, &checkin.CheckInController{})
+		implementation, err := http_listener.NewHTTPListener(httpConfig, checkinController)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create http implementation: %w", err)
 		}

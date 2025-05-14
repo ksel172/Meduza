@@ -10,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
 	listener_service "github.com/ksel172/Meduza/teamserver/internal/services/listener"
+	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
+	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/repos"
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -47,12 +49,15 @@ func setup(t *testing.T, createLocalListenerRequest models.CreateLocalListenerRe
 		PayloadName: "test-payload",
 		ListenerID:  createdListener.ID,
 	})
-	t.Log("craeted payload in the database")
+	t.Log("created payload in the database")
 
+	// Retrieve the payload from database
 	createdPayload := getPayload(t, container)
 	t.Logf("retrieved payload from database: %+v", createdPayload)
 
+	// Retrieve payload/authentication token from database
 	authToken := getPayloadToken(t, container, createdPayload.ConfigID)
+	t.Logf("retrieved payload token from database: %s", authToken)
 
 	return container, createdListener, authToken, nil
 }
@@ -71,8 +76,11 @@ func createContainer(t *testing.T) Container {
 	payloadDAL := dal.NewPayloadDAL(db, schema)
 	moduleDAL := dal.NewModuleDAL(db, schema)
 
+	// Create dependency controller
+	checkinController := checkin.NewCheckInController(agentDAL, payloadDAL)
+
 	// Create services
-	listenerService := listener_service.NewListenerService(listenerDAL)
+	listenerService := listener_service.NewListenerService(listenerDAL, checkinController)
 
 	// Create controllers
 	listenerController := handlers.NewListenersHandler(listenerService, listenerDAL)
@@ -214,6 +222,29 @@ func getPayloadToken(t *testing.T, container Container, payloadID string) string
 		Status  int    `json:"status"`
 		Message string `json:"message"`
 		Data    string `json:"data"`
+	}
+
+	// Parse response
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err, "failed to parse response body")
+
+	return response.Data
+}
+
+func retrieveServerKeys(t *testing.T, container Container, authToken string) storage.KeyPair {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(nil))
+	c.Params = gin.Params{{Key: models.ParamPayloadToken, Value: authToken}}
+
+	container.PayloadController.GetKeys(c)
+
+	// Define response wrapper
+	var response struct {
+		Status  int             `json:"status"`
+		Message string          `json:"message"`
+		Data    storage.KeyPair `json:"data"`
 	}
 
 	// Parse response

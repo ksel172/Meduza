@@ -62,9 +62,17 @@ func (l *HTTPListener) HandleCheckIn(ctx *gin.Context) {
 		}
 
 		// Get the agent public key from the request message
-		agentPublicKey := c2request.Message
-		if agentPublicKey == "" {
+		agentPublicKeyBase64 := c2request.Message
+		if agentPublicKeyBase64 == "" {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing agent public key"})
+			return
+		}
+
+		// Decode the base64-encoded public key
+		agentPublicKey, err := base64.StdEncoding.DecodeString(agentPublicKeyBase64)
+		if err != nil {
+			logger.Info(fmt.Sprintf("failed to decode agent public key: %v", err))
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid agent public key encoding"})
 			return
 		}
 
@@ -74,7 +82,7 @@ func (l *HTTPListener) HandleCheckIn(ctx *gin.Context) {
 		if err != nil {
 			ctx.JSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
 			logger.Info(fmt.Sprintf("failed to authenticate: %v", err))
-
+			return
 		}
 		logger.Info(fmt.Sprintf("Agent %s authenticated", c2request.AgentID))
 		ctx.JSON(http.StatusAccepted, gin.H{
@@ -88,7 +96,7 @@ func (l *HTTPListener) HandleCheckIn(ctx *gin.Context) {
 	// Get session AES key for agent, decrypt request body and unmarshal
 	sessionToken, err := base64.StdEncoding.DecodeString(sessionTokenBase64)
 	if err != nil {
-		logger.Info(fmt.Sprintf("failed to base64 decode Session-Token header: %v", sessionToken))
+		logger.Info(fmt.Sprintf("failed to base64 decode Session-Token header: %v", sessionTokenBase64))
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid Session-Token header"})
 		return
 	}
@@ -96,7 +104,7 @@ func (l *HTTPListener) HandleCheckIn(ctx *gin.Context) {
 	if !exists {
 		// If agent received unauthorized response
 		// it should send another authentication request right after
-		logger.Info(fmt.Sprintf("Missing AES key for session: %s", sessionToken))
+		logger.Info(fmt.Sprintf("Missing AES key for session: %s", sessionTokenBase64))
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid session token"})
 		return
 	}

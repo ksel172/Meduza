@@ -2,17 +2,17 @@ package models
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // C2Request represents any request sent to a C2 server by an Agent.
-// Valid agent statuses: ["uninitialized", "inactive", "active"]
 type C2Request struct {
 	Reason      RequestReason `json:"reason"`
 	AgentID     string        `json:"agent_id"`
 	ConfigID    string        `json:"config_id"`
 	AgentStatus AgentStatus   `json:"agent_status"`
 	Message     string        `json:"message"`
-	// Hmac        string `json:"hmac"`
 }
 
 // Initialize a new C2Request with status uninitialized, for use when creating a new agent
@@ -28,7 +28,7 @@ func (r C2Request) Valid() bool {
 // Converts a C2Request into a new Agent for registration
 func (r C2Request) IntoNewAgent() Agent {
 	return Agent{
-		AgentID:       r.AgentID, // uuid generated at agent host machine, sent with initial checkin request
+		AgentID:       uuid.NewString(),
 		ConfigID:      r.ConfigID,
 		Status:        r.AgentStatus,
 		FirstCallback: time.Now(),

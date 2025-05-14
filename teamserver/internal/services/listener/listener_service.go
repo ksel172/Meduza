@@ -42,7 +42,7 @@ func (ls *ListenerService) StartListener(ctx context.Context, listenerID string)
 			return fmt.Errorf("listener with ID %s not found: %w", listenerID, err)
 		}
 
-		listener, err = createListenerFromModel(listenerModel)
+		listener, err = createListenerFromModel(listenerModel, ls.checkinController)
 		if err != nil {
 			return fmt.Errorf("failed to create listener from model: %w", err)
 		}
@@ -155,7 +155,7 @@ func (ls *ListenerService) AutoStart(ctx context.Context) error {
 	for _, listener := range listeners {
 		// Create listener instance first
 
-		listenerInstance, err := createListenerFromModel(listener)
+		listenerInstance, err := createListenerFromModel(listener, ls.checkinController)
 		if err != nil {
 			return fmt.Errorf("failed to create listener instance: %w", err)
 		}

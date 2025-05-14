@@ -4,7 +4,8 @@ import "time"
 
 const (
 	// URL parameter constants
-	ParamPayloadID string = "payload_id"
+	ParamPayloadID    string = "payload_id"
+	ParamPayloadToken string = "payload_token"
 )
 
 type PayloadRequest struct {

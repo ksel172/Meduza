@@ -30,14 +30,15 @@ var (
 )
 
 type ICheckInController interface {
-	Authenticate(agentPublicKey string, authToken string) (AuthResponse, error)
+	Authenticate(agentPublicKey []byte, authToken string) (AuthResponse, error)
 	HandleTaskRequest(ctx context.Context, c2request models.C2Request, sessionToken string) ([]byte, error)
 	HandleResponseRequest(ctx context.Context, c2request models.C2Request) error
 	HandleRegisterRequest(ctx context.Context, c2request models.C2Request) error
 }
 
 type CheckInController struct {
-	agentDAL dal.IAgentDAL
+	agentDAL   dal.IAgentDAL
+	payloadDAL dal.IPayloadDAL
 }
 
 type AuthResponse struct {
@@ -45,22 +46,23 @@ type AuthResponse struct {
 	SessionToken string
 }
 
-func NewCheckInController(agentDal dal.IAgentDAL) *CheckInController {
+func NewCheckInController(agentDal dal.IAgentDAL, payloadDAL dal.IPayloadDAL) *CheckInController {
 	return &CheckInController{
-		agentDAL: agentDal,
+		agentDAL:   agentDal,
+		payloadDAL: payloadDAL,
 	}
 }
 
-func (cc *CheckInController) Authenticate(agentPublicKey string, authToken string) (AuthResponse, error) {
+func (cc *CheckInController) Authenticate(agentPublicKey []byte, authToken string) (AuthResponse, error) {
 	// Retrieve the server private key to derive shared key
 	// and the public key to send to the agent
-	serverKeyPair, ok := storage.AsymmetricKeyRegistry.GetKeys(authToken)
-	if !ok {
-		return AuthResponse{}, fmt.Errorf("key not found from auth token")
+	serverPrivKey, serverPubKey, err := cc.payloadDAL.GetKeys(context.Background(), authToken)
+	if err != nil {
+		return AuthResponse{}, fmt.Errorf("failed to get server keys: %w", err)
 	}
 
 	// Generate AES session key and store in the registry
-	aesKey, err := utils.DeriveECDHSharedSecret(serverKeyPair.PrivateKey, []byte(agentPublicKey))
+	aesKey, err := utils.DeriveECDHSharedSecret(serverPrivKey, agentPublicKey)
 	if err != nil {
 		return AuthResponse{}, fmt.Errorf("failed to derive shared key: %v", err)
 	}
@@ -72,7 +74,7 @@ func (cc *CheckInController) Authenticate(agentPublicKey string, authToken strin
 	storage.KeyRegistry.WriteKey(sessionToken, aesKey)
 
 	return AuthResponse{
-		PublicKey:    serverKeyPair.PublicKey,
+		PublicKey:    serverPubKey,
 		SessionToken: sessionToken,
 	}, nil
 }
@@ -206,12 +208,15 @@ func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2reques
 		return ErrInvalidData
 	}
 
-	if _, err := cc.agentDAL.GetAgent(ctx, agentInfo.AgentID); err == nil {
-		logger.Info("Agent already exists:", c2request.AgentID)
-		return ErrConflict
-	}
+	// Get payload from db based on payloadToken
+	// to retrieve the config associated with the payload
 
-	newAgent := c2request.IntoNewAgent()
+	// if _, err := cc.agentDAL.GetAgent(ctx, c2request.AgentID); err == nil {
+	// 	logger.Info("Agent already exists:", c2request.AgentID)
+	// 	return ErrConflict
+	// }
+
+	// newAgent := c2request.IntoNewAgent()
 	newAgent.Name = utils.RandomString(6)
 
 	if err := cc.agentDAL.RegisterAgent(ctx, newAgent); err != nil {

@@ -13,9 +13,11 @@ import (
 
 type IPayloadDAL interface {
 	CreatePayload(ctx context.Context, config models.PayloadConfig) error
+	GetPayloadByToken(ctx context.Context, payloadToken string) (models.PayloadConfig, error)
 	GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error)
 	DeletePayload(ctx context.Context, payloadID string) error
 	DeleteAllPayloads(ctx context.Context) error
+
 	GetKeys(ctx context.Context, authToken string) ([]byte, []byte, error)
 	GetToken(ctx context.Context, configID string) (string, error)
 }
@@ -55,6 +57,53 @@ func (dal *PayloadDAL) CreatePayload(ctx context.Context, config models.PayloadC
 		}
 
 		return nil
+	})
+}
+
+// Agent only know the payload token, not its ID, this retrieves the payload using the token
+func (dal *PayloadDAL) GetPayloadByToken(ctx context.Context, payloadToken string) (models.PayloadConfig, error) {
+	query := fmt.Sprintf(`SELECT payload_id, payload_name, config_id, listener_id, arch,
+		listener_config, sleep, jitter, start_date, kill_date, working_hours_start, 
+		working_hours_end, created_at
+		FROM %s.payloads
+		WHERE payload_token = $1`, dal.schema)
+
+	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) (models.PayloadConfig, error) {
+		row := stmt.QueryRowContext(ctx)
+		var startDate, killDate sql.NullTime
+		var payload models.PayloadConfig
+		if err := row.Scan(
+			&payload.PayloadID,
+			&payload.PayloadName,
+			&payload.ConfigID,
+			&payload.ListenerID,
+			&payload.Arch,
+			&payload.ListenerConfig, // not implemented? review field
+			&payload.Sleep,
+			&payload.Jitter,
+			&startDate,
+			&killDate,
+			&payload.WorkingHoursStart,
+			&payload.WorkingHoursEnd,
+			&payload.CreatedAt,
+		); err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan payload: %v", err))
+			return models.PayloadConfig{}, fmt.Errorf("failed to scan payload: %w", err)
+		}
+
+		if err := row.Err(); err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to get payload by token: %v", err))
+			return models.PayloadConfig{}, fmt.Errorf("failed to get payload by token: %w", err)
+		}
+
+		if startDate.Valid {
+			payload.StartDate = startDate.Time
+		}
+		if killDate.Valid {
+			payload.KillDate = killDate.Time
+		}
+
+		return payload, nil
 	})
 }
 

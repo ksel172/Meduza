@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
@@ -223,6 +224,19 @@ func (h *PayloadController) GetAllPayloads(ctx *gin.Context) {
 	models.ResponseSuccess(ctx, http.StatusOK, "Payloads retrieved successfully", payloads)
 }
 
+func (h *PayloadController) GetPayloadByToken(ctx *gin.Context) {
+	authToken := ctx.Param(models.ParamPayloadToken)
+
+	payload, err := h.payloadDAL.GetPayloadByToken(ctx, authToken)
+	if err != nil {
+		logger.Error("Error getting payload payload by token:", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payload by token", err.Error())
+	}
+
+	models.ResponseSuccess(ctx, http.StatusOK, "Payload retrieved successfully", payload)
+}
+
+// Unexported for users, internal use only
 func (h *PayloadController) GetToken(ctx *gin.Context) {
 	payloadID := ctx.Param(models.ParamPayloadID)
 
@@ -232,5 +246,21 @@ func (h *PayloadController) GetToken(ctx *gin.Context) {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payload token", err.Error())
 	}
 
-	models.ResponseSuccess(ctx, http.StatusOK, "Payloads retrieved successfully", token)
+	models.ResponseSuccess(ctx, http.StatusOK, "Payload token retrieved successfully", token)
+}
+
+// Unexported for users, internal use only
+func (h *PayloadController) GetKeys(ctx *gin.Context) {
+	authToken := ctx.Param(models.ParamPayloadToken)
+
+	privKey, pubKey, err := h.payloadDAL.GetKeys(ctx, authToken)
+	if err != nil {
+		logger.Error("Error getting payload keys:", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payload keys", err.Error())
+	}
+
+	models.ResponseSuccess(ctx, http.StatusOK, "Payload keys retrieved successfully", storage.KeyPair{
+		PublicKey:  pubKey,
+		PrivateKey: privKey,
+	})
 }
