@@ -73,6 +73,7 @@ func (a *TestHTTPAgent) Authenticate(t *testing.T, listenerID string) {
 	req.Header.Add("Content-Type", "application/json")
 
 	// Make request
+	// fmt.Printf("1. Test - BASE 64 Agent Public Key: %s\n", c2request.Message)
 	resp, err := a.client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to send HTTP request: %v", err)
@@ -117,11 +118,10 @@ func (a *TestHTTPAgent) Authenticate(t *testing.T, listenerID string) {
 }
 
 func (a *TestHTTPAgent) Register(t *testing.T) {
-	// Marshal c2request
 	c2request := models.C2Request{
-		// AgentID: a.ID,
-		Reason:  models.Register,
-		Message: fmt.Sprintf(`{"agent_id":"%s"}`, a.ID),
+		Reason: models.Register,
+		Message: fmt.Sprintf(`{"hostname":"%s", "ip_address":"%s", "username":"%s", "system_info":"%s", "os_info":"%s"}`,
+			"test-host", "192.168.0.1", "test-username", "test-system-info", "test-os-info"),
 	}
 	c2requestBytes, err := json.Marshal(c2request)
 	if err != nil {

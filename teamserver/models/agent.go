@@ -29,7 +29,7 @@ type Agent struct {
 // Inherits ID from Agent
 type AgentInfo struct {
 	AgentID    string `json:"agent_id"`
-	HostName   string `json:"host_name"`
+	HostName   string `json:"hostname"`
 	IPAddress  string `json:"ip_address"`
 	Username   string `json:"username"`
 	SystemInfo string `json:"system_info"`
@@ -37,7 +37,7 @@ type AgentInfo struct {
 }
 
 type AgentInfoRequest struct {
-	HostName   string `json:"host_name"`
+	HostName   string `json:"hostname"`
 	IPAddress  string `json:"ip_address"`
 	Username   string `json:"username"`
 	SystemInfo string `json:"system_info"`

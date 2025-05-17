@@ -62,6 +62,7 @@ func (cc *CheckInController) Authenticate(agentPublicKey []byte, authToken strin
 	}
 
 	// Generate AES session key and store in the registry
+	fmt.Printf("2. Authenticate - Server private key: %v\n", serverPrivKey)
 	aesKey, err := utils.DeriveECDHSharedSecret(serverPrivKey, agentPublicKey)
 	if err != nil {
 		return AuthResponse{}, fmt.Errorf("failed to derive shared key: %v", err)
@@ -199,17 +200,7 @@ func (cc *CheckInController) HandleResponseRequest(ctx context.Context, c2reques
 	return nil
 }
 
-// Input: authToken (how the agent identifies the payload in the db)
-// Payload: is used to reach the payload config_id
-/*
-c2request {
-	reason: Register
-	message: {
-		models.AgentInfo
-	}
-}
-
-*/
+// TODO: implement some way to check if there is a conflict (i.e. the same agent trying to register again)
 func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2request models.C2Request, payloadToken string) error {
 	logger.Info(fmt.Sprintf("Received register request from agent: %s", c2request.AgentID))
 
@@ -242,24 +233,10 @@ func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2reques
 		AgentInfo:     agentInfo,
 	}
 
-	// TODO: it will not be possible to implement this check, which kinda sucks
-	// if _, err := cc.agentDAL.GetAgent(ctx, c2request.AgentID); err == nil {
-	// 	logger.Info("Agent already exists:", c2request.AgentID)
-	// 	return ErrConflict
-	// }
-
-	// newAgent := c2request.IntoNewAgent()
-	// newAgent.Name = utils.RandomString(6)
-
 	if err := cc.agentDAL.RegisterAgent(ctx, newAgent); err != nil {
 		logger.Info(fmt.Sprintf("Failed to create agent: %v", err))
 		return ErrInternalServer
 	}
-
-	// if err := cc.agentDAL.CreateAgentInfo(ctx, agentInfo); err != nil {
-	// 	logger.Info(fmt.Sprintf("Failed to create agent info: %v", err))
-	// 	return ErrInternalServer
-	// }
 
 	return nil
 }

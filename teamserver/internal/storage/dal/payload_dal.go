@@ -36,12 +36,12 @@ func NewPayloadDAL(db *sql.DB, schema string) *PayloadDAL {
 func (dal *PayloadDAL) CreatePayload(ctx context.Context, payload models.PayloadConfig) error {
 	query := fmt.Sprintf(`
 		INSERT INTO %s.payloads 
-			id, listener_id, config_id, name, arch, public_key, private_key, token
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`, dal.schema)
+			(id, listener_id, config_id, name, arch, public_key, private_key, token)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
 
 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
 		_, err := stmt.ExecContext(ctx, payload.ID, payload.ListenerID, payload.ConfigID, payload.Name,
-			payload.Arch, payload.PrivateKey, payload.PublicKey, payload.Token)
+			payload.Arch, payload.PublicKey, payload.PrivateKey, payload.Token)
 		if err != nil {
 			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to create payload: %v", err))
 			return fmt.Errorf("failed to create payload: %w", err)
@@ -61,7 +61,7 @@ func (dal *PayloadDAL) GetPayloadByToken(ctx context.Context, payloadToken strin
 
 	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) (models.PayloadConfig, error) {
 		var payload models.PayloadConfig
-		if err := stmt.QueryRowContext(ctx).Scan(&payload.ID, &payload.ListenerID, &payload.ConfigID,
+		if err := stmt.QueryRowContext(ctx, payloadToken).Scan(&payload.ID, &payload.ListenerID, &payload.ConfigID,
 			&payload.Name, &payload.Arch, &payload.CreatedAt,
 		); err != nil {
 			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan payload: %v", err))

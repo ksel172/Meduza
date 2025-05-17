@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 const (
 	// URL parameter constants
@@ -37,6 +41,7 @@ type PayloadRequest struct {
 // IntoPayloadConfig is the function to convert a PayloadRequest into a PayloadConfig
 func IntoPayloadConfig(payloadRequest PayloadRequest) PayloadConfig {
 	return PayloadConfig{
+		ID:         uuid.New().String(),
 		Name:       payloadRequest.PayloadName,
 		ConfigID:   payloadRequest.ConfigID,
 		ListenerID: payloadRequest.ListenerID,

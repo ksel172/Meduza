@@ -123,7 +123,7 @@ func (dal *AgentDAL) RegisterAgent(ctx context.Context, agent models.Agent) erro
 		}
 		createAgentInfoStmt, err := tx.PrepareContext(ctx, createAgentInfoQuery)
 		if err != nil {
-			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to prepare create agent query: %v", err))
+			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to prepare create agent info query: %v", err))
 			return fmt.Errorf("failed to prepare create agent query: %w", err)
 		}
 

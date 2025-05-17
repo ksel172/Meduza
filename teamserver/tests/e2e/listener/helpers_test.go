@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/ksel172/Meduza/teamserver/internal/handlers"
 	listener_service "github.com/ksel172/Meduza/teamserver/internal/services/listener"
 	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
@@ -43,10 +44,17 @@ func setup(t *testing.T, createLocalListenerRequest models.CreateLocalListenerRe
 	createdListener := getListener(t, container, createLocalListenerRequest.Name)
 	t.Logf("retrieved listener from database: %+v", createdListener)
 
-	// Seed db - 2. Payload
+	// Seed db - 2. Default agent config
+	agentConfigID := uuid.NewString()
+	createAgentConfig(t, container, models.AgentConfig{ID: agentConfigID})
+	createdConfig := getAgentConfig(t, container, agentConfigID)
+
+	// Seed db - 3. Payload
 	createPayload(t, container, models.PayloadRequest{
 		PayloadName: "test-payload",
 		ListenerID:  createdListener.ID,
+		ConfigID:    createdConfig.ID,
+		Arch:        "win-x86",
 	})
 	t.Log("created payload in the database")
 
@@ -145,6 +153,51 @@ func getListener(t *testing.T, container Container, listenerName string) models.
 	}
 
 	// Parse response
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err, "failed to parse response body")
+
+	return response.Data
+}
+
+func createAgentConfig(t *testing.T, container Container, config models.AgentConfig) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	body, err := json.Marshal(config)
+	if err != nil {
+		t.Fatalf("failed to marshal agent config")
+	}
+	c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
+
+	container.AgentController.CreateAgentConfig(c)
+
+	var response struct {
+		Status  int               `json:"status"`
+		Message string            `json:"message"`
+		Data    []models.Listener `json:"data"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	t.Logf("CreateAgentConfig response: %+v", response)
+
+	// Ensure it was created
+	require.Equal(t, http.StatusCreated, w.Code, "expected 201 CREATED response")
+}
+
+func getAgentConfig(t *testing.T, container Container, agentConfigID string) models.AgentConfig {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+	c.Params = gin.Params{{Key: models.ParamAgentID, Value: agentConfigID}}
+	container.AgentController.GetAgentConfig(c)
+
+	require.Equal(t, http.StatusOK, w.Code, "expected 200 OK from GetAllListeners")
+
+	var response struct {
+		Status  int                `json:"status"`
+		Message string             `json:"message"`
+		Data    models.AgentConfig `json:"data"`
+	}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err, "failed to parse response body")
 

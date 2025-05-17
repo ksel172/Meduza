@@ -246,6 +246,10 @@ func (ac *AgentController) CreateAgentConfig(ctx *gin.Context) {
 		return
 	}
 
+	// Later, implement a return directly from the create function that returns the item created in the database
+	// Otherwise, it's very hard to retrieve the item that was just created without fetching everything
+	// agentConfig.ID = uuid.NewString()
+
 	if err := ac.agentDal.CreateAgentConfig(ctx, agentConfig); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create agent config", err.Error())
 		return

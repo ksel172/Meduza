@@ -49,11 +49,6 @@ func AesEncrypt(key, data []byte) ([]byte, error) {
 
 // AesDecrypt decrypts data using AES-GCM with the provided key.
 func AesDecrypt(key, ciphertext []byte) ([]byte, error) {
-	// decodeCipherText, err := base64.StdEncoding.DecodeString(string(ciphertext))
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error decoding ciphertext: %w", err)
-	// }
-
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("error creating a cipher block instance: %w", err)

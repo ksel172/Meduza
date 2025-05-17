@@ -47,7 +47,7 @@ func (l *HTTPListener) HandleCheckIn(ctx *gin.Context) {
 		// The C2Request should not be encrypted at this point, only base64 encoded, unmarshal and use it to authenticate
 		// The c2 request should contain only a single message field with the agent public key:
 		// BASE 64 ENCODED REQUEST BODY:
-		// {"message": <AGENT_PUBLIC_KEY>}
+		// {"message": <BASE64 ENCODED - AGENT_PUBLIC_KEY>}
 		decodedC2Request, err := base64.StdEncoding.DecodeString(string(body))
 		if err != nil {
 			logger.Info(fmt.Sprintf("failed to decode c2request: %v, data: %v", err, decodedC2Request))
@@ -67,6 +67,7 @@ func (l *HTTPListener) HandleCheckIn(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing agent public key"})
 			return
 		}
+		fmt.Printf("2. Authenticate - Agent Public Key BASE64: %s\n", agentPublicKeyBase64)
 
 		// Decode the base64-encoded public key
 		agentPublicKey, err := base64.StdEncoding.DecodeString(agentPublicKeyBase64)
