@@ -125,7 +125,14 @@ func (ec *ExternalController) HandleAgentRegistration(ctx *gin.Context) {
 		return
 	}
 
-	err := ec.checkinController.HandleRegisterRequest(ctx, c2request)
+	// Temporary X-Auth-Token header
+	payloadToken := ctx.Request.Header.Get("X-Auth-Token")
+	if payloadToken == "" {
+		models.ResponseError(ctx, http.StatusBadRequest, "missing payload token header", "")
+		return
+	}
+
+	err := ec.checkinController.HandleRegisterRequest(ctx, c2request, payloadToken)
 	if err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "failed to handle agent registration", err.Error())
 		return
