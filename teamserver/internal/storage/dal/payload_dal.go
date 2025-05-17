@@ -89,7 +89,7 @@ func (dal *PayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConf
 		for rows.Next() {
 			var payload models.PayloadConfig
 			if err := rows.Scan(&payload.ID, &payload.ListenerID, &payload.ConfigID, &payload.Name,
-				&payload.Arch, &payload.CreatedAt
+				&payload.Arch, &payload.CreatedAt,
 			); err != nil {
 				logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan payload: %v", err))
 				return nil, fmt.Errorf("failed to scan payload: %w", err)
