@@ -95,15 +95,15 @@ func (s *Server) ListenersAPIV1(group *gin.RouterGroup) {
 
 func (s *Server) PayloadV1(group *gin.RouterGroup) {
 
-	payloadsGroup := group.Group("/payloads")
-	{
-		// Payload CRUD operations and download
-		payloadsGroup.POST("", s.dependencies.PayloadController.CreatePayload)
-		payloadsGroup.GET("", s.dependencies.PayloadController.GetAllPayloads)
-		payloadsGroup.GET(fmt.Sprintf("/:%s/download", models.ParamPayloadID), s.dependencies.PayloadController.DownloadPayload)
-		payloadsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.PayloadController.DeletePayload)
-		payloadsGroup.DELETE("", s.dependencies.PayloadController.DeleteAllPayloads)
-	}
+	// payloadsGroup := group.Group("/payloads")
+	// {
+	// 	// Payload CRUD operations and download
+	// 	payloadsGroup.POST("", s.dependencies.PayloadController.CreatePayload)
+	// 	payloadsGroup.GET("", s.dependencies.PayloadController.GetAllPayloads)
+	// 	payloadsGroup.GET(fmt.Sprintf("/:%s/download", models.ParamPayloadID), s.dependencies.PayloadController.DownloadPayload)
+	// 	payloadsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.PayloadController.DeletePayload)
+	// 	payloadsGroup.DELETE("", s.dependencies.PayloadController.DeleteAllPayloads)
+	// }
 }
 
 func (s *Server) ModuleV1(group *gin.RouterGroup) {

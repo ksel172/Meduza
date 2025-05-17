@@ -1,236 +1,235 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
-	"github.com/ksel172/Meduza/teamserver/pkg/conf"
-	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
 type PayloadController struct {
-	agentDAL    dal.IAgentDAL
-	listenerDAL dal.IListenerDAL
-	payloadDAL  dal.IPayloadDAL
+	payloadDAL dal.IPayloadDAL
 }
 
-func NewPayloadController(agentDAL dal.IAgentDAL, listenerDAL dal.IListenerDAL, payloadDAL dal.IPayloadDAL) *PayloadController {
+func NewPayloadController(payloadDAL dal.IPayloadDAL) *PayloadController {
 	return &PayloadController{
-		agentDAL:    agentDAL,
-		listenerDAL: listenerDAL,
-		payloadDAL:  payloadDAL,
+		payloadDAL: payloadDAL,
 	}
 }
 
-func (h *PayloadController) CreatePayload(ctx *gin.Context) {
-	var payloadRequest models.PayloadRequest
+func (pc *PayloadController) UploadPayload(ctx *gin.Context) {
+	sourceType := ctx.PostForm("sourceType")
+	var data []byte
+	var filename string
+	var err error
 
-	if err := ctx.ShouldBindJSON(&payloadRequest); err != nil {
-		models.ResponseError(ctx, http.StatusBadRequest, "Invalid request body", err.Error())
-		logger.Error("Request body error while binding the JSON:", err)
-		return
-	}
-
-	if h.listenerDAL == nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Internal server error", "ListenerDAL is not initialized")
-		logger.Error("listenerDAL is nil")
-		return
-	}
-
-	listener, err := h.listenerDAL.GetListenerById(ctx.Request.Context(), payloadRequest.ListenerID)
-	if err != nil {
-		models.ResponseError(ctx, http.StatusNotFound, "Listener not found", err.Error())
-		logger.Error("Error retrieving the listener:", err)
-		return
-	}
-
-	payloadConfig := models.IntoPayloadConfig(payloadRequest)
-	payloadConfig.ConfigID = uuid.New().String()
-	payloadConfig.PayloadID = uuid.New().String()
-
-	// TODO: might have to first marshal here, maybe update the listener config into json.RawMessage?
-	payloadConfig.ListenerConfig = listener.RawConfig
-
-	privateKey, publicKey, err := utils.GenerateECDHKeyPair()
-	if err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to generate server ECDH keys", err.Error())
-		logger.Error("Error generating ECDH keys:", err)
-		return
-	}
-
-	payloadConfig.PublicKey = publicKey
-	payloadConfig.PrivateKey = privateKey
-	payloadConfig.Token = uuid.New().String()
-
-	file, err := json.MarshalIndent(payloadConfig, "", "  ")
-	if err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to serialize payload config", err.Error())
-		logger.Error("Error marshalling payload config to JSON:", err)
-		return
-	}
-
-	baseconfPath := conf.GetBaseConfPath()
-	if err = os.WriteFile(baseconfPath, file, 0644); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to write configuration file", err.Error())
-		logger.Error("Error writing JSON file:", err)
-		return
-	}
-
-	// args := []string{
-	// 	"publish",
-	// 	"--configuration", "Release",
-	// 	"--self-contained", strings.ToLower(fmt.Sprintf("%t", payloadRequest.SelfContained)),
-	// 	"-o", "/app/build/payload-" + payloadConfig.PayloadID,
-	// 	"-p:PublishSingleFile=true",
-	// 	// "-p:DefineConstants=TYPE_" + listener.Type,
-	// 	"-r", payloadConfig.Arch,
-	// 	conf.GetAgentProjectFilepath(),
-	// }
-
-	// cmd := exec.Command("dotnet", args...)
-	// cmd.Stdout = os.Stdout
-	// cmd.Stderr = os.Stderr
-
-	// if err := cmd.Run(); err != nil {
-	// 	models.ResponseError(ctx, http.StatusInternalServerError, "Failed to compile payload", err.Error())
-	// 	logger.Error("Error running Docker container to compile agent:", err)
-	// 	return
-	// }
-
-	if err := h.payloadDAL.CreatePayload(ctx.Request.Context(), payloadConfig); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to save payload configuration", err.Error())
-		logger.Error("Error saving payload configuration:", err)
-		return
-	}
-
-	agentConfig := models.IntoAgentConfig(payloadConfig)
-	if err := h.agentDAL.CreateAgentConfig(ctx.Request.Context(), agentConfig); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to save agent configuration", err.Error())
-		logger.Error("Error saving agent configuration:", err)
-		return
-	}
-
-	defer func() {
-		if err := os.Truncate(baseconfPath, 0); err != nil {
-			logger.Error("Error cleaning baseconf.json:", err)
+	if sourceType == "file" {
+		// Handle file upload
+		file, fileHeader, err := ctx.Request.FormFile("payload")
+		if err != nil {
+			models.ResponseError(ctx, http.StatusBadRequest, "Failed to get file", err.Error())
+			return
 		}
-	}()
+		defer file.Close()
 
-	models.ResponseSuccess(ctx, http.StatusCreated, "Payload created successfully", payloadConfig)
-}
+		filename = fileHeader.Filename
 
-func (h *PayloadController) DeletePayload(ctx *gin.Context) {
-	payloadId := ctx.Param(models.ParamPayloadID)
-	if payloadId == "" {
-		models.ResponseError(ctx, http.StatusBadRequest, "Missing required parameter", fmt.Sprintf("%s is required", models.ParamPayloadID))
+		// Verify file is a ZIP archive
+		if !strings.HasSuffix(strings.ToLower(filename), ".zip") {
+			models.ResponseError(ctx, http.StatusBadRequest, "File must be a ZIP archive for folder uploads", "Invalid file extension")
+			return
+		}
+
+		// Read file bytes
+		buffer := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buffer, file); err != nil {
+			models.ResponseError(ctx, http.StatusInternalServerError, "Failed to read file", err.Error())
+			return
+		}
+		data = buffer.Bytes()
+	} else if sourceType == "url" {
+		// Handle URL source
+		url := ctx.PostForm("url")
+		if url == "" {
+			models.ResponseError(ctx, http.StatusBadRequest, "URL is required for URL source type", "Missing URL parameter")
+			return
+		}
+
+		// Download file from URL
+		client := &http.Client{Timeout: 60 * time.Second}
+		resp, err := client.Get(url)
+		if err != nil {
+			models.ResponseError(ctx, http.StatusBadRequest, "Failed to download from URL", err.Error())
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			models.ResponseError(ctx, http.StatusBadRequest, "Bad response from URL", resp.Status)
+			return
+		}
+
+		// Read response body
+		buffer := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buffer, resp.Body); err != nil {
+			models.ResponseError(ctx, http.StatusInternalServerError, "Failed to read response body", err.Error())
+			return
+		}
+		data = buffer.Bytes()
+
+		// Extract filename from URL
+		urlParts := strings.Split(url, "/")
+		filename = urlParts[len(urlParts)-1]
+		if filename == "" || !strings.HasSuffix(strings.ToLower(filename), ".zip") {
+			filename = "payload-" + time.Now().Format("20060102-150405") + ".zip"
+		}
+	} else {
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid source type", "Must be 'file' or 'url'")
 		return
 	}
 
-	filePath := "./teamserver/build/payload-" + payloadId
-	logger.Info(filePath)
+	// Generate a unique ID for the payload
+	payloadID := uuid.New().String()
 
-	if err := h.payloadDAL.DeletePayload(ctx.Request.Context(), payloadId); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to delete payload", err.Error())
-		logger.Error("Error deleting payload:", err)
+	// Create directories
+	// This will be mounted in the Docker volume
+	buildDir := "./teamserver/build"
+	if err := os.MkdirAll(buildDir, 0755); err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create build directory", err.Error())
 		return
 	}
 
-	if err := os.RemoveAll(filePath); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to delete payload files", err.Error())
-		logger.Error("Error deleting payload folder:", err)
+	extractDir := fmt.Sprintf("%s/payload-%s", buildDir, payloadID)
+	if err := os.MkdirAll(extractDir, 0755); err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create extraction directory", err.Error())
 		return
 	}
 
-	models.ResponseSuccess(ctx, http.StatusOK, "Payload deleted successfully", nil)
-}
+	// Create a temporary file to store the ZIP
+	tempFile := filepath.Join(os.TempDir(), filename)
+	if err := os.WriteFile(tempFile, data, 0644); err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to write temporary file", err.Error())
+		return
+	}
+	defer os.Remove(tempFile) // Clean up temp file when done
 
-func (h *PayloadController) DeleteAllPayloads(ctx *gin.Context) {
-	dirPath := "./teamserver/build"
-	files, err := os.ReadDir(dirPath)
+	// Extract the ZIP file
+	if err := utils.Unzip(tempFile, extractDir); err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to extract ZIP file", err.Error())
+		return
+	}
+
+	// Look for manifest file in the root directory of the extracted payload
+	manifestFile, err := findManifestFile(extractDir)
 	if err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to read payload directory", err.Error())
-		logger.Error("Error reading payload directory:", err)
+		models.ResponseError(ctx, http.StatusBadRequest, "Failed to find payload manifest file", err.Error())
 		return
 	}
 
+	// Parse the manifest file
+	manifest, err := parseManifestFile(manifestFile)
+	if err != nil {
+		models.ResponseError(ctx, http.StatusBadRequest, "Failed to parse payload manifest file", err.Error())
+		return
+	}
+
+	// Set payload ID and create the payload record
+	manifest.ID = payloadID
+	manifest.SourcePath = extractDir
+
+	// Save the manifest to database (this now stores the entire object as JSON)
+	if err := pc.payloadDAL.CreatePayloadManifest(ctx.Request.Context(), manifest); err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to save payload manifest", err.Error())
+		return
+	}
+
+	// Send successful response
+	models.ResponseSuccess(ctx, http.StatusCreated, "Payload folder uploaded and extracted successfully", map[string]interface{}{
+		"payloadID": payloadID,
+		"filename":  filename,
+		"path":      extractDir,
+		"manifest":  manifest,
+	})
+}
+
+// findManifestFile searches for a manifest.json file in the root directory
+func findManifestFile(rootDir string) (string, error) {
+	// Common manifest file names to check
+	manifestNames := []string{
+		"manifest.json",
+		"payload.json",
+		"config.json",
+	}
+
+	// Read the directory contents
+	files, err := os.ReadDir(rootDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to read directory: %w", err)
+	}
+
+	// First, check for the exact manifest names
 	for _, file := range files {
-		if file.IsDir() && strings.HasPrefix(file.Name(), "payload-") {
-			filePath := filepath.Join(dirPath, file.Name())
-			if err := os.RemoveAll(filePath); err != nil {
-				logger.Error("Error deleting payload directory:", err)
-				continue
+		if !file.IsDir() {
+			fileName := strings.ToLower(file.Name())
+			for _, manifestName := range manifestNames {
+				if fileName == manifestName {
+					return filepath.Join(rootDir, file.Name()), nil
+				}
 			}
 		}
 	}
 
-	if err := h.payloadDAL.DeleteAllPayloads(ctx.Request.Context()); err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to delete payloads from database", err.Error())
-		logger.Error("Error deleting payloads:", err)
-		return
-	}
-
-	models.ResponseSuccess(ctx, http.StatusOK, "All payloads deleted successfully", nil)
-}
-
-func (h *PayloadController) DownloadPayload(ctx *gin.Context) {
-	payloadId := ctx.Param(models.ParamPayloadID)
-	if payloadId == "" {
-		models.ResponseError(ctx, http.StatusBadRequest, "Missing required parameter", fmt.Sprintf("%s is required", models.ParamPayloadID))
-		return
-	}
-
-	extensions := []string{".exe", ".bin", ".dll", ""}
-	var executablePath string
-	found := false
-
-	for _, ext := range extensions {
-		executablePath = fmt.Sprintf("teamserver/build/payload-%s/agent%s", payloadId, ext)
-		if _, err := os.Stat(executablePath); err == nil {
-			found = true
-			break
+	// If no exact matches, look for any JSON file in the root directory
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(strings.ToLower(file.Name()), ".json") {
+			return filepath.Join(rootDir, file.Name()), nil
 		}
 	}
 
-	if !found {
-		models.ResponseError(ctx, http.StatusNotFound, "Executable not found", "No matching payload file found")
-		logger.Error("Executable not found for payload:", payloadId)
-		return
-	}
-
-	ctx.Header("Content-Description", "File Transfer")
-	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filepath.Base(executablePath)))
-	ctx.Header("Content-Type", "application/octet-stream")
-	ctx.File(executablePath)
+	return "", fmt.Errorf("no manifest file found in payload root directory")
 }
 
-func (h *PayloadController) GetAllPayloads(ctx *gin.Context) {
-	payloads, err := h.payloadDAL.GetAllPayloads(ctx.Request.Context())
+// parseManifestFile reads and parses a manifest file into a RawPayload structure
+func parseManifestFile(manifestPath string) (*models.PayloadManifestV1, error) {
+	// Read the manifest file
+	data, err := os.ReadFile(manifestPath)
 	if err != nil {
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payloads", err.Error())
-		logger.Error("Error getting payloads:", err)
-		return
+		return nil, fmt.Errorf("failed to read manifest file: %w", err)
 	}
 
-	models.ResponseSuccess(ctx, http.StatusOK, "Payloads retrieved successfully", payloads)
+	// Parse the JSON into a RawPayload structure
+	var rawPayload models.PayloadManifestV1
+	if err := json.Unmarshal(data, &rawPayload); err != nil {
+		return nil, fmt.Errorf("failed to parse manifest JSON: %w", err)
+	}
+
+	// Validate required fields
+	if rawPayload.Name == "" {
+		return nil, fmt.Errorf("manifest missing required field: name")
+	}
+
+	return &rawPayload, nil
 }
 
-func (h *PayloadController) GetToken(ctx *gin.Context) {
-	payloadID := ctx.Param(models.ParamPayloadID)
+func (pc *PayloadController) GetPayloadFormat(ctx *gin.Context) {
 
-	token, err := h.payloadDAL.GetToken(ctx, payloadID)
-	if err != nil {
-		logger.Error("Error getting payload token:", err)
-		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payload token", err.Error())
-	}
+}
 
-	models.ResponseSuccess(ctx, http.StatusOK, "Payloads retrieved successfully", token)
+func (pc *PayloadController) DeletePayload(ctx *gin.Context) {
+
+}
+
+func (pc *PayloadController) GetAvailablePayloads(ctx *gin.Context) {
+
 }
