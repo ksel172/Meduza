@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"fmt"
+	"time"
+)
 
 const (
 	// URL parameter constants
@@ -25,14 +29,15 @@ type Payload struct {
 }
 
 type PayloadManifestV1 struct {
-	ID  string `json:"id"`
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Author      string `json:"author"`
-	Description string `json:"description"`
+	ID              string `json:"id"`
+	ManifestVersion string `json:"manifest_version"`
+	Name            string `json:"name"`
+	Version         string `json:"version"`
+	Author          string `json:"author"`
+	Description     string `json:"description"`
 
 	PayloadBuildConfig PayloadBuildConfig     `json:"payload_build_config"` // PayloadBuildConfig represents basic params for building a payload
-	Parameters         PayloadBuildParameters `json:"config_schema"`        // PayloadBuildParameters represents the parameters for the payload
+	Parameters         PayloadBuildParameters `json:"parameters"`           // PayloadBuildParameters represents the parameters for the payload
 
 	SourcePath string `json:"source_path"` // SourcePath is the path to the source code for the payload
 }
@@ -63,6 +68,130 @@ type BuildParameter struct {
 }
 
 type PayloadJob struct {
+	ID           string                 `json:"id"`
+	PayloadID    string                 `json:"payload_id"`
+	Status       string                 `json:"status"`
+	Architecture string                 `json:"architecture"`
+	Parameters   map[string]interface{} `json:"parameters"`
+	StartTime    time.Time              `json:"start_time"`
+	EndTime      time.Time              `json:"end_time,omitempty"`
+	OutputPath   string                 `json:"output_path,omitempty"`
+	ErrorMessage string                 `json:"error_message,omitempty"`
+	BuildLog     string                 `json:"build_log,omitempty"`
+}
+
+func (m *PayloadManifestV1) ValidateManifest() error {
+	// Check required string fields
+	if m.Name == "" {
+		return fmt.Errorf("manifest missing required field: name")
+	}
+	if m.Version == "" {
+		return fmt.Errorf("manifest missing required field: version")
+	}
+	if m.Author == "" {
+		return fmt.Errorf("manifest missing required field: author")
+	}
+	if m.Description == "" {
+		return fmt.Errorf("manifest missing required field: description")
+	}
+	if m.ManifestVersion == "" {
+		return fmt.Errorf("manifest missing required field: manifest_version")
+	}
+
+	// Validate build config
+	if m.PayloadBuildConfig.OutputFile == "" {
+		return fmt.Errorf("build config missing required field: output_file")
+	}
+	if len(m.PayloadBuildConfig.SupportedArchs) == 0 {
+		return fmt.Errorf("build config missing required field: supported_arch")
+	}
+
+	return nil
+}
+
+func ValidateManifestJSON(data []byte) error {
+	var manifest PayloadManifestV1
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return fmt.Errorf("invalid manifest JSON: %w", err)
+	}
+
+	return manifest.ValidateManifest()
+}
+
+// BuildParameterTypes returns allowed data types for build parameters
+func BuildParameterTypes() []string {
+	return []string{"string", "integer", "boolean", "float"}
+}
+
+// ValidateBuildParameter validates a single build parameter
+func (p *BuildParameter) ValidateBuildParameter() error {
+	// Check required fields
+	if p.ParameterName == "" {
+		return fmt.Errorf("parameter missing required field: parameter_name")
+	}
+
+	// Validate parameter data type
+	validTypes := BuildParameterTypes()
+	isValidType := false
+	for _, t := range validTypes {
+		if p.DataType == t {
+			isValidType = true
+			break
+		}
+	}
+
+	if !isValidType {
+		return fmt.Errorf("invalid parameter data type for %s: %s", p.ParameterName, p.DataType)
+	}
+
+	// If parameter is required, it should have a default value
+	if p.Required && p.DefaultValue == "" {
+		return fmt.Errorf("required parameter %s should have a default value", p.ParameterName)
+	}
+
+	return nil
+}
+
+// ValidateCustomParameters validates all custom parameters
+func (p *PayloadBuildParameters) ValidateCustomParameters() error {
+	paramNames := make(map[string]bool)
+
+	for i, param := range p.CustomParameters {
+		if err := param.ValidateBuildParameter(); err != nil {
+			return fmt.Errorf("invalid parameter at index %d: %w", i, err)
+		}
+
+		// Check for duplicate parameter names
+		if paramNames[param.ParameterName] {
+			return fmt.Errorf("duplicate parameter name: %s", param.ParameterName)
+		}
+		paramNames[param.ParameterName] = true
+	}
+
+	return nil
+}
+
+// FromJSON creates a PayloadManifestV1 from JSON data
+func PayloadManifestFromJSON(data []byte) (*PayloadManifestV1, error) {
+	var manifest PayloadManifestV1
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, fmt.Errorf("failed to parse manifest: %w", err)
+	}
+
+	if err := manifest.ValidateManifest(); err != nil {
+		return nil, err
+	}
+
+	if err := manifest.Parameters.ValidateCustomParameters(); err != nil {
+		return nil, err
+	}
+
+	return &manifest, nil
+}
+
+// ToJSON converts PayloadManifestV1 to JSON
+func (m *PayloadManifestV1) ToJSON() ([]byte, error) {
+	return json.Marshal(m)
 }
 
 // type PayloadRequest struct {
