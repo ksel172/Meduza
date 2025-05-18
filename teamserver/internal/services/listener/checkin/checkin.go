@@ -62,7 +62,6 @@ func (cc *CheckInController) Authenticate(agentPublicKey []byte, authToken strin
 	}
 
 	// Generate AES session key and store in the registry
-	fmt.Printf("2. Authenticate - Server private key: %v\n", serverPrivKey)
 	aesKey, err := utils.DeriveECDHSharedSecret(serverPrivKey, agentPublicKey)
 	if err != nil {
 		return AuthResponse{}, fmt.Errorf("failed to derive shared key: %v", err)
@@ -92,12 +91,12 @@ func (cc *CheckInController) HandleTaskRequest(ctx context.Context, c2request mo
 
 	// Only process non-completed tasks
 	for _, task := range tasks {
-		if task.Status == models.TaskComplete {
+		if task.Status == models.TaskStatusComplete {
 			continue
 		}
 
 		// Handle module commands
-		if task.Type == models.ModuleCommand {
+		if task.Type == models.TaskModuleCommand {
 			moduleDirPath := filepath.Join(conf.GetModuleUploadPath(), task.Module)
 			moduleName := task.Command.Name
 

@@ -67,7 +67,6 @@ func (l *HTTPListener) HandleCheckIn(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing agent public key"})
 			return
 		}
-		fmt.Printf("2. Authenticate - Agent Public Key BASE64: %s\n", agentPublicKeyBase64)
 
 		// Decode the base64-encoded public key
 		agentPublicKey, err := base64.StdEncoding.DecodeString(agentPublicKeyBase64)

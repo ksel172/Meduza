@@ -46,6 +46,19 @@ func TestListenerService(t *testing.T) {
 	agent := getAgent(t, container, testAgent.ID)
 	testAgent.Agent = agent
 
+	// Seed db with AgentTask
+	createAgentTask(t, container, testAgent.ID, models.AgentTaskRequest{
+		Type:   models.TaskShellCommand,
+		Status: models.TaskStatusQueued,
+		Command: models.AgentCommand{
+			Name:       "test-command-name",
+			Parameters: []string{"test-parameter-one", "test-parameter-two"},
+		},
+	})
+	t.Log("Created AgentTask in database")
+
+	testAgent.GetTasks(t)
+
 	// Test connectivity by pinging the listener
 	// t.Log("Testing HTTP listener connectivity")
 	// response, err := testClient.Ping()

@@ -207,20 +207,14 @@ func getAgentConfig(t *testing.T, container Container, agentConfigID string) mod
 func createPayload(t *testing.T, container Container, payloadRequest models.PayloadRequest) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-
-	// Marshal the listener model into the request body
 	body, err := json.Marshal(payloadRequest)
 	if err != nil {
 		t.Fatalf("failed to marshal payload request")
 	}
-
-	// Create the request
 	c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
 
-	// Create the listener by sending a request to the controller
 	container.PayloadController.CreatePayload(c)
 
-	// Define response wrapper
 	var response struct {
 		Status  int               `json:"status"`
 		Message string            `json:"message"`
@@ -229,7 +223,6 @@ func createPayload(t *testing.T, container Container, payloadRequest models.Payl
 	json.Unmarshal(w.Body.Bytes(), &response)
 	t.Logf("CreatePayload response: %+v", response)
 
-	// Ensure it was created
 	require.Equal(t, http.StatusCreated, w.Code, "expected 201 CREATED response")
 }
 
@@ -306,4 +299,18 @@ func getAgent(t *testing.T, container Container, agentID string) models.Agent {
 	require.NoError(t, err, "failed to parse response body")
 
 	return response.Data
+}
+
+func createAgentTask(t *testing.T, container Container, agentID string, task models.AgentTaskRequest) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	body, err := json.Marshal(task)
+	if err != nil {
+		t.Fatalf("failed to marshal agent task")
+	}
+	c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
+	c.Params = gin.Params{{Key: models.ParamAgentID, Value: agentID}}
+
+	container.AgentController.CreateAgentTask(c)
+	require.Equal(t, http.StatusCreated, w.Code, "expected 201 CREATED response")
 }

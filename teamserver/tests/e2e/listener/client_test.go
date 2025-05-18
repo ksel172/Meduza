@@ -163,3 +163,36 @@ func (a *TestHTTPAgent) Register(t *testing.T) {
 	// Temporarily store the ID
 	a.ID = agentID
 }
+
+func (a *TestHTTPAgent) GetTasks(t *testing.T) {
+	c2request := models.C2Request{
+		AgentID: a.ID,
+		Reason:  models.Task,
+	}
+	c2requestBytes, err := json.Marshal(c2request)
+	if err != nil {
+		t.Fatalf("failed to marshal c2request: %v", err)
+	}
+	c2requestEncrypted, err := utils.AesEncrypt(a.sharedAesKey, c2requestBytes)
+	if err != nil {
+		t.Fatalf("failed to encrypt c2request: %v", err)
+	}
+	t.Logf("Prepared encrypted c2request: %+v", c2request)
+
+	req, err := http.NewRequest(http.MethodPost, a.callbackURL+"/", bytes.NewReader(c2requestEncrypted))
+	if err != nil {
+		t.Fatalf("failed to create HTTP request: %v", err)
+	}
+	req.Header.Add("Session-Token", base64.StdEncoding.EncodeToString(a.sessionToken))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := a.client.Do(req)
+	if err != nil {
+		t.Fatalf("failed to send HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status code, expected: %d, got: %d", http.StatusOK, resp.StatusCode)
+	}
+}

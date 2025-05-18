@@ -104,7 +104,7 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 	agentTask := agentTaskRequest.IntoAgentTask()
 	agentTask.AgentID = agentID
 
-	if agentTask.Type == models.HelpCommand {
+	if agentTask.Type == models.TaskHelpCommand {
 
 		agentTask.StartedAt = time.Now()
 
@@ -132,7 +132,7 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 			}
 		}
 
-		agentTask.Status = models.TaskComplete
+		agentTask.Status = models.TaskStatusComplete
 		agentTask.FinishedAt = time.Now()
 		agentTask.Command.Output = helpText
 	}
@@ -142,7 +142,7 @@ func (ac *AgentController) CreateAgentTask(ctx *gin.Context) {
 		return
 	}
 
-	models.ResponseSuccess(ctx, http.StatusCreated, "Agent task created successfully", agentTask)
+	models.ResponseSuccess(ctx, http.StatusCreated, "Agent task created successfully", nil)
 }
 
 func (ac *AgentController) UpdateAgentTask(ctx *gin.Context) {

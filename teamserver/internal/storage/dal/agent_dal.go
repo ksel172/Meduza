@@ -131,12 +131,12 @@ func (dal *AgentDAL) RegisterAgent(ctx context.Context, agent models.Agent) (mod
 		}
 		defer createAgentInfoStmt.Close()
 
-		var agent models.Agent
+		var createdAgent models.Agent
 		row := createAgentStmt.QueryRowContext(ctx, agent.ID, agent.PayloadID, agent.ConfigID, agent.Name, agent.Note,
 			agent.Status, agent.FirstCallback, agent.LastCallback, agent.ModifiedAt)
 		err = row.Scan(
-			agent.ID, agent.PayloadID, agent.ConfigID, agent.Name, agent.Note, agent.Status, agent.FirstCallback,
-			agent.LastCallback, agent.ModifiedAt)
+			&createdAgent.ID, &createdAgent.PayloadID, &createdAgent.ConfigID, &createdAgent.Name, &createdAgent.Note,
+			&createdAgent.Status, &createdAgent.FirstCallback, &createdAgent.LastCallback, &createdAgent.ModifiedAt)
 		if err != nil {
 			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to create agent: %v", err))
 			return models.Agent{}, fmt.Errorf("failed to create agent: %w", err)

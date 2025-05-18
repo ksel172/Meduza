@@ -108,7 +108,7 @@ func TestHandleResponseRequest(t *testing.T) {
 	testTask := models.AgentTask{
 		ID:      "task-1",
 		AgentID: agentID,
-		Status:  models.TaskComplete,
+		Status:  models.TaskStatusComplete,
 		Command: models.AgentCommand{
 			Name:   "shell",
 			Output: "command output",

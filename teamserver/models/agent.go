@@ -70,7 +70,6 @@ type AgentTask struct {
 
 // AgentCommand represents the information of a command sent to an Agent
 type AgentCommand struct {
-	AgentID    string    `json:"agent_id"`
 	Name       string    `json:"name"`
 	Started    time.Time `json:"started"`
 	Completed  time.Time `json:"completed"`
@@ -81,30 +80,30 @@ type AgentCommand struct {
 type AgentTaskType uint8
 
 const (
-	LoadAssembly AgentTaskType = iota
-	UnloadAssembly
-	AgentCommandType
-	ShellCommand
-	ModuleCommand
-	HelpCommand
-	SetDelay
-	SetJitter
-	GetTasks
-	KillTasks
-	Exit
-	Unknown
+	TaskLoadAssembly AgentTaskType = iota
+	TaskUnloadAssembly
+	TaskAgentCommand
+	TaskShellCommand
+	TaskModuleCommand
+	TaskHelpCommand
+	TaskSetDelay
+	TaskSetJitter
+	TaskGetTasks
+	TaskKillTasks
+	TaskExit
+	TaskUnknown
 )
 
 type AgentTaskStatus uint8
 
 const (
-	TaskUninitialized AgentTaskStatus = iota
-	TaskQueued
-	TaskSent
-	TaskRunning
-	TaskComplete
-	TaskFailed
-	TaskAborted
+	TaskStatusUninitialized AgentTaskStatus = iota
+	TaskStatusQueued
+	TaskStatusSent
+	TaskStatusRunning
+	TaskStatusComplete
+	TaskStatusFailed
+	TaskStatusAborted
 )
 
 type AgentStatus uint8

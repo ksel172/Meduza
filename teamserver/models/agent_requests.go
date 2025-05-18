@@ -28,7 +28,6 @@ type UpdateAgentConfigRequest struct {
 
 // AgentTask request
 type AgentTaskRequest struct {
-	// AgentID string          `json:"agent_id"`
 	Type    AgentTaskType   `json:"type"`
 	Status  AgentTaskStatus `json:"status"`
 	Module  string          `json:"module"`
