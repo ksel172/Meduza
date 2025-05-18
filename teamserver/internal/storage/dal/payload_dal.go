@@ -30,6 +30,13 @@ type IPayloadDAL interface {
 	GetAllPayloadManifests(ctx context.Context) ([]*models.PayloadManifestV1, error)
 	DeletePayloadManifest(ctx context.Context, payloadID string) error
 	DeleteAllPayloadManifests(ctx context.Context) error
+
+	// Build job methods
+	CreateBuildJob(ctx context.Context, job *models.PayloadJob) error
+	UpdateBuildJob(ctx context.Context, job *models.PayloadJob) error
+	GetBuildJob(ctx context.Context, jobID string) (*models.PayloadJob, error)
+	GetPayloadBuildJobs(ctx context.Context, payloadID string) ([]*models.PayloadJob, error)
+	DeleteBuildJob(ctx context.Context, jobID string) error
 }
 
 func (dal *PayloadDAL) CreatePayloadManifest(ctx context.Context, payload *models.PayloadManifestV1) error {
@@ -169,6 +176,213 @@ func (dal *PayloadDAL) DeleteAllPayloadManifests(ctx context.Context) error {
 	if err != nil {
 		logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to delete all payload manifests: %v", err))
 		return fmt.Errorf("failed to delete all payload manifests: %w", err)
+	}
+
+	return nil
+}
+
+// Build Job Methods
+
+func (dal *PayloadDAL) CreateBuildJob(ctx context.Context, job *models.PayloadJob) error {
+	query := fmt.Sprintf(`
+        INSERT INTO %s.payload_build_jobs (
+            job_id, payload_id, status, architecture, parameters, 
+            start_time, end_time, output_path, error_message, build_log
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`, dal.schema)
+
+	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		// Convert parameters to JSON
+		paramsJSON, err := json.Marshal(job.Parameters)
+		if err != nil {
+			return fmt.Errorf("failed to marshal parameters: %w", err)
+		}
+
+		_, err = stmt.ExecContext(ctx,
+			job.ID,
+			job.PayloadID,
+			job.Status,
+			job.Architecture,
+			paramsJSON,
+			job.StartTime,
+			sql.NullTime{Time: job.EndTime, Valid: !job.EndTime.IsZero()},
+			job.OutputPath,
+			job.ErrorMessage,
+			job.BuildLog)
+
+		if err != nil {
+			return fmt.Errorf("failed to create build job: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func (dal *PayloadDAL) UpdateBuildJob(ctx context.Context, job *models.PayloadJob) error {
+	query := fmt.Sprintf(`
+        UPDATE %s.payload_build_jobs SET
+            status = $1,
+            end_time = $2,
+            output_path = $3,
+            error_message = $4,
+            build_log = $5,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE job_id = $6`, dal.schema)
+
+	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		result, err := stmt.ExecContext(ctx,
+			job.Status,
+			sql.NullTime{Time: job.EndTime, Valid: !job.EndTime.IsZero()},
+			job.OutputPath,
+			job.ErrorMessage,
+			job.BuildLog,
+			job.ID)
+
+		if err != nil {
+			return fmt.Errorf("failed to update build job: %w", err)
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+
+		if rowsAffected == 0 {
+			return fmt.Errorf("build job not found: %s", job.ID)
+		}
+
+		return nil
+	})
+}
+
+func (dal *PayloadDAL) GetBuildJob(ctx context.Context, jobID string) (*models.PayloadJob, error) {
+	query := fmt.Sprintf(`
+        SELECT job_id, payload_id, status, architecture, parameters, 
+               start_time, end_time, output_path, error_message, build_log
+        FROM %s.payload_build_jobs
+        WHERE job_id = $1`, dal.schema)
+
+	var job models.PayloadJob
+	var paramsJSON []byte
+	var endTime sql.NullTime
+
+	err := utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		row := stmt.QueryRowContext(ctx, jobID)
+		return row.Scan(
+			&job.ID,
+			&job.PayloadID,
+			&job.Status,
+			&job.Architecture,
+			&paramsJSON,
+			&job.StartTime,
+			&endTime,
+			&job.OutputPath,
+			&job.ErrorMessage,
+			&job.BuildLog)
+	})
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("build job not found: %s", jobID)
+		}
+		return nil, fmt.Errorf("failed to get build job: %w", err)
+	}
+
+	// Parse parameters JSON
+	if err := json.Unmarshal(paramsJSON, &job.Parameters); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal parameters: %w", err)
+	}
+
+	// Handle nullable end_time
+	if endTime.Valid {
+		job.EndTime = endTime.Time
+	}
+
+	return &job, nil
+}
+
+func (dal *PayloadDAL) GetPayloadBuildJobs(ctx context.Context, payloadID string) ([]*models.PayloadJob, error) {
+	query := fmt.Sprintf(`
+        SELECT job_id, payload_id, status, architecture, parameters, 
+               start_time, end_time, output_path, error_message, build_log
+        FROM %s.payload_build_jobs
+        WHERE payload_id = $1
+        ORDER BY start_time DESC`, dal.schema)
+
+	var jobs []*models.PayloadJob
+
+	err := utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		rows, err := stmt.QueryContext(ctx, payloadID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var job models.PayloadJob
+			var paramsJSON []byte
+			var endTime sql.NullTime
+
+			if err := rows.Scan(
+				&job.ID,
+				&job.PayloadID,
+				&job.Status,
+				&job.Architecture,
+				&paramsJSON,
+				&job.StartTime,
+				&endTime,
+				&job.OutputPath,
+				&job.ErrorMessage,
+				&job.BuildLog); err != nil {
+				return err
+			}
+
+			// Parse parameters JSON
+			if err := json.Unmarshal(paramsJSON, &job.Parameters); err != nil {
+				return fmt.Errorf("failed to unmarshal parameters: %w", err)
+			}
+
+			// Handle nullable end_time
+			if endTime.Valid {
+				job.EndTime = endTime.Time
+			}
+
+			jobs = append(jobs, &job)
+		}
+
+		return rows.Err()
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get build jobs: %w", err)
+	}
+
+	return jobs, nil
+}
+
+func (dal *PayloadDAL) DeleteBuildJob(ctx context.Context, jobID string) error {
+	query := fmt.Sprintf(`
+        DELETE FROM %s.payload_build_jobs WHERE job_id = $1`, dal.schema)
+
+	err := utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		result, err := stmt.ExecContext(ctx, jobID)
+		if err != nil {
+			return err
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+
+		if rowsAffected == 0 {
+			return fmt.Errorf("build job not found: %s", jobID)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to delete build job: %w", err)
 	}
 
 	return nil

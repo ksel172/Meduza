@@ -94,16 +94,26 @@ func (s *Server) ListenersAPIV1(group *gin.RouterGroup) {
 }
 
 func (s *Server) PayloadV1(group *gin.RouterGroup) {
+	payloadsGroup := group.Group("/payloads")
+	{
+		payloadsGroup.Use(s.UserMiddleware())
 
-	// payloadsGroup := group.Group("/payloads")
-	// {
-	// 	// Payload CRUD operations and download
-	// 	payloadsGroup.POST("", s.dependencies.PayloadController.CreatePayload)
-	// 	payloadsGroup.GET("", s.dependencies.PayloadController.GetAllPayloads)
-	// 	payloadsGroup.GET(fmt.Sprintf("/:%s/download", models.ParamPayloadID), s.dependencies.PayloadController.DownloadPayload)
-	// 	payloadsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.PayloadController.DeletePayload)
-	// 	payloadsGroup.DELETE("", s.dependencies.PayloadController.DeleteAllPayloads)
-	// }
+		// Payload CRUD operations
+		payloadsGroup.POST("", s.dependencies.PayloadController.UploadPayload)
+		payloadsGroup.GET("", s.dependencies.PayloadController.GetAvailablePayloads)
+		payloadsGroup.GET(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.PayloadController.GetPayload)
+		payloadsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.PayloadController.DeletePayload)
+
+		// Payload format information
+		payloadsGroup.GET("/format", s.dependencies.PayloadController.GetPayloadFormat)
+
+		// Build operations
+		payloadsGroup.POST(fmt.Sprintf("/:%s/build", models.ParamPayloadID), s.dependencies.PayloadController.BuildPayload)
+		payloadsGroup.GET(fmt.Sprintf("/:%s/builds", models.ParamPayloadID), s.dependencies.PayloadController.GetPayloadBuilds)
+		payloadsGroup.GET("/builds/:job_id", s.dependencies.PayloadController.GetBuildStatus)
+		payloadsGroup.GET("/builds/:job_id/download", s.dependencies.PayloadController.DownloadPayloadBuild)
+		payloadsGroup.GET("/builds/:job_id/log", s.dependencies.PayloadController.GetBuildLog)
+	}
 }
 
 func (s *Server) ModuleV1(group *gin.RouterGroup) {
