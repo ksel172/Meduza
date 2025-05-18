@@ -174,7 +174,7 @@ func (l *HTTPListener) HandleCheckIn(ctx *gin.Context) {
 		}
 
 		logger.Info(fmt.Sprintf("Handling register request for agent %s", c2request.AgentID))
-		agent, err := l.checkinController.HandleRegisterRequest(ctx.Request.Context(), c2request, string(authToken))
+		agentID, err := l.checkinController.HandleRegisterRequest(ctx.Request.Context(), c2request, string(authToken))
 		if err != nil {
 			switch err {
 			case checkin.ErrInvalidData:
@@ -191,7 +191,7 @@ func (l *HTTPListener) HandleCheckIn(ctx *gin.Context) {
 				return
 			}
 		}
-		ctx.JSON(http.StatusCreated, agent.ID)
+		ctx.JSON(http.StatusCreated, agentID)
 		return
 	}
 }
