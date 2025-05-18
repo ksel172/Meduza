@@ -283,25 +283,27 @@ func getPayloadToken(t *testing.T, container Container, payloadID string) string
 	return response.Data
 }
 
-// func retrieveServerKeys(t *testing.T, container Container, authToken string) storage.KeyPair {
-// 	w := httptest.NewRecorder()
-// 	c, _ := gin.CreateTestContext(w)
+func getAgent(t *testing.T, container Container, agentID string) models.Agent {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
 
-// 	c.Request = httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(nil))
-// 	c.Params = gin.Params{{Key: models.ParamPayloadToken, Value: authToken}}
+	// Make request
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+	c.Params = gin.Params{{Key: models.ParamAgentID, Value: agentID}}
+	container.AgentController.GetAgent(c)
 
-// 	container.PayloadController.GetKeys(c)
+	require.Equal(t, http.StatusOK, w.Code, "expected 200 OK from GetAllListeners")
 
-// 	// Define response wrapper
-// 	var response struct {
-// 		Status  int             `json:"status"`
-// 		Message string          `json:"message"`
-// 		Data    storage.KeyPair `json:"data"`
-// 	}
+	// Define response wrapper
+	var response struct {
+		Status  int          `json:"status"`
+		Message string       `json:"message"`
+		Data    models.Agent `json:"data"`
+	}
 
-// 	// Parse response
-// 	err := json.Unmarshal(w.Body.Bytes(), &response)
-// 	require.NoError(t, err, "failed to parse response body")
+	// Parse response
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err, "failed to parse response body")
 
-// 	return response.Data
-// }
+	return response.Data
+}

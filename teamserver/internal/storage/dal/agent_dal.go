@@ -14,7 +14,7 @@ import (
 type IAgentDAL interface {
 	GetAgent(ctx context.Context, agentID string) (models.Agent, error)
 	GetAgents(ctx context.Context) ([]models.Agent, error)
-	RegisterAgent(ctx context.Context, agent models.Agent) error
+	RegisterAgent(ctx context.Context, agent models.Agent) (models.Agent, error)
 	UpdateAgent(ctx context.Context, agent models.UpdateAgentRequest) (models.Agent, error)
 	DeleteAgent(ctx context.Context, agentID string) error
 	CreateAgentTask(ctx context.Context, task models.AgentTask) error
@@ -106,11 +106,12 @@ func (dal *AgentDAL) GetAgents(ctx context.Context) ([]models.Agent, error) {
 }
 
 // Used in checkin by agents registering themselves, not by the user in the client
-func (dal *AgentDAL) RegisterAgent(ctx context.Context, agent models.Agent) error {
-	return utils.WithTransactionTimeout(ctx, dal.db, 5, sql.TxOptions{}, func(ctx context.Context, tx *sql.Tx) error {
+func (dal *AgentDAL) RegisterAgent(ctx context.Context, agent models.Agent) (models.Agent, error) {
+	return utils.WithTransactionResultTimeout(ctx, dal.db, 5, sql.TxOptions{}, func(ctx context.Context, tx *sql.Tx) (models.Agent, error) {
 		createAgentquery := fmt.Sprintf(`
 			INSERT INTO %s.agents (id, payload_id, config_id, name, note, status, first_callback, last_callback, modified_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, dal.schema)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			RETURNING id, payload_id, config_id, name, note, status, first_callback, last_callback, modified_at`, dal.schema)
 		createAgentInfoQuery := fmt.Sprintf(`
 			INSERT INTO %s.agent_info (agent_id, hostname, ip_address, user_name, system_info, os_info)
 			VALUES ($1, $2, $3, $4, $5, $6)`, dal.schema)
@@ -119,29 +120,36 @@ func (dal *AgentDAL) RegisterAgent(ctx context.Context, agent models.Agent) erro
 		createAgentStmt, err := tx.PrepareContext(ctx, createAgentquery)
 		if err != nil {
 			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to prepare create agent query: %v", err))
-			return fmt.Errorf("failed to prepare create agent query: %w", err)
+			return models.Agent{}, fmt.Errorf("failed to prepare create agent query: %w", err)
 		}
+		defer createAgentStmt.Close()
+
 		createAgentInfoStmt, err := tx.PrepareContext(ctx, createAgentInfoQuery)
 		if err != nil {
 			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to prepare create agent info query: %v", err))
-			return fmt.Errorf("failed to prepare create agent query: %w", err)
+			return models.Agent{}, fmt.Errorf("failed to prepare create agent query: %w", err)
 		}
+		defer createAgentInfoStmt.Close()
 
-		_, err = createAgentStmt.ExecContext(ctx, agent.ID, agent.PayloadID, agent.ConfigID, agent.Name, agent.Note,
+		var agent models.Agent
+		row := createAgentStmt.QueryRowContext(ctx, agent.ID, agent.PayloadID, agent.ConfigID, agent.Name, agent.Note,
 			agent.Status, agent.FirstCallback, agent.LastCallback, agent.ModifiedAt)
+		err = row.Scan(
+			agent.ID, agent.PayloadID, agent.ConfigID, agent.Name, agent.Note, agent.Status, agent.FirstCallback,
+			agent.LastCallback, agent.ModifiedAt)
 		if err != nil {
 			logger.Error(logLevel, logDetailCheckIn, fmt.Sprintf("failed to create agent: %v", err))
-			return fmt.Errorf("failed to create agent: %w", err)
+			return models.Agent{}, fmt.Errorf("failed to create agent: %w", err)
 		}
 
 		_, err = createAgentInfoStmt.ExecContext(ctx, agent.AgentInfo.AgentID, agent.AgentInfo.HostName, agent.AgentInfo.IPAddress,
 			agent.AgentInfo.Username, agent.AgentInfo.SystemInfo, agent.AgentInfo.OSInfo)
 		if err != nil {
 			logger.Error(logLevel, logDetailAgent, fmt.Sprintf("Failed to create agent info: %v", err))
-			return fmt.Errorf("failed to create agent info: %w", err)
+			return models.Agent{}, fmt.Errorf("failed to create agent info: %w", err)
 		}
 
-		return nil
+		return agent, nil
 	})
 }
 

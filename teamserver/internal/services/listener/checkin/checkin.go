@@ -33,7 +33,7 @@ type ICheckInController interface {
 	Authenticate(agentPublicKey []byte, authToken string) (AuthResponse, error)
 	HandleTaskRequest(ctx context.Context, c2request models.C2Request, sessionToken string) ([]byte, error)
 	HandleResponseRequest(ctx context.Context, c2request models.C2Request) error
-	HandleRegisterRequest(ctx context.Context, c2request models.C2Request, payloadToken string) error
+	HandleRegisterRequest(ctx context.Context, c2request models.C2Request, payloadToken string) (string, error)
 }
 
 type CheckInController struct {
@@ -201,13 +201,13 @@ func (cc *CheckInController) HandleResponseRequest(ctx context.Context, c2reques
 }
 
 // TODO: implement some way to check if there is a conflict (i.e. the same agent trying to register again)
-func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2request models.C2Request, payloadToken string) error {
+func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2request models.C2Request, payloadToken string) (string, error) {
 	logger.Info(fmt.Sprintf("Received register request from agent: %s", c2request.AgentID))
 
 	var agentInfo models.AgentInfo
 	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
 		logger.Info(fmt.Sprintf("Failed to parse agent info from decrypted message: %v", err))
-		return ErrInvalidData
+		return "", ErrInvalidData
 	}
 
 	// Get payload from db based on payloadToken
@@ -215,7 +215,7 @@ func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2reques
 	payload, err := cc.payloadDAL.GetPayloadByToken(ctx, payloadToken)
 	if err != nil {
 		logger.Info(fmt.Sprintf("Failed to retrieve payload by token: %v", err))
-		return ErrDatabase
+		return "", ErrDatabase
 	}
 
 	// Now, create the agent using data parsed from the Message field
@@ -233,10 +233,12 @@ func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2reques
 		AgentInfo:     agentInfo,
 	}
 
-	if err := cc.agentDAL.RegisterAgent(ctx, newAgent); err != nil {
+	agent, err := cc.agentDAL.RegisterAgent(ctx, newAgent)
+	if err != nil {
 		logger.Info(fmt.Sprintf("Failed to create agent: %v", err))
-		return ErrInternalServer
+		return "", ErrInternalServer
 	}
 
-	return nil
+	// Only returning from agent.ID as the ID generation might be moved to the database layer at a later stage
+	return agent.ID, nil
 }

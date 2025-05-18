@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/ksel172/Meduza/teamserver/models"
 )
 
@@ -22,13 +21,7 @@ func TestListenerService(t *testing.T) {
 		t.Fatalf("failed to prepare test dependencies container")
 	}
 
-	testAgent, err := newTestHTTPAgent(
-		models.Agent{
-			ID: uuid.New().String(),
-		},
-		listener.Host,
-		listener.Port,
-		authToken)
+	testAgent, err := newTestHTTPAgent(listener.Host, listener.Port, authToken)
 	if err != nil {
 		t.Fatalf("failed to create agent: %v", err)
 	}
@@ -47,8 +40,11 @@ func TestListenerService(t *testing.T) {
 
 	// Agent sends authentication request to listener
 	testAgent.Authenticate(t, listener.ID)
-
 	testAgent.Register(t)
+
+	// Retrieve the registered agent and store it (the testAgent knows its ID because its returned in the register, however, that's all it knows)
+	agent := getAgent(t, container, testAgent.ID)
+	testAgent.Agent = agent
 
 	// Test connectivity by pinging the listener
 	// t.Log("Testing HTTP listener connectivity")

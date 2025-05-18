@@ -29,7 +29,7 @@ type TestHTTPAgent struct {
 	client       *http.Client
 }
 
-func newTestHTTPAgent(agent models.Agent, host string, port int, token string) (TestHTTPAgent, error) {
+func newTestHTTPAgent(host string, port int, token string) (TestHTTPAgent, error) {
 	// Create test agent to send requests to listener
 	privKey, pubKey, err := utils.GenerateECDHKeyPair()
 	if err != nil {
@@ -37,7 +37,6 @@ func newTestHTTPAgent(agent models.Agent, host string, port int, token string) (
 	}
 
 	return TestHTTPAgent{
-		Agent: agent,
 		KeyPair: storage.KeyPair{
 			PublicKey:  pubKey,
 			PrivateKey: privKey,
@@ -53,7 +52,6 @@ func newTestHTTPAgent(agent models.Agent, host string, port int, token string) (
 func (a *TestHTTPAgent) Authenticate(t *testing.T, listenerID string) {
 	// Prepare request body by encoding the c2request as base64 bytes
 	c2request := models.C2Request{
-		AgentID: a.ID,
 		Message: base64.StdEncoding.EncodeToString(a.PublicKey),
 	}
 	c2requestBytes, err := json.Marshal(c2request)
@@ -151,8 +149,17 @@ func (a *TestHTTPAgent) Register(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	// Only check the status code, no body is sent back
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("unexpected status code, expected: %d, got: %d", http.StatusCreated, resp.StatusCode)
 	}
+
+	// The server returns the agent ID
+	var agentID string
+	if err := json.NewDecoder(resp.Body).Decode(&agentID); err != nil {
+		t.Fatalf("failed to decode agent ID from response: %v", err)
+	}
+	t.Logf("Received agent ID = %s", agentID)
+
+	// Temporarily store the ID
+	a.ID = agentID
 }
