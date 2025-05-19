@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -9,6 +10,8 @@ import (
 const (
 	// URL parameter constants
 	ParamPayloadID    string = "id"
+	ParamManifestID   string = "manifest_id"
+	ParamPayloadJobID string = "payload_job_id"
 	ParamPayloadToken string = "token"
 )
 
@@ -29,15 +32,21 @@ type Payload struct {
 }
 
 type PayloadManifestV1 struct {
-	ID              string `json:"id"`
-	ManifestVersion string `json:"manifest_version"`
-	Name            string `json:"name"`
-	Version         string `json:"version"`
-	Author          string `json:"author"`
-	Description     string `json:"description"`
+	ID              string    `json:"id"`
+	ManifestVersion float32   `json:"manifest_version"`
+	Body            string    `json:"body"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"created_at"`
+}
+
+type PayloadManifestBodyV1 struct {
+	PayloadName        string `json:"name"`
+	PayloadVersion     string `json:"version"`
+	PayloadAuthor      string `json:"author"`
+	PayloadDescription string `json:"description"`
 
 	PayloadBuildConfig PayloadBuildConfig     `json:"payload_build_config"` // PayloadBuildConfig represents basic params for building a payload
-	Parameters         PayloadBuildParameters `json:"parameters"`           // PayloadBuildParameters represents the parameters for the payload
+	PayloadParameters  PayloadBuildParameters `json:"parameters"`           // PayloadBuildParameters represents the parameters for the payload
 
 	SourcePath string `json:"source_path"` // SourcePath is the path to the source code for the payload
 }
@@ -80,30 +89,59 @@ type PayloadJob struct {
 	BuildLog     string                 `json:"build_log,omitempty"`
 }
 
-func (m *PayloadManifestV1) ValidateManifest() error {
-	// Check required string fields
-	if m.Name == "" {
-		return fmt.Errorf("manifest missing required field: name")
-	}
-	if m.Version == "" {
-		return fmt.Errorf("manifest missing required field: version")
-	}
-	if m.Author == "" {
-		return fmt.Errorf("manifest missing required field: author")
-	}
-	if m.Description == "" {
-		return fmt.Errorf("manifest missing required field: description")
-	}
-	if m.ManifestVersion == "" {
-		return fmt.Errorf("manifest missing required field: manifest_version")
+func (m *PayloadManifestV1) Validate() error {
+	var errs []error
+
+	// Check base required fields
+	if m.ManifestVersion == 0 {
+		errs = append(errs, errors.New("manifest_version cannot be empty"))
 	}
 
-	// Validate build config
-	if m.PayloadBuildConfig.OutputFile == "" {
-		return fmt.Errorf("build config missing required field: output_file")
+	if m.Body == "" {
+		errs = append(errs, errors.New("manifest body cannot be empty"))
 	}
-	if len(m.PayloadBuildConfig.SupportedArchs) == 0 {
-		return fmt.Errorf("build config missing required field: supported_arch")
+
+	// Validate body according to manifest version
+	if m.ManifestVersion > 2.0 {
+		var body PayloadManifestBodyV1
+		if err := json.Unmarshal([]byte(m.Body), &body); err != nil {
+			errs = append(errs, fmt.Errorf("failed to unmarshal manifest body: %w", err))
+		}
+
+		// Validate V1 body fields
+		if body.PayloadName == "" {
+			errs = append(errs, errors.New("payload name cannot be empty"))
+		}
+
+		if body.PayloadVersion == "" {
+			errs = append(errs, errors.New("payload version cannot be empty"))
+		}
+
+		if body.PayloadAuthor == "" {
+			errs = append(errs, errors.New("payload author cannot be empty"))
+		}
+
+		if body.PayloadDescription == "" {
+			errs = append(errs, errors.New("payload description cannot be empty"))
+		}
+
+		if body.SourcePath == "" {
+			errs = append(errs, errors.New("source path cannot be empty"))
+		}
+
+		if len(body.PayloadBuildConfig.SupportedArchs) == 0 {
+			errs = append(errs, errors.New("at least one supported architecture must be specified"))
+		}
+
+		if err := body.PayloadParameters.ValidateCustomParameters(); err != nil {
+			errs = append(errs, fmt.Errorf("invalid parameters: %w", err))
+		}
+	} else {
+		errs = append(errs, fmt.Errorf("unsupported manifest version: %f", m.ManifestVersion))
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -115,7 +153,7 @@ func ValidateManifestJSON(data []byte) error {
 		return fmt.Errorf("invalid manifest JSON: %w", err)
 	}
 
-	return manifest.ValidateManifest()
+	return manifest.Validate()
 }
 
 // BuildParameterTypes returns allowed data types for build parameters
@@ -178,11 +216,7 @@ func PayloadManifestFromJSON(data []byte) (*PayloadManifestV1, error) {
 		return nil, fmt.Errorf("failed to parse manifest: %w", err)
 	}
 
-	if err := manifest.ValidateManifest(); err != nil {
-		return nil, err
-	}
-
-	if err := manifest.Parameters.ValidateCustomParameters(); err != nil {
+	if err := manifest.Validate(); err != nil {
 		return nil, err
 	}
 

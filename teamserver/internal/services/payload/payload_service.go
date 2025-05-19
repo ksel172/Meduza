@@ -48,6 +48,32 @@ type BuildJob struct {
 	BuildLog     string            `json:"build_log,omitempty"`
 }
 
+// ManifestData holds the parsed JSON from manifest body
+type ManifestData struct {
+	Name               string `json:"name"`
+	Version            string `json:"version"`
+	Author             string `json:"author"`
+	Description        string `json:"description"`
+	SourcePath         string `json:"source_path"`
+	PayloadBuildConfig struct {
+		DockerImage    string   `json:"docker_image"`
+		BuildArgs      string   `json:"build_args"`
+		OutputPath     string   `json:"output_path"`
+		OutputFile     string   `json:"output_file"`
+		SupportedArchs []string `json:"supported_arch"`
+	} `json:"payload_build_config"`
+	Parameters struct {
+		ListenerID       string `json:"listener_id"`
+		CustomParameters []struct {
+			DataType      string `json:"data_type"`
+			ParameterName string `json:"parameter_name"`
+			Description   string `json:"description"`
+			DefaultValue  string `json:"default_value"`
+			Required      bool   `json:"required"`
+		} `json:"custom_parameters"`
+	} `json:"parameters"`
+}
+
 // PayloadBuildService handles payload building operations
 type PayloadBuildService struct {
 	payloadDAL dal.IPayloadDAL
@@ -80,9 +106,15 @@ func (s *PayloadBuildService) SubmitBuildJob(ctx context.Context, payloadID stri
 		return "", fmt.Errorf("failed to get payload manifest: %w", err)
 	}
 
+	// Parse manifest body
+	var manifestData ManifestData
+	if err := json.Unmarshal([]byte(manifest.Body), &manifestData); err != nil {
+		return "", fmt.Errorf("failed to parse manifest body: %w", err)
+	}
+
 	// Validate architecture
 	archSupported := false
-	for _, supportedArch := range manifest.PayloadBuildConfig.SupportedArchs {
+	for _, supportedArch := range manifestData.PayloadBuildConfig.SupportedArchs {
 		if supportedArch == arch {
 			archSupported = true
 			break
@@ -153,6 +185,16 @@ func (s *PayloadBuildService) executeBuild(ctx context.Context, job *BuildJob, m
 		}
 	}()
 
+	// Parse manifest body
+	var manifestData ManifestData
+	if err := json.Unmarshal([]byte(manifest.Body), &manifestData); err != nil {
+		job.Status = BuildStatusFailed
+		job.ErrorMessage = fmt.Sprintf("Failed to parse manifest body: %v", err)
+		job.EndTime = time.Now()
+		logger.Error(logLevel, logDetailPayload, job.ErrorMessage)
+		return
+	}
+
 	// Create job directory
 	jobDir := filepath.Join(s.buildDir, job.ID)
 	if err := os.MkdirAll(jobDir, 0755); err != nil {
@@ -164,7 +206,7 @@ func (s *PayloadBuildService) executeBuild(ctx context.Context, job *BuildJob, m
 	}
 
 	// Process parameters and create config file
-	paramFile, err := s.processParameters(job, manifest, jobDir)
+	paramFile, err := s.processParameters(job, &manifestData, jobDir)
 	if err != nil {
 		job.Status = BuildStatusFailed
 		job.ErrorMessage = fmt.Sprintf("Failed to process parameters: %v", err)
@@ -176,7 +218,7 @@ func (s *PayloadBuildService) executeBuild(ctx context.Context, job *BuildJob, m
 	fmt.Fprintf(&logBuffer, "Generated parameter file: %s\n", paramFile)
 
 	// Launch Docker container to build the payload
-	if err := s.runDockerBuild(ctx, job, manifest, jobDir, &logBuffer); err != nil {
+	if err := s.runDockerBuild(ctx, job, &manifestData, jobDir, &logBuffer); err != nil {
 		job.Status = BuildStatusFailed
 		job.ErrorMessage = fmt.Sprintf("Build failed: %v", err)
 		job.EndTime = time.Now()
@@ -185,7 +227,7 @@ func (s *PayloadBuildService) executeBuild(ctx context.Context, job *BuildJob, m
 	}
 
 	// Set the output path
-	outputFile := manifest.PayloadBuildConfig.OutputFile
+	outputFile := manifestData.PayloadBuildConfig.OutputFile
 	if outputFile == "" {
 		outputFile = fmt.Sprintf("payload-%s-%s", job.PayloadID, job.Architecture)
 	}
@@ -198,9 +240,9 @@ func (s *PayloadBuildService) executeBuild(ctx context.Context, job *BuildJob, m
 }
 
 // processParameters validates and processes build parameters
-func (s *PayloadBuildService) processParameters(job *BuildJob, manifest *models.PayloadManifestV1, jobDir string) (string, error) {
+func (s *PayloadBuildService) processParameters(job *BuildJob, manifestData *ManifestData, jobDir string) (string, error) {
 	// Validate required parameters
-	for _, param := range manifest.Parameters.CustomParameters {
+	for _, param := range manifestData.Parameters.CustomParameters {
 		if param.Required {
 			value, exists := job.Parameters[param.ParameterName]
 			if !exists || value == "" {
@@ -215,8 +257,8 @@ func (s *PayloadBuildService) processParameters(job *BuildJob, manifest *models.
 	}
 
 	// Add listener ID if specified
-	if manifest.Parameters.ListenerID != "" {
-		job.Parameters["listener_id"] = manifest.Parameters.ListenerID
+	if manifestData.Parameters.ListenerID != "" {
+		job.Parameters["listener_id"] = manifestData.Parameters.ListenerID
 	}
 
 	// Create parameters JSON file
@@ -235,7 +277,7 @@ func (s *PayloadBuildService) processParameters(job *BuildJob, manifest *models.
 }
 
 // runDockerBuild executes the Docker build process
-func (s *PayloadBuildService) runDockerBuild(ctx context.Context, job *BuildJob, manifest *models.PayloadManifestV1, jobDir string, logBuffer io.Writer) error {
+func (s *PayloadBuildService) runDockerBuild(ctx context.Context, job *BuildJob, manifestData *ManifestData, jobDir string, logBuffer io.Writer) error {
 	// Create output directory
 	outputDir := filepath.Join(jobDir, "output")
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
@@ -243,7 +285,7 @@ func (s *PayloadBuildService) runDockerBuild(ctx context.Context, job *BuildJob,
 	}
 
 	// Prepare Docker command
-	dockerImage := manifest.PayloadBuildConfig.DockerImage
+	dockerImage := manifestData.PayloadBuildConfig.DockerImage
 	if dockerImage == "" {
 		dockerImage = "golang:latest" // Default to golang if not specified
 	}
@@ -251,7 +293,7 @@ func (s *PayloadBuildService) runDockerBuild(ctx context.Context, job *BuildJob,
 	// Prepare build command
 	buildArgs := []string{
 		"run", "--rm",
-		"-v", fmt.Sprintf("%s:/src", manifest.SourcePath),
+		"-v", fmt.Sprintf("%s:/src", manifestData.SourcePath),
 		"-v", fmt.Sprintf("%s:/parameters.json", filepath.Join(jobDir, "parameters.json")),
 		"-v", fmt.Sprintf("%s:/output", outputDir),
 		"-e", fmt.Sprintf("GOOS=%s", getGOOS(job.Architecture)),
@@ -263,8 +305,8 @@ func (s *PayloadBuildService) runDockerBuild(ctx context.Context, job *BuildJob,
 
 	// Add custom build command
 	buildCmd := fmt.Sprintf("go build %s -o /output/%s .",
-		manifest.PayloadBuildConfig.BuildArgs,
-		manifest.PayloadBuildConfig.OutputFile)
+		manifestData.PayloadBuildConfig.BuildArgs,
+		manifestData.PayloadBuildConfig.OutputFile)
 
 	buildArgs = append(buildArgs, "sh", "-c", buildCmd)
 
@@ -281,7 +323,7 @@ func (s *PayloadBuildService) runDockerBuild(ctx context.Context, job *BuildJob,
 	}
 
 	// Verify the output file exists
-	outputFile := filepath.Join(outputDir, manifest.PayloadBuildConfig.OutputFile)
+	outputFile := filepath.Join(outputDir, manifestData.PayloadBuildConfig.OutputFile)
 	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
 		return fmt.Errorf("build completed but output file not found: %s", outputFile)
 	}

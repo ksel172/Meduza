@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -37,6 +39,15 @@ type IPayloadDAL interface {
 	GetBuildJob(ctx context.Context, jobID string) (*models.PayloadJob, error)
 	GetPayloadBuildJobs(ctx context.Context, payloadID string) ([]*models.PayloadJob, error)
 	DeleteBuildJob(ctx context.Context, jobID string) error
+
+	// Payload methods
+	CreatePayload(ctx context.Context, payload *models.Payload) error
+	GetPayload(ctx context.Context, payloadID string) (*models.Payload, error)
+	GetPayloads(ctx context.Context) ([]*models.Payload, error)
+	DeletePayload(ctx context.Context, payloadID string) error
+
+	// Download payload build
+	DownloadPayloadBuild(ctx context.Context, jobID string) ([]byte, string, error)
 }
 
 func (dal *PayloadDAL) CreatePayloadManifest(ctx context.Context, payload *models.PayloadManifestV1) error {
@@ -386,4 +397,169 @@ func (dal *PayloadDAL) DeleteBuildJob(ctx context.Context, jobID string) error {
 	}
 
 	return nil
+}
+
+// Payload methods
+
+func (dal *PayloadDAL) CreatePayload(ctx context.Context, payload *models.Payload) error {
+	query := fmt.Sprintf(`
+        INSERT INTO %s.payloads (
+            payload_id, listener_id, config_id, manifest_id, name, 
+            architecture, public_key, private_key, token, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`, dal.schema)
+
+	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		_, err := stmt.ExecContext(ctx,
+			payload.ID,
+			payload.ListenerID,
+			payload.ConfigID,
+			payload.ManifestID,
+			payload.Name,
+			payload.Arch,
+			payload.PublicKey,
+			payload.PrivateKey,
+			payload.Token,
+			payload.CreatedAt)
+
+		if err != nil {
+			return fmt.Errorf("failed to create payload: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func (dal *PayloadDAL) GetPayload(ctx context.Context, payloadID string) (*models.Payload, error) {
+	query := fmt.Sprintf(`
+        SELECT payload_id, listener_id, config_id, manifest_id, name, 
+               architecture, public_key, private_key, token, created_at
+        FROM %s.payloads
+        WHERE payload_id = $1`, dal.schema)
+
+	var payload models.Payload
+
+	err := utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		row := stmt.QueryRowContext(ctx, payloadID)
+		return row.Scan(
+			&payload.ID,
+			&payload.ListenerID,
+			&payload.ConfigID,
+			&payload.ManifestID,
+			&payload.Name,
+			&payload.Arch,
+			&payload.PublicKey,
+			&payload.PrivateKey,
+			&payload.Token,
+			&payload.CreatedAt)
+	})
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("payload not found: %s", payloadID)
+		}
+		return nil, fmt.Errorf("failed to get payload: %w", err)
+	}
+
+	return &payload, nil
+}
+
+func (dal *PayloadDAL) GetPayloads(ctx context.Context) ([]*models.Payload, error) {
+	query := fmt.Sprintf(`
+        SELECT payload_id, listener_id, config_id, manifest_id, name, 
+               architecture, public_key, private_key, token, created_at
+        FROM %s.payloads
+        ORDER BY created_at DESC`, dal.schema)
+
+	var payloads []*models.Payload
+
+	err := utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		rows, err := stmt.QueryContext(ctx)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var payload models.Payload
+			if err := rows.Scan(
+				&payload.ID,
+				&payload.ListenerID,
+				&payload.ConfigID,
+				&payload.ManifestID,
+				&payload.Name,
+				&payload.Arch,
+				&payload.PublicKey,
+				&payload.PrivateKey,
+				&payload.Token,
+				&payload.CreatedAt); err != nil {
+				return err
+			}
+
+			payloads = append(payloads, &payload)
+		}
+
+		return rows.Err()
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get payloads: %w", err)
+	}
+
+	return payloads, nil
+}
+
+func (dal *PayloadDAL) DeletePayload(ctx context.Context, payloadID string) error {
+	query := fmt.Sprintf(`
+        DELETE FROM %s.payloads WHERE payload_id = $1`, dal.schema)
+
+	err := utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+		result, err := stmt.ExecContext(ctx, payloadID)
+		if err != nil {
+			return err
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+
+		if rowsAffected == 0 {
+			return fmt.Errorf("payload not found: %s", payloadID)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to delete payload: %w", err)
+	}
+
+	return nil
+}
+
+func (dal *PayloadDAL) DownloadPayloadBuild(ctx context.Context, jobID string) ([]byte, string, error) {
+	// First, get the build job to find the output path
+	job, err := dal.GetBuildJob(ctx, jobID)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get build job: %w", err)
+	}
+
+	if job.Status != "completed" {
+		return nil, "", fmt.Errorf("build job is not completed: %s", job.Status)
+	}
+
+	if job.OutputPath == "" {
+		return nil, "", fmt.Errorf("build job has no output path")
+	}
+
+	// Read the file
+	data, err := os.ReadFile(job.OutputPath)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read build output file: %w", err)
+	}
+
+	// Get the filename from the path
+	filename := filepath.Base(job.OutputPath)
+
+	return data, filename, nil
 }

@@ -98,21 +98,27 @@ func (s *Server) PayloadV1(group *gin.RouterGroup) {
 	{
 		payloadsGroup.Use(s.UserMiddleware())
 
+		// Payload Manifest operations
+		payloadsGroup.POST("", s.dependencies.PayloadController.UploadPayloadManifest)
+		payloadsGroup.GET("", s.dependencies.PayloadController.GetAvailablePayloadManifests)
+		payloadsGroup.GET(fmt.Sprintf("/:%s", models.ParamManifestID), s.dependencies.PayloadController.GetPayloadManifest)
+		payloadsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamManifestID), s.dependencies.PayloadController.DeletePayloadManifest)
+
 		// Payload CRUD operations
-		payloadsGroup.POST("", s.dependencies.PayloadController.UploadPayload)
-		payloadsGroup.GET("", s.dependencies.PayloadController.GetAvailablePayloads)
-		payloadsGroup.GET(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.PayloadController.GetPayload)
-		payloadsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.PayloadController.DeletePayload)
+		// payloadsGroup.POST("", s.dependencies.PayloadController.UploadPayload)
+		// payloadsGroup.GET("", s.dependencies.PayloadController.GetAvailablePayloads)
+		// payloadsGroup.GET(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.PayloadController.GetPayload)
+		// payloadsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamPayloadID), s.dependencies.PayloadController.DeletePayload)
 
-		// Payload format information
-		payloadsGroup.GET("/format", s.dependencies.PayloadController.GetPayloadFormat)
+		// // Payload format information
+		// payloadsGroup.GET("/format", s.dependencies.PayloadController.GetPayloadFormat)
 
-		// Build operations
-		payloadsGroup.POST(fmt.Sprintf("/:%s/build", models.ParamPayloadID), s.dependencies.PayloadController.BuildPayload)
-		payloadsGroup.GET(fmt.Sprintf("/:%s/builds", models.ParamPayloadID), s.dependencies.PayloadController.GetPayloadBuilds)
-		payloadsGroup.GET("/builds/:job_id", s.dependencies.PayloadController.GetBuildStatus)
-		payloadsGroup.GET("/builds/:job_id/download", s.dependencies.PayloadController.DownloadPayloadBuild)
-		payloadsGroup.GET("/builds/:job_id/log", s.dependencies.PayloadController.GetBuildLog)
+		// // Build operations
+		// payloadsGroup.POST(fmt.Sprintf("/:%s/build", models.ParamPayloadID), s.dependencies.PayloadController.BuildPayload)
+		// payloadsGroup.GET(fmt.Sprintf("/:%s/builds", models.ParamPayloadID), s.dependencies.PayloadController.GetPayloadBuilds)
+		// payloadsGroup.GET("/builds/:job_id", s.dependencies.PayloadController.GetBuildStatus)
+		// payloadsGroup.GET("/builds/:job_id/download", s.dependencies.PayloadController.DownloadPayloadBuild)
+		// payloadsGroup.GET("/builds/:job_id/log", s.dependencies.PayloadController.GetBuildLog)
 	}
 }
 
