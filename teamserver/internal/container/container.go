@@ -49,6 +49,7 @@ func NewContainer() (*Container, error) {
 	listenerDal := dal.NewListenerDAL(pgsql, schema)
 	moduleDal := dal.NewModuleDAL(pgsql, schema)
 	certificateDal := dal.NewCertificateDAL(pgsql, schema)
+	payloadDal := dal.NewPayloadDAL(pgsql, schema)
 	// Initialize services
 	redisService := repos.NewRedisService()
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
@@ -70,7 +71,7 @@ func NewContainer() (*Container, error) {
 		// ListenerController:    handlers.NewListenersHandler(listenerDal, listenersService),
 		// ListenerService:       listenersService,
 		// ListenerDal:           autoStart,
-		// PayloadController:     handlers.NewPayloadController(),
+		PayloadController:     handlers.NewPayloadController(payloadDal),
 		ModuleController:      handlers.NewModuleController(moduleDal),
 		CertificateController: handlers.NewCertificateHandler(certificateDal),
 		// ListenerContainer: ListenerContainer{

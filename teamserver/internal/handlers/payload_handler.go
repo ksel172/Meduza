@@ -124,18 +124,28 @@ func (pc *PayloadController) UploadPayloadManifest(ctx *gin.Context) {
 		return
 	}
 
-	// Generate a unique ID for the payload
-	payloadID := uuid.New().String()
-
-	// Create directories
-	// This will be mounted in the Docker volume
 	buildDir := pc.buildDir
 	if err := os.MkdirAll(buildDir, 0755); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create build directory", err.Error())
 		return
 	}
 
-	extractDir := fmt.Sprintf("%s/payload-%s", buildDir, payloadID)
+	// Strip the .zip extension from the filename for the directory name
+	baseFilename := strings.TrimSuffix(filename, filepath.Ext(filename))
+	extractDir := fmt.Sprintf("%s/payload-%s", buildDir, baseFilename)
+
+	// Check if this payload name already exists to allow overwriting
+	if _, err := os.Stat(extractDir); err == nil {
+		// Directory exists, remove it to allow overwriting
+		if err := os.RemoveAll(extractDir); err != nil {
+			models.ResponseError(ctx, http.StatusInternalServerError,
+				"Failed to remove existing payload directory", err.Error())
+			return
+		}
+		logger.Info(logLevel, logDetailPayload,
+			fmt.Sprintf("Removed existing payload directory: %s", extractDir))
+	}
+
 	if err := os.MkdirAll(extractDir, 0755); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create extraction directory", err.Error())
 		return
@@ -162,7 +172,6 @@ func (pc *PayloadController) UploadPayloadManifest(ctx *gin.Context) {
 		return
 	}
 
-	// Parse the manifest file
 	manifest, err := parseManifestFile(manifestFile, extractDir)
 	if err != nil {
 		models.ResponseError(ctx, http.StatusBadRequest, "Failed to parse payload manifest file", err.Error())
@@ -175,23 +184,19 @@ func (pc *PayloadController) UploadPayloadManifest(ctx *gin.Context) {
 		return
 	}
 
-	// Extract manifest data for response
 	var manifestData map[string]interface{}
 	if err := json.Unmarshal([]byte(manifest.Body), &manifestData); err != nil {
 		logger.Error(logLevel, logDetailPayload, fmt.Sprintf("Failed to unmarshal manifest body: %v", err))
-		// Continue with empty data if unmarshal fails
 		manifestData = map[string]interface{}{}
+	} else {
+		if sourcePath, ok := manifestData["source_path"].(string); ok {
+			// Replace any remaining .zip in the path with empty string
+			manifestData["source_path"] = strings.ReplaceAll(sourcePath, ".zip", "")
+		}
 	}
 
 	// Send successful response
-	models.ResponseSuccess(ctx, http.StatusCreated, "Payload folder uploaded and extracted successfully", map[string]interface{}{
-		"payloadID":   payloadID,
-		"filename":    filename,
-		"path":        extractDir,
-		"manifest_id": manifest.ID,
-		"version":     manifest.ManifestVersion,
-		"manifest":    manifestData,
-	})
+	models.ResponseSuccess(ctx, http.StatusCreated, "Payload folder uploaded and extracted successfully", manifestData)
 }
 
 // GetPayloadFormat returns the format of a payload manifest, which includes parameter definitions
@@ -781,7 +786,7 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 
 // Helper functions
 
-// findManifestFile searches for a manifest.json file in the root directory
+// findManifestFile searches for a manifest.json file in the root directory and subdirectories
 func findManifestFile(rootDir string) (string, error) {
 	// Common manifest file names to check
 	manifestNames := []string{
@@ -790,32 +795,64 @@ func findManifestFile(rootDir string) (string, error) {
 		"config.json",
 	}
 
-	// Read the directory contents
-	files, err := os.ReadDir(rootDir)
-	if err != nil {
-		return "", fmt.Errorf("failed to read directory: %w", err)
-	}
+	// Recursive function to find manifest file with depth limit
+	var searchInDir func(dir string, depth int) (string, error)
+	searchInDir = func(dir string, depth int) (string, error) {
+		// Limit recursion depth to prevent excessive searching
+		if depth > 3 {
+			return "", nil
+		}
 
-	// First, check for the exact manifest names
-	for _, file := range files {
-		if !file.IsDir() {
-			fileName := strings.ToLower(file.Name())
-			for _, manifestName := range manifestNames {
-				if fileName == manifestName {
-					return filepath.Join(rootDir, file.Name()), nil
+		files, err := os.ReadDir(dir)
+		if err != nil {
+			return "", fmt.Errorf("failed to read directory %s: %w", dir, err)
+		}
+
+		// First check for manifest files in current directory
+		for _, file := range files {
+			if !file.IsDir() {
+				fileName := strings.ToLower(file.Name())
+				for _, manifestName := range manifestNames {
+					if fileName == manifestName {
+						return filepath.Join(dir, file.Name()), nil
+					}
 				}
 			}
 		}
-	}
 
-	// If no exact matches, look for any JSON file in the root directory
-	for _, file := range files {
-		if !file.IsDir() && strings.HasSuffix(strings.ToLower(file.Name()), ".json") {
-			return filepath.Join(rootDir, file.Name()), nil
+		// Then check subdirectories
+		for _, file := range files {
+			if file.IsDir() {
+				subdir := filepath.Join(dir, file.Name())
+				if found, err := searchInDir(subdir, depth+1); err == nil && found != "" {
+					return found, nil
+				}
+			}
 		}
+
+		// For depth 0 (root dir), also check for any JSON file as a fallback
+		if depth == 0 {
+			for _, file := range files {
+				if !file.IsDir() && strings.HasSuffix(strings.ToLower(file.Name()), ".json") {
+					return filepath.Join(dir, file.Name()), nil
+				}
+			}
+		}
+
+		return "", nil
 	}
 
-	return "", fmt.Errorf("no manifest file found in payload root directory")
+	// Start search from root directory
+	manifestPath, err := searchInDir(rootDir, 0)
+	if err != nil {
+		return "", err
+	}
+
+	if manifestPath == "" {
+		return "", fmt.Errorf("no manifest file found in payload root directory")
+	}
+
+	return manifestPath, nil
 }
 
 // parseManifestFile reads and parses a manifest file into a PayloadManifestV1 structure
