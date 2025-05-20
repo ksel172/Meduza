@@ -278,16 +278,11 @@ func (m *PayloadManifestV1) ToJSON() ([]byte, error) {
 // 	}
 // }
 
-// func IntoAgentConfig(payloadConfig PayloadConfig) AgentConfig {
-// 	return AgentConfig{
-// 		ConfigID:          payloadConfig.ConfigID,
-// 		ListenerID:        payloadConfig.ListenerID,
-// 		Arch:              payloadConfig.Arch,
-// 		Sleep:             payloadConfig.Sleep,
-// 		Jitter:            payloadConfig.Jitter,
-// 		StartDate:         payloadConfig.StartDate,
-// 		KillDate:          payloadConfig.KillDate,
-// 		WorkingHoursStart: payloadConfig.WorkingHoursStart,
-// 		WorkingHoursEnd:   payloadConfig.WorkingHoursEnd,
-// 	}
-// }
+func (p *Payload) IntoAgentConfig() AgentConfig {
+	return AgentConfig{
+		ConfigID:   p.ConfigID,
+		ListenerID: p.ListenerID,
+		Arch:       p.Arch,
+		//TODO: Have to add the rest of the params to make this functional later...
+	}
+}

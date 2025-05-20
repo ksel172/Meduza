@@ -104,6 +104,7 @@ func (s *Server) PayloadV1(group *gin.RouterGroup) {
 		payloadsGroup.GET(fmt.Sprintf("/:%s", models.ParamManifestID), s.dependencies.PayloadController.GetPayloadManifest)
 		payloadsGroup.DELETE(fmt.Sprintf("/:%s", models.ParamManifestID), s.dependencies.PayloadController.DeletePayloadManifest)
 
+		payloadsGroup.POST("/build", s.dependencies.PayloadController.SubmitBuildJob)
 		// Payload CRUD operations
 		// payloadsGroup.POST("", s.dependencies.PayloadController.UploadPayload)
 		// payloadsGroup.GET("", s.dependencies.PayloadController.GetAvailablePayloads)

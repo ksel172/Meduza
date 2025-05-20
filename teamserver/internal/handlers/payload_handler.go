@@ -33,10 +33,11 @@ const (
 
 type PayloadController struct {
 	payloadDAL dal.IPayloadDAL
+	agentDAL   dal.IAgentDAL
 	buildDir   string
 }
 
-func NewPayloadController(payloadDAL dal.IPayloadDAL) *PayloadController {
+func NewPayloadController(payloadDAL dal.IPayloadDAL, agentDAL dal.IAgentDAL) *PayloadController {
 	buildDir := "./teamserver/build"
 	if _, err := os.Stat(buildDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(buildDir, 0755); err != nil {
@@ -47,6 +48,7 @@ func NewPayloadController(payloadDAL dal.IPayloadDAL) *PayloadController {
 	return &PayloadController{
 		payloadDAL: payloadDAL,
 		buildDir:   buildDir,
+		agentDAL:   agentDAL,
 	}
 }
 
@@ -381,10 +383,23 @@ func (pc *PayloadController) SubmitBuildJob(ctx *gin.Context) {
 	payload := &models.Payload{
 		ID:         payloadID,
 		ListenerID: request.ListenerID,
+		ConfigID:   uuid.New().String(),
 		ManifestID: request.ManifestID,
 		Name:       request.Name,
 		Arch:       request.Architecture,
 		CreatedAt:  time.Now(),
+	}
+
+	agentConfig := payload.IntoAgentConfig()
+
+	err = pc.agentDAL.CreateAgentConfig(ctx, agentConfig)
+	if err != nil {
+		models.ResponseError(
+			ctx,
+			http.StatusInternalServerError,
+			"Failed to create an agent config from the payload config",
+			err.Error())
+		return
 	}
 
 	// Generate RSA key pair for payload
@@ -574,8 +589,9 @@ func (pc *PayloadController) DownloadBuildOutput(ctx *gin.Context) {
 	ctx.Data(http.StatusOK, "application/octet-stream", data)
 }
 
-// Helper function to execute a build job
+// Helper function to execute a build job with module initialization support
 func (pc *PayloadController) executeBuild(ctx context.Context, job *models.PayloadJob, manifest *models.PayloadManifestV1) {
+	buildStartTime := time.Now()
 	logger.Info(logLevel, logDetailPayload, fmt.Sprintf("Starting build job %s for payload %s", job.ID, job.PayloadID))
 
 	// Update job status to in progress
@@ -585,7 +601,50 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 		return
 	}
 
+	// Create a buffer for in-memory log storage
 	var logBuffer bytes.Buffer
+
+	// Create job directory with unique path based on payload ID
+	jobDir := filepath.Join(pc.buildDir, "payload-"+job.PayloadID, "jobs", job.ID)
+	if err := os.MkdirAll(jobDir, 0755); err != nil {
+		job.Status = "failed"
+		job.ErrorMessage = fmt.Sprintf("Failed to create job directory: %v", err)
+		job.EndTime = time.Now()
+
+		if err := pc.payloadDAL.UpdateBuildJob(ctx, job); err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("Failed to update job status: %v", err))
+		}
+
+		logger.Error(logLevel, logDetailPayload, job.ErrorMessage)
+		return
+	}
+
+	// Create log file
+	logFilePath := filepath.Join(jobDir, "build.log")
+	logFile, err := os.Create(logFilePath)
+	if err != nil {
+		job.Status = "failed"
+		job.ErrorMessage = fmt.Sprintf("Failed to create log file: %v", err)
+		job.EndTime = time.Now()
+
+		if err := pc.payloadDAL.UpdateBuildJob(ctx, job); err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("Failed to update job status: %v", err))
+		}
+
+		logger.Error(logLevel, logDetailPayload, job.ErrorMessage)
+		return
+	}
+	defer logFile.Close()
+
+	// Create a multi-writer to write to both in-memory buffer and file
+	multiWriter := io.MultiWriter(&logBuffer, logFile)
+
+	// Helper to write log sections
+	logSection := func(title string) {
+		section := fmt.Sprintf("\n=== %s ===\n", strings.ToUpper(title))
+		multiWriter.Write([]byte(section))
+	}
+
 	defer func() {
 		// Update job with log and status
 		job.BuildLog = logBuffer.String()
@@ -604,7 +663,16 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 		}
 	}()
 
+	// Start log with build information
+	logSection("Build Information")
+	fmt.Fprintf(multiWriter, "Build Job ID: %s\n", job.ID)
+	fmt.Fprintf(multiWriter, "Payload ID: %s\n", job.PayloadID)
+	fmt.Fprintf(multiWriter, "Architecture: %s\n", job.Architecture)
+	fmt.Fprintf(multiWriter, "Start Time: %s\n", buildStartTime.Format(time.RFC3339))
+	fmt.Fprintf(multiWriter, "Log File: %s\n", logFilePath)
+
 	// Parse the manifest body to extract build configuration
+	logSection("Manifest Configuration")
 	var manifestBody struct {
 		Name               string `json:"name"`
 		Version            string `json:"version"`
@@ -617,6 +685,8 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 			OutputPath     string   `json:"output_path"`
 			OutputFile     string   `json:"output_file"`
 			SupportedArchs []string `json:"supported_arch"`
+			ModuleName     string   `json:"module_name"` // Optional module name in manifest
+			BuildMode      string   `json:"build_mode"`  // Optional build mode (e.g., "legacy", "module")
 		} `json:"payload_build_config"`
 	}
 
@@ -631,22 +701,15 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 		return
 	}
 
-	// Create job directory with unique path based on payload ID
-	jobDir := filepath.Join(pc.buildDir, "payload-"+job.PayloadID, "jobs", job.ID)
-	if err := os.MkdirAll(jobDir, 0755); err != nil {
-		job.Status = "failed"
-		job.ErrorMessage = fmt.Sprintf("Failed to create job directory: %v", err)
-		job.EndTime = time.Now()
-
-		if err := pc.payloadDAL.UpdateBuildJob(ctx, job); err != nil {
-			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("Failed to update job status: %v", err))
-		}
-
-		logger.Error(logLevel, logDetailPayload, job.ErrorMessage)
-		return
-	}
+	fmt.Fprintf(multiWriter, "Payload Name: %s\n", manifestBody.Name)
+	fmt.Fprintf(multiWriter, "Payload Version: %s\n", manifestBody.Version)
+	fmt.Fprintf(multiWriter, "Payload Author: %s\n", manifestBody.Author)
+	fmt.Fprintf(multiWriter, "Payload Description: %s\n", manifestBody.Description)
 
 	// Create output directory
+	logSection("Directory Setup")
+	fmt.Fprintf(multiWriter, "Job Directory: %s\n", jobDir)
+
 	outputDir := filepath.Join(jobDir, "output")
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		job.Status = "failed"
@@ -660,8 +723,12 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 		logger.Error(logLevel, logDetailPayload, job.ErrorMessage)
 		return
 	}
+	fmt.Fprintf(multiWriter, "Output Directory: %s\n", outputDir)
 
 	// Process parameters and create config file
+	logSection("Build Parameters")
+	fmt.Fprintf(multiWriter, "Parameters: %+v\n", job.Parameters)
+
 	paramsJSON, err := json.MarshalIndent(job.Parameters, "", "  ")
 	if err != nil {
 		job.Status = "failed"
@@ -676,6 +743,11 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 		return
 	}
 
+	// Store parameters as a string to pass directly to the container
+	paramsJSONStr := string(paramsJSON)
+	fmt.Fprintf(multiWriter, "Parameter Contents:\n%s\n", paramsJSONStr)
+
+	// Also save parameters to disk for reference
 	paramFile := filepath.Join(jobDir, "parameters.json")
 	if err := os.WriteFile(paramFile, paramsJSON, 0644); err != nil {
 		job.Status = "failed"
@@ -690,17 +762,22 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 		return
 	}
 
-	fmt.Fprintf(&logBuffer, "Generated parameter file: %s\n", paramFile)
+	fmt.Fprintf(multiWriter, "Generated parameter file: %s\n", paramFile)
 
 	// Prepare Docker command
+	logSection("Build Environment")
 	dockerImage := manifestBody.PayloadBuildConfig.DockerImage
 	if dockerImage == "" {
 		dockerImage = "golang:latest" // Default to golang if not specified
 	}
+	fmt.Fprintf(multiWriter, "Docker Image: %s\n", dockerImage)
 
 	// Prepare build command based on architecture
 	goos := getGOOS(job.Architecture)
 	goarch := getGOARCH(job.Architecture)
+	fmt.Fprintf(multiWriter, "GOOS: %s\n", goos)
+	fmt.Fprintf(multiWriter, "GOARCH: %s\n", goarch)
+	fmt.Fprintf(multiWriter, "CGO_ENABLED: 0\n")
 
 	// Define output filename - ensure it has the payload ID for uniqueness
 	outputFile := manifestBody.PayloadBuildConfig.OutputFile
@@ -714,13 +791,42 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 		}
 		outputFile = fmt.Sprintf("payload-%s-%s%s", job.PayloadID[:8], job.Architecture, extension)
 	}
+	fmt.Fprintf(multiWriter, "Output File: %s\n", outputFile)
 
-	// Prepare build command
+	// Get paths
+	sourcePath, _ := filepath.Abs(manifestBody.SourcePath)
+	outputDirPath, _ := filepath.Abs(outputDir)
+
+	fmt.Fprintf(multiWriter, "Source Path: %s\n", sourcePath)
+	fmt.Fprintf(multiWriter, "Output Path: %s\n", outputDirPath)
+
+	// Determine if we need to initialize a Go module
+	moduleName := manifestBody.PayloadBuildConfig.ModuleName
+	if moduleName == "" {
+		// Default module name based on payload name if not specified
+		moduleName = "github.com/ksel172/meduza/payload"
+	}
+
+	// Build mode defines how to handle Go modules
+	buildMode := manifestBody.PayloadBuildConfig.BuildMode
+	if buildMode == "" {
+		// Default to auto-detect
+		buildMode = "auto"
+	}
+
+	fmt.Fprintf(multiWriter, "Module Name: %s\n", moduleName)
+	fmt.Fprintf(multiWriter, "Build Mode: %s\n", buildMode)
+
+	// Escape special characters in JSON for shell
+	escapedParams := strings.ReplaceAll(paramsJSONStr, `"`, `\"`)
+	escapedParams = strings.ReplaceAll(escapedParams, "$", "\\$")
+	escapedParams = strings.ReplaceAll(escapedParams, "`", "\\`")
+
+	// Prepare build command - only mount source and output directories
 	buildArgs := []string{
 		"run", "--rm",
-		"-v", fmt.Sprintf("%s:/src", manifestBody.SourcePath),
-		"-v", fmt.Sprintf("%s:/parameters.json", paramFile),
-		"-v", fmt.Sprintf("%s:/output", outputDir),
+		"-v", fmt.Sprintf("%s:/src", sourcePath),
+		"-v", fmt.Sprintf("%s:/output", outputDirPath),
 		"-e", fmt.Sprintf("GOOS=%s", goos),
 		"-e", fmt.Sprintf("GOARCH=%s", goarch),
 		"-e", "CGO_ENABLED=0",
@@ -728,22 +834,55 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 		dockerImage,
 	}
 
-	// Add custom build command
-	buildCmd := fmt.Sprintf("go build %s -o /output/%s .",
+	// Create parameters file and prepare for build, handling module initialization
+	buildCmd := fmt.Sprintf(`
+		# Create parameters file
+		echo "%s" > ./params.json && 
+		echo 'Using parameters:' && cat ./params.json && 
+		echo 'Go environment:' && go env && 
+		echo 'Source directory contents:' && ls -la && 
+		
+		# Check if go.mod exists
+		if [ ! -f go.mod ]; then
+			echo 'No go.mod found. Initializing Go module...' &&
+			go mod init %s &&
+			echo 'Created go.mod file.' &&
+			ls -la
+		fi &&
+		
+		# Force module-aware mode
+		export GO111MODULE=on &&
+		
+		# Run the build
+		echo 'Starting build with verbose output...' && 
+		go build -v -x %s -o /output/%s .
+	`,
+		escapedParams,
+		moduleName,
 		manifestBody.PayloadBuildConfig.BuildArgs,
 		outputFile)
 
 	buildArgs = append(buildArgs, "sh", "-c", buildCmd)
 
 	// Log the command
-	fmt.Fprintf(&logBuffer, "Running Docker build: docker %s\n", strings.Join(buildArgs, " "))
+	logSection("Build Command")
+	fmt.Fprintf(multiWriter, "Running Docker build: docker %s\n", strings.Join(buildArgs, " "))
+
+	// Time the actual build execution
+	buildExecStart := time.Now()
+	logSection("Build Process Output")
 
 	// Execute docker command
 	cmd := exec.CommandContext(ctx, "docker", buildArgs...)
-	cmd.Stdout = &logBuffer
-	cmd.Stderr = &logBuffer
+	cmd.Stdout = multiWriter
+	cmd.Stderr = multiWriter
+	logger.Info(logLevel, logDetailPayload, fmt.Sprintf("Running Docker command: docker %s", strings.Join(buildArgs, " ")))
 
 	if err := cmd.Run(); err != nil {
+		buildDuration := time.Since(buildExecStart)
+		logSection("Build Failure")
+		fmt.Fprintf(multiWriter, "Build failed after %s: %v\n", buildDuration, err)
+
 		job.Status = "failed"
 		job.ErrorMessage = fmt.Sprintf("Docker build failed: %v", err)
 		job.EndTime = time.Now()
@@ -756,9 +895,18 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 		return
 	}
 
+	buildDuration := time.Since(buildExecStart)
+
 	// Verify the output file exists
 	outputFilePath := filepath.Join(outputDir, outputFile)
-	if _, err := os.Stat(outputFilePath); os.IsNotExist(err) {
+	logSection("Build Verification")
+	fmt.Fprintf(multiWriter, "Verifying output file: %s\n", outputFilePath)
+
+	fileInfo, err := os.Stat(outputFilePath)
+	if os.IsNotExist(err) {
+		logSection("Verification Failed")
+		fmt.Fprintf(multiWriter, "Build completed but output file not found: %s\n", outputFilePath)
+
 		job.Status = "failed"
 		job.ErrorMessage = fmt.Sprintf("Build completed but output file not found: %s", outputFilePath)
 		job.EndTime = time.Now()
@@ -769,9 +917,38 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 
 		logger.Error(logLevel, logDetailPayload, job.ErrorMessage)
 		return
+	} else if err != nil {
+		logSection("Verification Failed")
+		fmt.Fprintf(multiWriter, "Error checking output file: %v\n", err)
+
+		job.Status = "failed"
+		job.ErrorMessage = fmt.Sprintf("Error verifying output file: %v", err)
+		job.EndTime = time.Now()
+
+		if err := pc.payloadDAL.UpdateBuildJob(ctx, job); err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("Failed to update job status: %v", err))
+		}
+
+		logger.Error(logLevel, logDetailPayload, job.ErrorMessage)
+		return
 	}
 
+	// File exists and is accessible - get size and permissions
+	fmt.Fprintf(multiWriter, "Output file created successfully\n")
+	fmt.Fprintf(multiWriter, "File size: %d bytes\n", fileInfo.Size())
+	fmt.Fprintf(multiWriter, "File permissions: %s\n", fileInfo.Mode().String())
+	fmt.Fprintf(multiWriter, "File modified time: %s\n", fileInfo.ModTime().Format(time.RFC3339))
+
 	// Mark job as completed
+	totalDuration := time.Since(buildStartTime)
+	logSection("Build Summary")
+	fmt.Fprintf(multiWriter, "Build completed successfully\n")
+	fmt.Fprintf(multiWriter, "Compilation time: %s\n", buildDuration)
+	fmt.Fprintf(multiWriter, "Total build time: %s\n", totalDuration)
+	fmt.Fprintf(multiWriter, "Output file: %s\n", outputFilePath)
+	fmt.Fprintf(multiWriter, "Output size: %d bytes\n", fileInfo.Size())
+	fmt.Fprintf(multiWriter, "Full build log saved to: %s\n", logFilePath)
+
 	job.Status = "completed"
 	job.OutputPath = outputFilePath
 	job.EndTime = time.Now()
@@ -781,7 +958,7 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 		return
 	}
 
-	logger.Info(logLevel, logDetailPayload, fmt.Sprintf("Build job %s completed successfully", job.ID))
+	logger.Info(logLevel, logDetailPayload, fmt.Sprintf("Build job %s completed successfully in %s", job.ID, totalDuration))
 }
 
 // Helper functions
@@ -896,36 +1073,11 @@ func parseManifestFile(manifestPath string, sourcePath string) (*models.PayloadM
 	}
 
 	// Validate required fields in the manifest body
-	if err := validateManifestBody(rawManifest); err != nil {
+	if err := manifest.Validate(); err != nil {
 		return nil, err
 	}
 
 	return manifest, nil
-}
-
-// validateManifestBody checks for required fields in the manifest
-func validateManifestBody(data map[string]interface{}) error {
-	// Required fields
-	requiredFields := []string{"name", "version", "author", "description"}
-	for _, field := range requiredFields {
-		if _, ok := data[field]; !ok {
-			return fmt.Errorf("missing required field: %s", field)
-		}
-	}
-
-	// Check for payload_build_config
-	buildConfig, ok := data["payload_build_config"].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("missing or invalid payload_build_config")
-	}
-
-	// Check for supported architectures
-	supportedArch, ok := buildConfig["supported_arch"].([]interface{})
-	if !ok || len(supportedArch) == 0 {
-		return fmt.Errorf("payload_build_config must specify at least one supported_arch")
-	}
-
-	return nil
 }
 
 // getVersionString converts a manifest_version value to a string representation

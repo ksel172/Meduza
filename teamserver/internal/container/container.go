@@ -71,7 +71,7 @@ func NewContainer() (*Container, error) {
 		// ListenerController:    handlers.NewListenersHandler(listenerDal, listenersService),
 		// ListenerService:       listenersService,
 		// ListenerDal:           autoStart,
-		PayloadController:     handlers.NewPayloadController(payloadDal),
+		PayloadController:     handlers.NewPayloadController(payloadDal, agentDal),
 		ModuleController:      handlers.NewModuleController(moduleDal),
 		CertificateController: handlers.NewCertificateHandler(certificateDal),
 		// ListenerContainer: ListenerContainer{
