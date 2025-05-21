@@ -3,6 +3,7 @@ package listener_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -68,49 +69,38 @@ func TestListenerService(t *testing.T) {
 	// t.Run("agent response: ", testAgent.SendResponse(t))
 
 	// Stop the listener
-	container.ListenerService.StopListener(context.Background(), listener.ID)
-	t.Run("stopped listener: authenticate attempt", func(t *testing.T) {
-		err := testAgent.Authenticate(t, listener.ID)
+	t.Run("stop listener", func(t *testing.T) {
+		err := container.ListenerService.StopListener(context.Background(), listener.ID)
+		require.NoErrorf(t, err, "failed to stop listener")
+
+		// Listener stauts is updated async, must wait for a moment for updates to make it to database
+		time.Sleep(250 * time.Millisecond)
+
+		err = testAgent.Authenticate(t, listener.ID)
 		require.Error(t, err)
+
+		stoppedListener := getListener(t, container, listener.Name)
+		if stoppedListener.Status != models.StatusReady {
+			t.Errorf("stopped listener status is not back to ready")
+		}
 	})
 
-	// // Test restarting the listener
-	// t.Log("Restarting HTTP listener")
-	// err = listener.Start(ctx)
-	// if err != nil {
-	// 	t.Fatalf("Failed to restart HTTP listener: %v", err)
-	// }
+	// Terminate the listener
+	t.Run("terminate listener", func(t *testing.T) {
+		err := container.ListenerService.TerminateListener(context.Background(), listener.ID)
+		require.NoErrorf(t, err, "failed to terminate listener")
 
-	// // Give the server a moment to fully start
-	// time.Sleep(100 * time.Millisecond)
+		// Listener stauts is updated async, must wait for a moment for updates to make it to database
+		time.Sleep(250 * time.Millisecond)
 
-	// // Test connectivity again
-	// t.Log("Testing connectivity after restart")
-	// resp, err = client.Get(url)
-	// if err != nil {
-	// 	t.Fatalf("Failed to connect to restarted HTTP listener: %v", err)
-	// }
-	// defer resp.Body.Close()
+		err = testAgent.Authenticate(t, listener.ID)
+		require.Error(t, err)
 
-	// if resp.StatusCode != http.StatusOK {
-	// 	t.Fatalf("Expected status code 200, got %d", resp.StatusCode)
-	// }
-	// t.Log("Successfully connected to restarted listener")
-
-	// // Terminate the listener (force close)
-	// t.Log("Terminating HTTP listener")
-	// err = listener.Terminate(ctx)
-	// if err != nil {
-	// 	t.Fatalf("Failed to terminate HTTP listener: %v", err)
-	// }
-
-	// // Verify listener is terminated by trying to connect again
-	// t.Log("Verifying listener is terminated")
-	// _, err = client.Get(url)
-	// if err == nil {
-	// 	t.Fatal("HTTP listener is still accepting connections after termination")
-	// }
-	// t.Log("Confirmed listener is terminated")
+		terminatedListener := getListener(t, container, listener.Name)
+		if terminatedListener.Status != models.StatusPending {
+			t.Errorf("terminated listener status is not back to ready")
+		}
+	})
 }
 
 func TestHTTPListenerWithTLS(t *testing.T) {
