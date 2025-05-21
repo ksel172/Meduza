@@ -568,13 +568,8 @@ func (pc *PayloadController) DownloadBuildOutput(ctx *gin.Context) {
 			}, payloadName)
 
 			// Add appropriate extension based on architecture
-			extension := ".bin"
-			if strings.HasPrefix(job.Architecture, "win-") {
-				extension = ".exe"
-			} else if strings.HasPrefix(job.Architecture, "darwin-") {
-				extension = ".macho"
-			}
-
+			// Fixed: Using dummy empty map since we don't have access to the manifest here
+			extension := getFileExtension(job.Architecture, nil)
 			filename = fmt.Sprintf("%s-%s%s", cleanName, job.Architecture, extension)
 		}
 	}
@@ -589,7 +584,7 @@ func (pc *PayloadController) DownloadBuildOutput(ctx *gin.Context) {
 	ctx.Data(http.StatusOK, "application/octet-stream", data)
 }
 
-// Helper function to execute a build job with module initialization support
+// Helper function to execute a build job with direct parameter file creation in container
 func (pc *PayloadController) executeBuild(ctx context.Context, job *models.PayloadJob, manifest *models.PayloadManifestV1) {
 	buildStartTime := time.Now()
 	logger.Info(logLevel, logDetailPayload, fmt.Sprintf("Starting build job %s for payload %s", job.ID, job.PayloadID))
@@ -680,13 +675,15 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 		Description        string `json:"description"`
 		SourcePath         string `json:"source_path"`
 		PayloadBuildConfig struct {
-			DockerImage    string   `json:"docker_image"`
-			BuildArgs      string   `json:"build_args"`
-			OutputPath     string   `json:"output_path"`
-			OutputFile     string   `json:"output_file"`
-			SupportedArchs []string `json:"supported_arch"`
-			ModuleName     string   `json:"module_name"` // Optional module name in manifest
-			BuildMode      string   `json:"build_mode"`  // Optional build mode (e.g., "legacy", "module")
+			DockerImage      string            `json:"docker_image"`
+			BuildCommand     string            `json:"build_command"`
+			BuildArgs        string            `json:"build_args"`
+			OutputPath       string            `json:"output_path"`
+			OutputFile       string            `json:"output_file"`
+			SupportedArchs   []string          `json:"supported_arch"`
+			EnvVars          map[string]string `json:"env_vars"`
+			ArchMappings     map[string]string `json:"arch_mappings"`
+			OutputExtensions map[string]string `json:"output_extensions"`
 		} `json:"payload_build_config"`
 	}
 
@@ -768,28 +765,39 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 	logSection("Build Environment")
 	dockerImage := manifestBody.PayloadBuildConfig.DockerImage
 	if dockerImage == "" {
-		dockerImage = "golang:latest" // Default to golang if not specified
+		dockerImage = "ubuntu:latest" // Default to ubuntu base image if not specified
 	}
 	fmt.Fprintf(multiWriter, "Docker Image: %s\n", dockerImage)
 
-	// Prepare build command based on architecture
-	goos := getGOOS(job.Architecture)
-	goarch := getGOARCH(job.Architecture)
-	fmt.Fprintf(multiWriter, "GOOS: %s\n", goos)
-	fmt.Fprintf(multiWriter, "GOARCH: %s\n", goarch)
-	fmt.Fprintf(multiWriter, "CGO_ENABLED: 0\n")
+	// Set up environment variables based on architecture
+	arch := job.Architecture
+	envVars := make(map[string]string)
 
-	// Define output filename - ensure it has the payload ID for uniqueness
+	// Add environment variable for the selected architecture
+	envVars["TARGET_ARCH"] = arch
+
+	// Add any custom environment variables from the manifest
+	for key, value := range manifestBody.PayloadBuildConfig.EnvVars {
+		envVars[key] = value
+	}
+
+	// Apply architecture mappings from manifest if defined
+	if archValue, ok := manifestBody.PayloadBuildConfig.ArchMappings[arch]; ok {
+		envVars["TARGET_ARCH"] = archValue
+	}
+
+	// Log all environment variables
+	fmt.Fprintf(multiWriter, "Build Environment Variables:\n")
+	for key, value := range envVars {
+		fmt.Fprintf(multiWriter, "  %s=%s\n", key, value)
+	}
+
+	// Define output filename with proper extension
 	outputFile := manifestBody.PayloadBuildConfig.OutputFile
 	if outputFile == "" {
 		// Generate a default filename if none specified
-		extension := ""
-		if goos == "windows" {
-			extension = ".exe"
-		} else if goos == "darwin" {
-			extension = ".macho"
-		}
-		outputFile = fmt.Sprintf("payload-%s-%s%s", job.PayloadID[:8], job.Architecture, extension)
+		extension := getFileExtension(arch, manifestBody.PayloadBuildConfig.OutputExtensions)
+		outputFile = fmt.Sprintf("payload-%s-%s%s", job.PayloadID[:8], arch, extension)
 	}
 	fmt.Fprintf(multiWriter, "Output File: %s\n", outputFile)
 
@@ -798,71 +806,54 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 	outputDirPath, _ := filepath.Abs(outputDir)
 
 	fmt.Fprintf(multiWriter, "Source Path: %s\n", sourcePath)
+	fmt.Fprintf(multiWriter, "Source Path: %s%s\n", sourcePath, "/simple-agent-test")
 	fmt.Fprintf(multiWriter, "Output Path: %s\n", outputDirPath)
 
-	// Determine if we need to initialize a Go module
-	moduleName := manifestBody.PayloadBuildConfig.ModuleName
-	if moduleName == "" {
-		// Default module name based on payload name if not specified
-		moduleName = "github.com/ksel172/meduza/payload"
+	// Prepare base Docker command with volume mounts
+	buildArgs := []string{
+		"run", "--rm",
+		"-v", fmt.Sprintf("%s:/src", sourcePath),
+		"-v", fmt.Sprintf("%s:/output", outputDirPath),
+		"-w", "/src",
 	}
 
-	// Build mode defines how to handle Go modules
-	buildMode := manifestBody.PayloadBuildConfig.BuildMode
-	if buildMode == "" {
-		// Default to auto-detect
-		buildMode = "auto"
+	// Add environment variables to Docker command
+	for key, value := range envVars {
+		buildArgs = append(buildArgs, "-e", fmt.Sprintf("%s=%s", key, value))
 	}
 
-	fmt.Fprintf(multiWriter, "Module Name: %s\n", moduleName)
-	fmt.Fprintf(multiWriter, "Build Mode: %s\n", buildMode)
+	// Add Docker image
+	buildArgs = append(buildArgs, dockerImage)
 
 	// Escape special characters in JSON for shell
 	escapedParams := strings.ReplaceAll(paramsJSONStr, `"`, `\"`)
 	escapedParams = strings.ReplaceAll(escapedParams, "$", "\\$")
 	escapedParams = strings.ReplaceAll(escapedParams, "`", "\\`")
 
-	// Prepare build command - only mount source and output directories
-	buildArgs := []string{
-		"run", "--rm",
-		"-v", fmt.Sprintf("%s:/src", sourcePath),
-		"-v", fmt.Sprintf("%s:/output", outputDirPath),
-		"-e", fmt.Sprintf("GOOS=%s", goos),
-		"-e", fmt.Sprintf("GOARCH=%s", goarch),
-		"-e", "CGO_ENABLED=0",
-		"-w", "/src",
-		dockerImage,
+	// Get build command from manifest or use a simple echo command if none provided
+	buildCmd := manifestBody.PayloadBuildConfig.BuildCommand
+	if buildCmd == "" {
+		// Default to a simple shell script if no command is provided
+		buildCmd = "echo 'No build command specified in manifest. Create a build script or specify build_command.' && exit 1"
+	} else {
+		// Replace template variables in build command
+		buildCmd = strings.ReplaceAll(buildCmd, "{OUTPUT_FILE}", outputFile)
+		buildCmd = strings.ReplaceAll(buildCmd, "{BUILD_ARGS}", manifestBody.PayloadBuildConfig.BuildArgs)
+		buildCmd = strings.ReplaceAll(buildCmd, "{OUTPUT_DIR}", "/output")
+		buildCmd = strings.ReplaceAll(buildCmd, "{ARCH}", arch)
 	}
 
-	// Create parameters file and prepare for build, handling module initialization
-	buildCmd := fmt.Sprintf(`
-		# Create parameters file
-		echo "%s" > ./params.json && 
-		echo 'Using parameters:' && cat ./params.json && 
-		echo 'Go environment:' && go env && 
-		echo 'Source directory contents:' && ls -la && 
-		
-		# Check if go.mod exists
-		if [ ! -f go.mod ]; then
-			echo 'No go.mod found. Initializing Go module...' &&
-			go mod init %s &&
-			echo 'Created go.mod file.' &&
-			ls -la
-		fi &&
-		
-		# Force module-aware mode
-		export GO111MODULE=on &&
-		
-		# Run the build
-		echo 'Starting build with verbose output...' && 
-		go build -v -x %s -o /output/%s .
-	`,
+	// Create full shell command that first creates parameters file
+	fullCmd := fmt.Sprintf("echo \"%s\" > ./params.json && "+
+		"echo 'Using parameters:' && cat ./params.json && "+
+		"echo 'Build environment:' && env | sort && "+
+		"echo 'Source directory contents:' && ls -la && "+
+		"echo 'Starting build with command: %s' && %s",
 		escapedParams,
-		moduleName,
-		manifestBody.PayloadBuildConfig.BuildArgs,
-		outputFile)
+		buildCmd,
+		buildCmd)
 
-	buildArgs = append(buildArgs, "sh", "-c", buildCmd)
+	buildArgs = append(buildArgs, "sh", "-c", fullCmd)
 
 	// Log the command
 	logSection("Build Command")
@@ -1046,10 +1037,17 @@ func parseManifestFile(manifestPath string, sourcePath string) (*models.PayloadM
 		return nil, fmt.Errorf("invalid JSON in manifest file: %w", err)
 	}
 
-	// Add source path if not present
-	if _, ok := rawManifest["source_path"]; !ok {
-		rawManifest["source_path"] = sourcePath
+	// Determine the actual source path
+	manifestDir := filepath.Dir(manifestPath)
+	actualSourcePath := sourcePath
+
+	// If manifest is one level down, use that directory as the source path
+	if filepath.Dir(manifestDir) == sourcePath {
+		actualSourcePath = manifestDir
 	}
+
+	// Add source path if not present or override it with the correct one
+	rawManifest["source_path"] = actualSourcePath
 
 	// Re-marshal to get the complete JSON with source_path
 	updatedData, err := json.Marshal(rawManifest)
@@ -1059,8 +1057,7 @@ func parseManifestFile(manifestPath string, sourcePath string) (*models.PayloadM
 
 	// Create and populate the manifest
 	manifest := &models.PayloadManifestV1{
-		ID: uuid.New().String(),
-		// Convert to float32 from whatever type it is in the JSON
+		ID:              uuid.New().String(),
 		ManifestVersion: getVersionFloat(rawManifest["manifest_version"]),
 		Body:            string(updatedData),
 		CreatedAt:       time.Now(),
@@ -1122,29 +1119,24 @@ func getStringValue(data map[string]interface{}, key string) string {
 	return ""
 }
 
-// Helper functions to map architecture to GOOS/GOARCH
-func getGOOS(arch string) string {
-	switch {
-	case strings.HasPrefix(arch, "win-"):
-		return "windows"
-	case strings.HasPrefix(arch, "linux-"):
-		return "linux"
-	case strings.HasPrefix(arch, "darwin-"):
-		return "darwin"
-	default:
-		return "windows" // Default to Windows
+// getFileExtension gets the appropriate file extension for the given architecture
+// Consolidated function to handle file extensions with manifest configuration
+func getFileExtension(arch string, extensionMap map[string]string) string {
+	// First check if there's a specific mapping in the manifest
+	if extensionMap != nil {
+		if ext, ok := extensionMap[arch]; ok {
+			return ext
+		}
 	}
-}
 
-func getGOARCH(arch string) string {
-	switch {
-	case strings.HasSuffix(arch, "-x64"):
-		return "amd64"
-	case strings.HasSuffix(arch, "-x86"):
-		return "386"
-	case strings.HasSuffix(arch, "-arm64"):
-		return "arm64"
-	default:
-		return "amd64" // Default to amd64
+	// Default extensions based on OS part of architecture
+	if strings.HasPrefix(arch, "win-") {
+		return ".exe"
+	} else if strings.HasPrefix(arch, "darwin-") {
+		return ".macho"
+	} else if strings.HasPrefix(arch, "linux-") || strings.HasPrefix(arch, "freebsd-") {
+		return ".bin"
 	}
+
+	return ""
 }

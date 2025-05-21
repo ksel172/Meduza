@@ -102,7 +102,7 @@ func (m *PayloadManifestV1) Validate() error {
 	}
 
 	// Validate body according to manifest version
-	if m.ManifestVersion > 2.0 {
+	if m.ManifestVersion <= 1.0 {
 		var body PayloadManifestBodyV1
 		if err := json.Unmarshal([]byte(m.Body), &body); err != nil {
 			errs = append(errs, fmt.Errorf("failed to unmarshal manifest body: %w", err))
