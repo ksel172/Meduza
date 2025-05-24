@@ -2,9 +2,12 @@ name: Go Tests
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "main", "dev", "release/*" ]
   pull_request:
-    branches: [ "dev" ]
+    branches: [ "main", "dev", "release/*" ]
+
+permissions:
+  contents: read
 
 jobs:
   unit-tests:
@@ -122,19 +125,19 @@ jobs:
       working-directory: ./teamserver
       run: go build -v ./...
       
-    - name: Build Docker image
-      run: |
-        docker build -t meduza-teamserver:${{ github.sha }} -f teamserver/docker/Dockerfile teamserver/
+    # - name: Build Docker image
+    #   run: |
+    #     docker build -t meduza-teamserver:${{ github.sha }} -f teamserver/docker/Dockerfile teamserver/
         
-    - name: Save Docker image (optional)
-      if: github.ref == 'refs/heads/dev'
-      run: |
-        docker save meduza-teamserver:${{ github.sha }} | gzip > meduza-teamserver.tar.gz
+    # - name: Save Docker image
+    #   if: github.ref == 'refs/heads/dev'
+    #   run: |
+    #     docker save meduza-teamserver:${{ github.sha }} | gzip > meduza-teamserver.tar.gz
         
-    - name: Upload Docker image artifact
-      if: github.ref == 'refs/heads/dev'
-      uses: actions/upload-artifact@v3
-      with:
-        name: docker-image
-        path: meduza-teamserver.tar.gz
-        retention-days: 1
+    # - name: Upload Docker image artifact
+    #   if: github.ref == 'refs/heads/dev'
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name: docker-image
+    #     path: meduza-teamserver.tar.gz
+    #     retention-days: 1
