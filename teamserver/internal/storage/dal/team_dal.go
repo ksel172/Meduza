@@ -30,11 +30,11 @@ func NewTeamDAL(db *sql.DB, schema string) *TeamDAL {
 }
 
 func (dal *TeamDAL) CreateTeam(ctx context.Context, team *models.Team, creatorID string) error {
-	return utils.WithTransactionTimeout(ctx, dal.db, 10, sql.TxOptions{}, func(context.Context, *sql.Tx) error {
+	return utils.WithTransactionTimeout(ctx, dal.db, 10, sql.TxOptions{}, func(ctx context.Context, tx *sql.Tx) error {
 		// Check if a team with the same name already exists
 		var existingTeamID string
 		checkQuery := fmt.Sprintf(`SELECT id FROM %s.teams WHERE name=$1`, dal.schema)
-		queryStmt, err := dal.db.PrepareContext(ctx, checkQuery)
+		queryStmt, err := tx.PrepareContext(ctx, checkQuery)
 		if err != nil {
 			logger.Error(logLevel, logDetailTeam, fmt.Sprintf("Failed to prepare read team query: %v", err))
 			return fmt.Errorf("failed to prepare read team query: %w", err)
@@ -51,7 +51,7 @@ func (dal *TeamDAL) CreateTeam(ctx context.Context, team *models.Team, creatorID
 
 		// Create the new team
 		createQuery := fmt.Sprintf(`INSERT INTO %s.teams(name) VALUES($1) RETURNING id`, dal.schema)
-		createStmt, err := dal.db.PrepareContext(ctx, createQuery)
+		createStmt, err := tx.PrepareContext(ctx, createQuery)
 		if err != nil {
 			logger.Error(logLevel, logDetailTeam, fmt.Sprintf("failed to prepare create team query: %v", err))
 			return fmt.Errorf("failed to prepare create team query: %w", err)
@@ -63,7 +63,7 @@ func (dal *TeamDAL) CreateTeam(ctx context.Context, team *models.Team, creatorID
 
 		// Add the creator as a team member
 		addMemberQuery := fmt.Sprintf(`INSERT INTO %s.team_members(team_id, user_id) VALUES($1, $2)`, dal.schema)
-		addMemberStmt, err := dal.db.PrepareContext(ctx, addMemberQuery)
+		addMemberStmt, err := tx.PrepareContext(ctx, addMemberQuery)
 		if err != nil {
 			logger.Error(logLevel, logDetailTeam, fmt.Sprintf("Failed to prepare create team query: %v", err))
 			return fmt.Errorf("failed to prepare create team query: %w", err)

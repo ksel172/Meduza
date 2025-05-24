@@ -3,51 +3,18 @@ package listener
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
-	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 )
-
-type statusUpdate struct {
-	listenerID string
-	status     string
-}
-
-// ListenerService is the entrypoint for listener operations exposed to clients
-type ListenerService struct {
-	startTimeout int
-	stopTimeout  int
-
-	listenerDal dal.IListenerDAL
-
-	// Keep track of the runtime listener representations
-	activeListeners map[string]*Listener
-	statusUpdates   chan statusUpdate
-	mux             sync.RWMutex
-}
-
-func NewListenerService(listenerDAL dal.IListenerDAL) *ListenerService {
-	ls := &ListenerService{
-		startTimeout:    15,
-		stopTimeout:     15,
-		listenerDal:     listenerDAL,
-		activeListeners: make(map[string]*Listener),
-		statusUpdates:   make(chan statusUpdate, 100),
-	}
-
-	// Start the status update processor
-	go ls.processStatusUpdates()
-
-	return ls
-}
 
 func (ls *ListenerService) processStatusUpdates() {
 	for update := range ls.statusUpdates {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		updates := map[string]any{"status": update.status}
+
+		logger.Info(fmt.Sprintf("updating listener %s status: %s", update.listenerID, update.status))
 
 		if err := ls.listenerDal.UpdateListener(ctx, update.listenerID, updates); err != nil {
 			logger.Error(fmt.Sprintf("Failed to update listener status: %v", err))
@@ -71,53 +38,35 @@ func (ls *ListenerService) StartListener(ctx context.Context, listenerID string)
 	listener, exists := ls.activeListeners[listenerID]
 	ls.mux.RUnlock()
 
-	// if exists {
-	// if listener.Status == StatusStarting {
-	// 	return fmt.Errorf("listener with ID %s is starting", listenerID)
-	// } else if listener.Status == StatusRunning {
-	// 	return fmt.Errorf("listener with ID %s is already running", listenerID)
-	// }
-	// } else {
 	if !exists {
 		listenerModel, err := ls.listenerDal.GetListenerById(ctx, listenerID)
 		if err != nil {
 			return fmt.Errorf("listener with ID %s not found: %w", listenerID, err)
 		}
 
-		listener, err = createListenerFromModel(listenerModel)
+		listener, err = createListenerFromModel(listenerModel, ls.checkinController)
 		if err != nil {
 			return fmt.Errorf("failed to create listener from model: %w", err)
 		}
-
-		go ls.monitorListenerStatus(listener)
 	}
 
-	return ls.startListener(ctx, listener)
+	go ls.monitorListenerStatus(listener)
+	return ls.startListener(listener)
 }
 
-func (ls *ListenerService) startListener(ctx context.Context, listener *Listener) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.startTimeout)*time.Second)
+func (ls *ListenerService) startListener(listener *Listener) error {
+	// Create a context from the service root context
+	ctx, cancel := context.WithTimeout(ls.rootCtx, time.Duration(ls.startTimeout)*time.Second)
 	defer cancel()
 
-	startCh := make(chan error, 1)
-	go func() {
-		startCh <- listener.Start(ctx)
-		close(startCh)
-	}()
-
-	select {
-	case err := <-startCh:
-		if err != nil {
-			return err
-		}
-		ls.mux.Lock()
-		ls.activeListeners[listener.ID] = listener
-		ls.mux.Unlock()
-		return nil
-
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := listener.Start(ctx); err != nil {
+		return err
 	}
+
+	ls.mux.Lock()
+	ls.activeListeners[listener.ID] = listener
+	ls.mux.Unlock()
+	return nil
 }
 
 // The expected behavior, and since all listeners that are running should be kept track of, return an error if the listener is not mapped
@@ -137,6 +86,7 @@ func (ls *ListenerService) StopListener(ctx context.Context, listenerID string) 
 		return fmt.Errorf("trying to stop listener that is not mapped")
 	}
 
+	go ls.monitorListenerStatus(listener)
 	return ls.stopListener(ctx, listener)
 }
 
@@ -144,18 +94,11 @@ func (ls *ListenerService) stopListener(ctx context.Context, listener *Listener)
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.stopTimeout)*time.Second)
 	defer cancel()
 
-	stopCh := make(chan error, 1)
-	go func() {
-		stopCh <- listener.Stop(ctx)
-		close(stopCh)
-	}()
-
-	select {
-	case err := <-stopCh:
+	if err := listener.Stop(ctx); err != nil {
 		return err
-	case <-ctx.Done():
-		return ctx.Err()
 	}
+
+	return nil
 }
 
 // Terminate is an operation that fully stops a listener, killing processes and removing from active listeners map
@@ -175,25 +118,16 @@ func (ls *ListenerService) terminateListener(ctx context.Context, listener *List
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(ls.stopTimeout)*time.Second)
 	defer cancel()
 
-	terminateCh := make(chan error, 1)
-	go func() {
-		terminateCh <- listener.Terminate(ctx)
-		close(terminateCh)
-	}()
-
-	select {
-	case err := <-terminateCh:
-		if err != nil {
-			return err
-		}
-		ls.mux.Lock()
-		delete(ls.activeListeners, listener.ID)
-		ls.mux.Unlock()
-		return nil
-
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := listener.Terminate(ctx); err != nil {
+		return err
 	}
+
+	go ls.monitorListenerStatus(listener)
+
+	ls.mux.Lock()
+	delete(ls.activeListeners, listener.ID)
+	ls.mux.Unlock()
+	return nil
 }
 
 func (ls *ListenerService) UpdateListener(ctx context.Context, listenerModel models.Listener) error {
@@ -225,7 +159,7 @@ func (ls *ListenerService) AutoStart(ctx context.Context) error {
 	for _, listener := range listeners {
 		// Create listener instance first
 
-		listenerInstance, err := createListenerFromModel(listener)
+		listenerInstance, err := createListenerFromModel(listener, ls.checkinController)
 		if err != nil {
 			return fmt.Errorf("failed to create listener instance: %w", err)
 		}
@@ -238,18 +172,18 @@ func (ls *ListenerService) AutoStart(ctx context.Context) error {
 		ls.activeListeners[listener.ID] = listenerInstance
 		ls.mux.Unlock()
 
-		if listener.Status == StatusRunning {
+		if listener.Status == models.StatusRunning {
 
 			// Set status as ready, because otherwise listener won't be ready to start
 			// another option could be to clean up the listeners when the server is force shutdown
 			// but what if the server dies. Listeners will cease to work simply because there is no
 			// full-proof feature to get them up and running. We know listeners die on shutdown, so let
 			// us just set as ready.
-			listenerInstance.Status = StatusReady
-			if err := ls.startListener(ctx, listenerInstance); err != nil {
+			listenerInstance.Status = models.StatusReady
+			if err := ls.startListener(listenerInstance); err != nil {
 				logger.Error(fmt.Sprintf("Failed to start listener %s during AutoStart: %v", listener.ID, err))
 
-				updates := map[string]any{"status": StatusFailed}
+				updates := map[string]any{"status": models.StatusFailed}
 				if updateErr := ls.listenerDal.UpdateListener(ctx, listener.ID, updates); updateErr != nil {
 					logger.Error(fmt.Sprintf("Failed to update listener status: %v", updateErr))
 				}

@@ -1,0 +1,19 @@
+# Ignore Git repo
+.git
+
+# Ignore .NET build output
+agent/Agent/bin
+agent/Agent/obj
+
+# Ignore typical Go build outputs
+*.out
+*.test
+
+# Ignore local build artifacts
+build/
+dist/
+*.log
+
+# Ignore Docker internal
+Dockerfile
+.dockerignore

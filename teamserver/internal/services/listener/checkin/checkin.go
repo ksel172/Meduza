@@ -29,8 +29,16 @@ var (
 	ErrConflict       = errors.New("conflict")
 )
 
+type ICheckInController interface {
+	Authenticate(agentPublicKey []byte, authToken string) (AuthResponse, error)
+	HandleTaskRequest(ctx context.Context, c2request models.C2Request, sessionToken string) ([]byte, error)
+	HandleResponseRequest(ctx context.Context, c2request models.C2Request) error
+	HandleRegisterRequest(ctx context.Context, c2request models.C2Request, payloadToken string) (string, error)
+}
+
 type CheckInController struct {
-	agentDAL dal.IAgentDAL
+	agentDAL   dal.IAgentDAL
+	payloadDAL dal.IPayloadDAL
 }
 
 type AuthResponse struct {
@@ -38,22 +46,23 @@ type AuthResponse struct {
 	SessionToken string
 }
 
-func NewCheckInController(agentDal dal.IAgentDAL) *CheckInController {
+func NewCheckInController(agentDal dal.IAgentDAL, payloadDAL dal.IPayloadDAL) *CheckInController {
 	return &CheckInController{
-		agentDAL: agentDal,
+		agentDAL:   agentDal,
+		payloadDAL: payloadDAL,
 	}
 }
 
-func (cc *CheckInController) Authenticate(agentPublicKey string, authToken string) (AuthResponse, error) {
+func (cc *CheckInController) Authenticate(agentPublicKey []byte, authToken string) (AuthResponse, error) {
 	// Retrieve the server private key to derive shared key
 	// and the public key to send to the agent
-	serverKeyPair, ok := storage.AsymmetricKeyRegistry.GetKeys(authToken)
-	if !ok {
-		return AuthResponse{}, fmt.Errorf("key not found from auth token")
+	serverPrivKey, serverPubKey, err := cc.payloadDAL.GetKeys(context.Background(), authToken)
+	if err != nil {
+		return AuthResponse{}, fmt.Errorf("failed to get server keys: %w", err)
 	}
 
 	// Generate AES session key and store in the registry
-	aesKey, err := utils.DeriveECDHSharedSecret(serverKeyPair.PrivateKey, []byte(agentPublicKey))
+	aesKey, err := utils.DeriveECDHSharedSecret(serverPrivKey, agentPublicKey)
 	if err != nil {
 		return AuthResponse{}, fmt.Errorf("failed to derive shared key: %v", err)
 	}
@@ -65,7 +74,7 @@ func (cc *CheckInController) Authenticate(agentPublicKey string, authToken strin
 	storage.KeyRegistry.WriteKey(sessionToken, aesKey)
 
 	return AuthResponse{
-		PublicKey:    serverKeyPair.PublicKey,
+		PublicKey:    serverPubKey,
 		SessionToken: sessionToken,
 	}, nil
 }
@@ -82,12 +91,12 @@ func (cc *CheckInController) HandleTaskRequest(ctx context.Context, c2request mo
 
 	// Only process non-completed tasks
 	for _, task := range tasks {
-		if task.Status == models.TaskComplete {
+		if task.Status == models.TaskStatusComplete {
 			continue
 		}
 
 		// Handle module commands
-		if task.Type == models.ModuleCommand {
+		if task.Type == models.TaskModuleCommand {
 			moduleDirPath := filepath.Join(conf.GetModuleUploadPath(), task.Module)
 			moduleName := task.Command.Name
 
@@ -186,36 +195,49 @@ func (cc *CheckInController) HandleResponseRequest(ctx context.Context, c2reques
 		return ErrInternalServer
 	}
 
-	logger.Info(fmt.Sprintf("Successfully updated agent task: %s", agentTask.TaskID))
+	logger.Info(fmt.Sprintf("Successfully updated agent task: %s", agentTask.ID))
 	return nil
 }
 
-func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2request models.C2Request) error {
+// TODO: implement some way to check if there is a conflict (i.e. the same agent trying to register again)
+func (cc *CheckInController) HandleRegisterRequest(ctx context.Context, c2request models.C2Request, payloadToken string) (string, error) {
 	logger.Info(fmt.Sprintf("Received register request from agent: %s", c2request.AgentID))
 
 	var agentInfo models.AgentInfo
 	if err := json.Unmarshal([]byte(c2request.Message), &agentInfo); err != nil {
 		logger.Info(fmt.Sprintf("Failed to parse agent info from decrypted message: %v", err))
-		return ErrInvalidData
+		return "", ErrInvalidData
 	}
 
-	if _, err := cc.agentDAL.GetAgent(ctx, agentInfo.AgentID); err == nil {
-		logger.Info("Agent already exists:", c2request.AgentID)
-		return ErrConflict
+	// Get payload from db based on payloadToken
+	// to retrieve the config associated with the payload
+	payload, err := cc.payloadDAL.GetPayloadByToken(ctx, payloadToken)
+	if err != nil {
+		logger.Info(fmt.Sprintf("Failed to retrieve payload by token: %v", err))
+		return "", ErrDatabase
 	}
 
-	newAgent := c2request.IntoNewAgent()
-	newAgent.Name = utils.RandomString(6)
+	// Now, create the agent using data parsed from the Message field
+	agentID := uuid.NewString()
+	agentInfo.AgentID = agentID
+	newAgent := models.Agent{
+		ID:            agentID,
+		ConfigID:      payload.ConfigID,
+		PayloadID:     payload.ID,
+		Name:          utils.RandomString(6),
+		Status:        models.AgentUninitialized,
+		FirstCallback: time.Now(),
+		LastCallback:  time.Now(),
+		ModifiedAt:    time.Now(),
+		AgentInfo:     agentInfo,
+	}
 
-	if err := cc.agentDAL.RegisterAgent(ctx, newAgent); err != nil {
+	agent, err := cc.agentDAL.RegisterAgent(ctx, newAgent)
+	if err != nil {
 		logger.Info(fmt.Sprintf("Failed to create agent: %v", err))
-		return ErrInternalServer
+		return "", ErrInternalServer
 	}
 
-	if err := cc.agentDAL.CreateAgentInfo(ctx, agentInfo); err != nil {
-		logger.Info(fmt.Sprintf("Failed to create agent info: %v", err))
-		return ErrInternalServer
-	}
-
-	return nil
+	// Only returning from agent.ID as the ID generation might be moved to the database layer at a later stage
+	return agent.ID, nil
 }

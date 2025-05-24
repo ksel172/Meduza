@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	listenerService "github.com/ksel172/Meduza/teamserver/internal/services/listener"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
@@ -49,6 +48,22 @@ func (lc *ListenerController) GetListener(ctx *gin.Context) {
 	models.ResponseSuccess(ctx, http.StatusOK, "Listener retrieved successfully", listener)
 }
 
+func (lc *ListenerController) GetListenerByName(ctx *gin.Context) {
+	listenerName := ctx.Param(models.ParamListenerName)
+	if listenerName == "" {
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid listener name", "Listener name is required")
+		return
+	}
+
+	listener, err := lc.listenerDal.GetListenerByName(ctx.Request.Context(), listenerName)
+	if err != nil {
+		models.ResponseError(ctx, http.StatusInternalServerError, "Error getting listener", err.Error())
+		return
+	}
+
+	models.ResponseSuccess(ctx, http.StatusOK, "Listener retrieved successfully", listener)
+}
+
 func (lc *ListenerController) GetListenerStatuses(ctx *gin.Context) {
 	listeners, err := lc.listenerDal.GetAllListeners(ctx.Request.Context())
 	if err != nil {
@@ -65,11 +80,12 @@ func (lc *ListenerController) GetListenerStatuses(ctx *gin.Context) {
 }
 
 func (lc *ListenerController) CreateListener(ctx *gin.Context) {
-	var listenerModel models.Listener
-	if err := ctx.ShouldBindJSON(&listenerModel); err != nil {
+	var createLocalListenerRequest models.CreateLocalListenerRequest
+	if err := ctx.ShouldBindJSON(&createLocalListenerRequest); err != nil {
 		models.ResponseError(ctx, http.StatusBadRequest, "Failed to get listener from request", err.Error())
 		return
 	}
+	listenerModel := createLocalListenerRequest.IntoListener()
 
 	// TODO: external listeners registration
 
@@ -83,8 +99,6 @@ func (lc *ListenerController) CreateListener(ctx *gin.Context) {
 		models.ResponseError(ctx, http.StatusBadRequest, "external listeners should register themselves", nil)
 		return
 	}
-
-	listenerModel.ID = uuid.NewString()
 
 	if err := lc.listenerDal.CreateListener(ctx.Request.Context(), &listenerModel); err != nil {
 		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to create listener", err.Error())

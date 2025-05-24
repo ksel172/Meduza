@@ -8,9 +8,51 @@ import (
 	"github.com/ksel172/Meduza/teamserver/pkg/conf"
 )
 
-const ParamListenerID string = "listener_id"
+/*
+Listener possible status:
 
-// This exists to prevent a circular import in the database layer
+Local:
+Ready - runtime NOT mapped, only stored in database
+Starting - runtime mapped, not listening to requests
+Running - runtime mapped, listening to requests
+Stopping - runtime mapped
+Terminating - runtime in the process of being unmapped
+Failed - operation failed, requires cleanup and restart in some cases
+
+External:
+Ready - runtime mapped, ready to receive start request
+Starting - runtime mapped, not listening to requests
+Running - runtime mapped, listening to requests
+Stopping - runtime mapped
+Terminating - runtime in the process of being unmapped, resources cleaned up, program should exit
+Failed - operation failed, requires cleanup and restart in some cases
+*/
+
+const (
+	// Possible listener statuses
+	StatusPending     = "pending"     // No resource created, waiting for any signal to start up
+	StatusReady       = "ready"       // Idle, waiting for initialization/start
+	StatusStarting    = "starting"    // Listener is being started
+	StatusRunning     = "running"     // Running, server listening
+	StatusStopping    = "stopping"    // Listener is stopping
+	StatusTerminating = "terminating" // Listener is terminating
+	StatusFailed      = "failed"      // Listener failed to start / crashed
+
+	// Listener lifecycle modes
+	LifecycleManaged   = "managed"   // Listener is managed by the manager and listen for changes
+	LifecycleScheduled = "scheduled" // Listener is scheduled by the manager and polls for changes
+
+	// Supported listener kinds
+	HTTPListenerKind     string = "http"
+	TCPListenerKind      string = "tcp"
+	SMBListenerKind      string = "smb"
+	ExternalListenerKind string = "external"
+
+	// Parameter names
+	ParamListenerID   string = "listener_id"
+	ParamListenerName string = "listener_name"
+)
+
 // Database returns only the data fields of a listener
 type Listener struct {
 	ID          string `json:"id"`
@@ -20,20 +62,17 @@ type Listener struct {
 	Description string `json:"description"`
 
 	// External only fields
-	External bool   `json:"external"` // true if the listener is external, false if it is local
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
+	External  bool   `json:"external"`  // true if the listener is external, false if it is local
+	Host      string `json:"host"`      // if local, localhost
+	Port      int    `json:"port"`      // if local, port assigned automatically by port manager
+	Heartbeat int    `json:"heartbeat"` // To check if external listener is alive
+
+	// Config holds implementation specific configs for external listeners, otherwise they are accessed from the listener field
+	RawConfig json.RawMessage `json:"config" validate:"required"`
 
 	// eventually add tags, tags can be created and are stored in another table
 	// reference from tags table, many to many relationship
 	// Tags        []string `json:"tags"`
-
-	// These configurations are only allowed for external listeners
-	// Not controlled within the same process as the C2 server
-	Heartbeat int `json:"heartbeat"` //
-
-	// Config holds implementation specific configs for external listeners, otherwise they are accessed from the listener field
-	RawConfig json.RawMessage `json:"config" validate:"required"`
 
 	// Auditability fields
 	CreatedAt time.Time `json:"created_at"`
@@ -65,4 +104,34 @@ func (l *Listener) Validate() error {
 	}
 
 	return nil
+}
+
+type CreateLocalListenerRequest struct {
+	Kind        string `json:"kind" validate:"required"` // http, tcp, smb, custom, etc
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Heartbeat   int    `json:"heartbeat"`
+}
+
+func (clr CreateLocalListenerRequest) IntoListener() Listener {
+
+	heartbeat := clr.Heartbeat
+	if clr.Heartbeat < 30 {
+		heartbeat = 30
+	}
+
+	return Listener{
+		Kind:        clr.Kind,
+		Status:      StatusReady,
+		Name:        clr.Name,
+		Description: clr.Description,
+
+		// External fields
+		External:  false,
+		Host:      "localhost",
+		Port:      8010, // Must replace with port manager service implementation later
+		RawConfig: json.RawMessage(`{}`),
+
+		Heartbeat: heartbeat,
+	}
 }

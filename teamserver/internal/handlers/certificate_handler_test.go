@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ksel172/Meduza/teamserver/internal/mocks"
+	dal_mocks "github.com/ksel172/Meduza/teamserver/internal/mocks/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -71,7 +71,7 @@ func (m *MockCertificateHandler) UploadCertificate(c *gin.Context) {
 }
 
 func TestUploadCertificate(t *testing.T) {
-	mockCertDAL := &mocks.MockCertificateDAL{}
+	mockCertDAL := &dal_mocks.MockCertificateDAL{}
 	realHandler := NewCertificateHandler(mockCertDAL)
 	handler := &MockCertificateHandler{realHandler}
 	gin.SetMode(gin.TestMode)
@@ -168,7 +168,7 @@ func TestUploadCertificate(t *testing.T) {
 }
 
 func TestGetCertificates(t *testing.T) {
-	mockCertDAL := &mocks.MockCertificateDAL{}
+	mockCertDAL := &dal_mocks.MockCertificateDAL{}
 	handler := NewCertificateHandler(mockCertDAL)
 	gin.SetMode(gin.TestMode)
 
@@ -209,7 +209,7 @@ func TestGetCertificates(t *testing.T) {
 }
 
 func TestDeleteCertificate(t *testing.T) {
-	mockCertDAL := &mocks.MockCertificateDAL{}
+	mockCertDAL := &dal_mocks.MockCertificateDAL{}
 	handler := NewCertificateHandler(mockCertDAL)
 	gin.SetMode(gin.TestMode)
 

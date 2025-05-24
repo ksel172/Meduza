@@ -28,12 +28,12 @@ type ListenerImplementation interface {
 // The lifecycleManager and ListenerImplementation fields will be nil
 // we must check how the listener is setup to run and prepare the fields
 // for usage
-func createListenerFromModel(listenerModel models.Listener) (*Listener, error) {
+func createListenerFromModel(listenerModel models.Listener, checkinController checkin.ICheckInController) (*Listener, error) {
 	listener := Listener{}
 	listener.Listener = listenerModel
 
 	// Create the concrete listener implementation
-	listenerImplementation, err := createListenerImplementation(listener.Kind, listener.RawConfig)
+	listenerImplementation, err := createListenerImplementation(listener.Kind, listener.Host, listener.Port, listener.RawConfig, checkinController)
 	if err != nil {
 		return nil, err
 	}
@@ -52,28 +52,33 @@ func createListenerFromModel(listenerModel models.Listener) (*Listener, error) {
 }
 
 // Creates the local listener implementation based on the provided config byte array
-func createListenerImplementation(kind string, config json.RawMessage) (ListenerImplementation, error) {
+func createListenerImplementation(kind string, host string, port int, config json.RawMessage,
+	checkinController checkin.ICheckInController) (ListenerImplementation, error) {
 	switch kind {
 
-	case HTTPListenerKind:
+	case models.HTTPListenerKind:
 		var httpConfig http_listener.HTTPListenerConfig
 		if err := json.Unmarshal(config, &httpConfig); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal HTTP config: %w", err)
 		}
 
-		implementation, err := http_listener.NewHTTPListener(httpConfig, &checkin.CheckInController{})
+		// Inject host and port into http listener config
+		httpConfig.Host = host
+		httpConfig.Port = port
+
+		implementation, err := http_listener.NewHTTPListener(httpConfig, checkinController)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create http implementation: %w", err)
 		}
 		return implementation, nil
 
-	case TCPListenerKind:
+	case models.TCPListenerKind:
 		return &tcp_listener.TCPListener{}, nil
 
-	case SMBListenerKind:
+	case models.SMBListenerKind:
 		return &smb_listener.SMBListener{}, nil
 
-	case ExternalListenerKind:
+	case models.ExternalListenerKind:
 		return &external.ExternalListener{}, nil
 
 	default:
