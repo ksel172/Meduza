@@ -2,16 +2,13 @@ package http_listener
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"testing"
 	"time"
 
 	controller_mocks "github.com/ksel172/Meduza/teamserver/internal/mocks/controller"
-	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/utils"
@@ -79,39 +76,22 @@ func isServerListening(addr string, timeout time.Duration) bool {
 }
 
 // Function to simulate agent authentication and retrieve sessiontoken + AES key for message encryption
-func authenticateAgent(authToken string) (string, []byte, error) {
-	controller := checkin.CheckInController{}
-
-	// Write into the registry the server keys for that authToken
-	serverPrivKey, serverPubKey, err := utils.GenerateECDHKeyPair()
+func createAgentSession(sessionToken string) ([]byte, error) {
+	_, agentPublicKey, err := utils.GenerateECDHKeyPair()
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to generate server keys: %v", err)
+		return nil, fmt.Errorf("failed to generate agent keys: %v", err)
 	}
-	storage.AsymmetricKeyRegistry.WriteKey(authToken, storage.KeyPair{
-		PublicKey:  serverPubKey,
-		PrivateKey: serverPrivKey,
-	})
-
-	// Generate agent keys
-	agentPrivKey, agentPubKey, err := utils.GenerateECDHKeyPair()
+	serverPrivKey, _, err := utils.GenerateECDHKeyPair()
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to generate agent keys: %v", err)
+		return nil, fmt.Errorf("failed to generate agent keys: %v", err)
 	}
-
-	// Send authenticate request to check in controller
-	response, err := controller.Authenticate(string(agentPubKey), authToken)
+	aesKey, err := utils.DeriveECDHSharedSecret(serverPrivKey, agentPublicKey)
 	if err != nil {
-		return "", nil, errors.New("failed to authenticate")
+		return nil, fmt.Errorf("failed to derive shared key: %v", err)
 	}
+	storage.KeyRegistry.WriteKey(sessionToken, aesKey)
 
-	// Use the server public key to derive the shared key
-	sharedKey, err := utils.DeriveECDHSharedSecret(agentPrivKey, response.PublicKey)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to derive shared key")
-	}
-
-	// SessionToken is sent in base64 in the requests anyway
-	return response.SessionToken, sharedKey, nil
+	return aesKey, nil
 }
 
 func encryptAgentRequest(c2request models.C2Request, key []byte) ([]byte, error) {
@@ -123,5 +103,5 @@ func encryptAgentRequest(c2request models.C2Request, key []byte) ([]byte, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt message")
 	}
-	return []byte(base64.StdEncoding.EncodeToString(encryptedc2request)), nil
+	return encryptedc2request, nil
 }

@@ -16,13 +16,15 @@ import (
 
 func TestAgentRegisterRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-
+	testSessionToken := "test-session-token"
 	testAuthToken := "test-auth-token"
-	sessionToken, aesKey, err := authenticateAgent(testAuthToken)
+	encodedSessionToken := base64.StdEncoding.EncodeToString([]byte(testSessionToken))
+	encodedAuthToken := base64.StdEncoding.EncodeToString([]byte(testAuthToken))
+
+	aesKey, err := createAgentSession(testSessionToken)
 	if err != nil {
 		t.Fatalf("failed agent authentication: %v", err)
 	}
-	encodedSessionToken := base64.StdEncoding.EncodeToString([]byte(sessionToken))
 
 	// For this test, we only simulate valid c2requests.
 	// In the checkin module, we will validate parsing of multiple kinds of c2requests
@@ -43,7 +45,7 @@ func TestAgentRegisterRequest(t *testing.T) {
 			setupFunc: func(c2request models.C2Request) (*HTTPListener, *controller_mocks.MockCheckInController) {
 				mockCheckInController := &controller_mocks.MockCheckInController{}
 				listener := buildDefaultTestHTTPListenerWithMock(t, mockCheckInController)
-				mockCheckInController.On("HandleRegisterRequest", c2request).Return(nil).Once()
+				mockCheckInController.On("HandleRegisterRequest", c2request, testAuthToken).Return("", nil).Once()
 				return listener, mockCheckInController
 			},
 			c2request:      c2request,
@@ -55,7 +57,7 @@ func TestAgentRegisterRequest(t *testing.T) {
 			setupFunc: func(c2request models.C2Request) (*HTTPListener, *controller_mocks.MockCheckInController) {
 				mockCheckInController := &controller_mocks.MockCheckInController{}
 				listener := buildDefaultTestHTTPListenerWithMock(t, mockCheckInController)
-				mockCheckInController.On("HandleRegisterRequest", c2request).Return(checkin.ErrInvalidData).Once()
+				mockCheckInController.On("HandleRegisterRequest", c2request, testAuthToken).Return("", checkin.ErrInvalidData).Once()
 				return listener, mockCheckInController
 			},
 			c2request:      c2request,
@@ -67,7 +69,7 @@ func TestAgentRegisterRequest(t *testing.T) {
 			setupFunc: func(c2request models.C2Request) (*HTTPListener, *controller_mocks.MockCheckInController) {
 				mockCheckInController := &controller_mocks.MockCheckInController{}
 				listener := buildDefaultTestHTTPListenerWithMock(t, mockCheckInController)
-				mockCheckInController.On("HandleRegisterRequest", c2request).Return(checkin.ErrConflict).Once()
+				mockCheckInController.On("HandleRegisterRequest", c2request, testAuthToken).Return("", checkin.ErrConflict).Once()
 				return listener, mockCheckInController
 			},
 			c2request:      c2request,
@@ -79,7 +81,7 @@ func TestAgentRegisterRequest(t *testing.T) {
 			setupFunc: func(c2request models.C2Request) (*HTTPListener, *controller_mocks.MockCheckInController) {
 				mockCheckInController := &controller_mocks.MockCheckInController{}
 				listener := buildDefaultTestHTTPListenerWithMock(t, mockCheckInController)
-				mockCheckInController.On("HandleRegisterRequest", c2request).Return(checkin.ErrInternalServer).Once()
+				mockCheckInController.On("HandleRegisterRequest", c2request, testAuthToken).Return("", checkin.ErrInternalServer).Once()
 				return listener, mockCheckInController
 			},
 			c2request:      c2request,
@@ -91,7 +93,7 @@ func TestAgentRegisterRequest(t *testing.T) {
 			setupFunc: func(c2request models.C2Request) (*HTTPListener, *controller_mocks.MockCheckInController) {
 				mockCheckInController := &controller_mocks.MockCheckInController{}
 				listener := buildDefaultTestHTTPListenerWithMock(t, mockCheckInController)
-				mockCheckInController.On("HandleRegisterRequest", c2request).Return(checkin.ErrInternalServer).Once()
+				mockCheckInController.On("HandleRegisterRequest", c2request, testAuthToken).Return("", checkin.ErrInternalServer).Once()
 				return listener, mockCheckInController
 			},
 			c2request:      c2request,
@@ -125,6 +127,7 @@ func TestAgentRegisterRequest(t *testing.T) {
 
 			c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
 			c.Request.Header.Add("Session-Token", tt.sessionToken)
+			c.Request.Header.Add("Auth-Token", encodedAuthToken)
 
 			listener.HandleCheckIn(c)
 
@@ -137,12 +140,12 @@ func TestAgentRegisterRequest(t *testing.T) {
 func TestAgentTaskRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	testAuthToken := "test-auth-token"
-	sessionToken, aesKey, err := authenticateAgent(testAuthToken)
+	testSessionToken := "test-session-token"
+	aesKey, err := createAgentSession(testSessionToken)
 	if err != nil {
 		t.Fatalf("failed agent authentication: %v", err)
 	}
-	encodedSessionToken := base64.StdEncoding.EncodeToString([]byte(sessionToken))
+	encodedSessionToken := base64.StdEncoding.EncodeToString([]byte(testSessionToken))
 
 	// For this test, we only simulate valid c2requests.
 	// In the checkin module, we will validate parsing of multiple kinds of c2requests
@@ -163,7 +166,7 @@ func TestAgentTaskRequest(t *testing.T) {
 			setupFunc: func(c2request models.C2Request) (*HTTPListener, *controller_mocks.MockCheckInController) {
 				mockCheckInController := &controller_mocks.MockCheckInController{}
 				listener := buildDefaultTestHTTPListenerWithMock(t, mockCheckInController)
-				mockCheckInController.On("HandleTaskRequest", c2request, sessionToken).Return([]byte{}, nil).Once()
+				mockCheckInController.On("HandleTaskRequest", c2request, testSessionToken).Return([]byte{}, nil).Once()
 				return listener, mockCheckInController
 			},
 			c2request:      c2request,
@@ -175,7 +178,7 @@ func TestAgentTaskRequest(t *testing.T) {
 			setupFunc: func(c2request models.C2Request) (*HTTPListener, *controller_mocks.MockCheckInController) {
 				mockCheckInController := &controller_mocks.MockCheckInController{}
 				listener := buildDefaultTestHTTPListenerWithMock(t, mockCheckInController)
-				mockCheckInController.On("HandleTaskRequest", c2request, sessionToken).Return([]byte{}, checkin.ErrDatabase).Once()
+				mockCheckInController.On("HandleTaskRequest", c2request, testSessionToken).Return([]byte{}, checkin.ErrDatabase).Once()
 				return listener, mockCheckInController
 			},
 			c2request:      c2request,
@@ -187,7 +190,7 @@ func TestAgentTaskRequest(t *testing.T) {
 			setupFunc: func(c2request models.C2Request) (*HTTPListener, *controller_mocks.MockCheckInController) {
 				mockCheckInController := &controller_mocks.MockCheckInController{}
 				listener := buildDefaultTestHTTPListenerWithMock(t, mockCheckInController)
-				mockCheckInController.On("HandleTaskRequest", c2request, sessionToken).Return([]byte{}, checkin.ErrInternalServer).Once()
+				mockCheckInController.On("HandleTaskRequest", c2request, testSessionToken).Return([]byte{}, checkin.ErrInternalServer).Once()
 				return listener, mockCheckInController
 			},
 			c2request:      c2request,
@@ -199,7 +202,7 @@ func TestAgentTaskRequest(t *testing.T) {
 			setupFunc: func(c2request models.C2Request) (*HTTPListener, *controller_mocks.MockCheckInController) {
 				mockCheckInController := &controller_mocks.MockCheckInController{}
 				listener := buildDefaultTestHTTPListenerWithMock(t, mockCheckInController)
-				mockCheckInController.On("HandleTaskRequest", c2request, sessionToken).Return([]byte{}, checkin.ErrUnauthorized).Once()
+				mockCheckInController.On("HandleTaskRequest", c2request, testSessionToken).Return([]byte{}, checkin.ErrUnauthorized).Once()
 				return listener, mockCheckInController
 			},
 			c2request:      c2request,
@@ -234,12 +237,12 @@ func TestAgentTaskRequest(t *testing.T) {
 func TestAgentResponseRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	testAuthToken := "test-auth-token"
-	sessionToken, aesKey, err := authenticateAgent(testAuthToken)
+	testSessionToken := "test-session-token"
+	aesKey, err := createAgentSession(testSessionToken)
 	if err != nil {
 		t.Fatalf("failed agent authentication: %v", err)
 	}
-	encodedSessionToken := base64.StdEncoding.EncodeToString([]byte(sessionToken))
+	encodedSessionToken := base64.StdEncoding.EncodeToString([]byte(testSessionToken))
 
 	// For this test, we only simulate valid c2requests.
 	// In the checkin module, we will validate parsing of multiple kinds of c2requests
