@@ -45,12 +45,6 @@ jobs:
       env:
         ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
 
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./teamserver/coverage.out
-        flags: unittests
-
   e2e-tests:
     runs-on: ubuntu-latest
     needs: unit-tests
@@ -92,20 +86,3 @@ jobs:
       run: |
         echo "Cleaning up test environment..."
         docker compose -f docker-compose.test.yml --env-file .env.example down --volumes --remove-orphans
-
-  build:
-    runs-on: ubuntu-latest
-    needs: [unit-tests, e2e-tests]
-    if: github.event_name == 'push'
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: "1.23.x"
-        
-    - name: Build application
-      working-directory: ./teamserver
-      run: go build -v ./...
