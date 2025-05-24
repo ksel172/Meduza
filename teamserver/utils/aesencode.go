@@ -4,7 +4,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -50,11 +49,6 @@ func AesEncrypt(key, data []byte) ([]byte, error) {
 
 // AesDecrypt decrypts data using AES-GCM with the provided key.
 func AesDecrypt(key, ciphertext []byte) ([]byte, error) {
-	decodeCipherText, err := base64.StdEncoding.DecodeString(string(ciphertext))
-	if err != nil {
-		return nil, fmt.Errorf("error decoding ciphertext: %w", err)
-	}
-
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("error creating a cipher block instance: %w", err)
@@ -66,11 +60,11 @@ func AesDecrypt(key, ciphertext []byte) ([]byte, error) {
 	}
 
 	nonceSize := aesGCM.NonceSize()
-	if len(decodeCipherText) < nonceSize {
+	if len(ciphertext) < nonceSize {
 		return nil, errors.New("ciphertext is too short")
 	}
 
-	nonce, encryptedData := decodeCipherText[:nonceSize], decodeCipherText[nonceSize:]
+	nonce, encryptedData := ciphertext[:nonceSize], ciphertext[nonceSize:]
 
 	data, err := aesGCM.Open(nil, nonce, encryptedData, nil)
 	if err != nil {

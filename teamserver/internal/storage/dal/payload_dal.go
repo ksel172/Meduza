@@ -3,7 +3,6 @@ package dal
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +12,17 @@ import (
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
+
+type IPayloadDAL interface {
+	CreatePayload(ctx context.Context, payload models.PayloadConfig) error
+	GetPayloadByToken(ctx context.Context, payloadToken string) (models.PayloadConfig, error)
+	GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error)
+	DeletePayload(ctx context.Context, payloadID string) error
+	DeleteAllPayloads(ctx context.Context) error
+
+	GetKeys(ctx context.Context, authToken string) ([]byte, []byte, error)
+	GetToken(ctx context.Context, configID string) (string, error)
+}
 
 type PayloadDAL struct {
 	db     *sql.DB
@@ -26,6 +36,17 @@ func NewPayloadDAL(db *sql.DB, schema string) *PayloadDAL {
 	}
 }
 
+// <<<<<<< dev
+// func (dal *PayloadDAL) CreatePayload(ctx context.Context, payload models.PayloadConfig) error {
+// 	query := fmt.Sprintf(`
+// 		INSERT INTO %s.payloads 
+// 			(id, listener_id, config_id, name, arch, public_key, private_key, token)
+//         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
+
+// 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+// 		_, err := stmt.ExecContext(ctx, payload.ID, payload.ListenerID, payload.ConfigID, payload.Name,
+// 			payload.Arch, payload.PublicKey, payload.PrivateKey, payload.Token)
+// =======
 type IPayloadDAL interface {
 	CreatePayloadManifest(ctx context.Context, payload *models.PayloadManifestV1) error
 	GetPayloadManifest(ctx context.Context, payloadID string) (*models.PayloadManifestV1, error)
@@ -79,6 +100,33 @@ func (dal *PayloadDAL) CreatePayloadManifest(ctx context.Context, payload *model
 	})
 }
 
+// <<<<<<< dev
+// // Agent only know the payload token, not its ID, this retrieves the payload using the token
+// func (dal *PayloadDAL) GetPayloadByToken(ctx context.Context, payloadToken string) (models.PayloadConfig, error) {
+// 	query := fmt.Sprintf(`
+// 		SELECT 
+// 			id, listener_id, config_id, name, arch, created_at
+// 		FROM %s.payloads
+// 		WHERE token = $1`, dal.schema)
+
+// 	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) (models.PayloadConfig, error) {
+// 		var payload models.PayloadConfig
+// 		if err := stmt.QueryRowContext(ctx, payloadToken).Scan(&payload.ID, &payload.ListenerID, &payload.ConfigID,
+// 			&payload.Name, &payload.Arch, &payload.CreatedAt,
+// 		); err != nil {
+// 			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan payload: %v", err))
+// 			return models.PayloadConfig{}, fmt.Errorf("failed to scan payload: %w", err)
+// 		}
+// 		return payload, nil
+// 	})
+// }
+
+// func (dal *PayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error) {
+// 	query := fmt.Sprintf(`
+// 		SELECT 
+// 			id, listener_id, config_id, name, arch, created_at
+// 		FROM %s.payloads`, dal.schema)
+// =======
 func (dal *PayloadDAL) GetPayloadManifest(ctx context.Context, payloadID string) (*models.PayloadManifestV1, error) {
 	query := fmt.Sprintf(`
         SELECT body FROM %s.payload_manifests WHERE manifest_id = $1`, dal.schema)
@@ -120,6 +168,18 @@ func (dal *PayloadDAL) GetAllPayloadManifests(ctx context.Context) ([]*models.Pa
 		}
 		defer rows.Close()
 
+// <<<<<<< dev
+// 		var payloads []models.PayloadConfig
+// 		for rows.Next() {
+// 			var payload models.PayloadConfig
+// 			if err := rows.Scan(&payload.ID, &payload.ListenerID, &payload.ConfigID, &payload.Name,
+// 				&payload.Arch, &payload.CreatedAt,
+// 			); err != nil {
+// 				logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan payload: %v", err))
+// 				return nil, fmt.Errorf("failed to scan payload: %w", err)
+// 			}
+// 			payloads = append(payloads, payload)
+// =======
 		for rows.Next() {
 			var manifestJSON []byte
 			if err := rows.Scan(&manifestJSON); err != nil {
@@ -164,6 +224,9 @@ func (dal *PayloadDAL) DeletePayloadManifest(ctx context.Context, payloadID stri
 			return fmt.Errorf("payload manifest not found: %s", payloadID)
 		}
 
+// <<<<<<< dev
+// 		return payloads, nil
+// =======
 		return nil
 	})
 
@@ -192,6 +255,10 @@ func (dal *PayloadDAL) DeleteAllPayloadManifests(ctx context.Context) error {
 	return nil
 }
 
+// <<<<<<< dev
+// func (dal *PayloadDAL) DeletePayload(ctx context.Context, payloadID string) error {
+// 	query := fmt.Sprintf(`DELETE FROM %s.payloads WHERE id = $1`, dal.schema)
+// =======
 // Build Job Methods
 
 func (dal *PayloadDAL) CreateBuildJob(ctx context.Context, job *models.PayloadJob) error {
@@ -313,6 +380,7 @@ func (dal *PayloadDAL) GetBuildJob(ctx context.Context, jobID string) (*models.P
 
 func (dal *PayloadDAL) GetPayloadBuildJobs(ctx context.Context, payloadID string) ([]*models.PayloadJob, error) {
 	query := fmt.Sprintf(`
+
         SELECT job_id, payload_id, status, architecture, parameters, 
                start_time, end_time, output_path, error_message, build_log
         FROM %s.payload_build_jobs

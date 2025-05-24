@@ -79,14 +79,14 @@ func TestGetAgents(t *testing.T) {
 
 	mockAgents := []models.Agent{
 		{
-			AgentID: "test-agent-1",
-			Name:    "test-agent-1",
-			Status:  models.AgentActive,
+			ID:     "test-agent-1",
+			Name:   "test-agent-1",
+			Status: models.AgentActive,
 		},
 		{
-			AgentID: "test-agent-2",
-			Name:    "test-agent-2",
-			Status:  models.AgentLost,
+			ID:     "test-agent-2",
+			Name:   "test-agent-2",
+			Status: models.AgentLost,
 		},
 	}
 
@@ -146,8 +146,8 @@ func TestUpdateAgent(t *testing.T) {
 
 	// Handler returns the below agent from db
 	updatedAgent := models.Agent{
-		AgentID: "test-agent-id",
-		Name:    "updated-agent-name",
+		ID:   "test-agent-id",
+		Name: "updated-agent-name",
 	}
 
 	tests := []struct {

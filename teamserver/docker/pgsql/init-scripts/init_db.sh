@@ -26,7 +26,33 @@ echo "Finished creating schema using PSQL with status code $?"
 
 # Set up Tables
 echo "Creating tables..."
-tables=("users" "listeners" "agents" "agent_config" "agent_info" "agent_task" "agent_command" "payload_manifests" "payloads" "modules" "teams" "team_members" "certificates" "payload_build_jobs")
+
+tables=(
+  "users"
+  "listeners"
+  "agent_config"
+  "agents"
+  "agent_info"
+  "agent_task"
+  # "agent_command"  ← remove or add the .sql file back
+  "payload_manifests" 
+  "payloads"
+  "modules"
+  "teams"
+  "team_members"
+  "certificates"
+  "payload_build_jobs"
+)
+
+for t in "${tables[@]}"; do
+  current_file="$TMP_QUERY_PATH/$t.sql"
+  echo "Replacing env vars in '$current_file'..."
+  sed -i -e "s/{POSTGRES_SCHEMA}/$POSTGRES_SCHEMA/g" -e "s/{TABLE_NAME}/$t/g" "$current_file"
+  echo "Finished replacing schema in '$current_file'"
+  echo "Creating table '$t' using psql..."
+  psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$current_file"
+  echo "  → Finished creating table '$t' with status code $?"
+done
 
 for t in "${tables[@]}";do
     current_file="$TMP_QUERY_PATH/$t.sql"

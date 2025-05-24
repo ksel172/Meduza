@@ -54,8 +54,8 @@ func (s *Server) AgentsV1(group *gin.RouterGroup) {
 		agentsGroup.DELETE(fmt.Sprintf("/:%s/config", models.ParamAgentID), s.dependencies.AgentController.DeleteAgentConfig)
 
 		// Agent info API
-		agentsGroup.POST(fmt.Sprintf("/:%s/info", models.ParamAgentID), s.dependencies.AgentController.CreateAgentInfo)
-		agentsGroup.PUT(fmt.Sprintf("/:%s/info", models.ParamAgentID), s.dependencies.AgentController.UpdateAgentInfo)
+		// agentsGroup.POST(fmt.Sprintf("/:%s/info", models.ParamAgentID), s.dependencies.AgentController.CreateAgentInfo)
+		// agentsGroup.PUT(fmt.Sprintf("/:%s/info", models.ParamAgentID), s.dependencies.AgentController.UpdateAgentInfo)
 		agentsGroup.GET(fmt.Sprintf("/:%s/info", models.ParamAgentID), s.dependencies.AgentController.GetAgentInfo)
 		agentsGroup.DELETE(fmt.Sprintf("/:%s/info", models.ParamAgentID), s.dependencies.AgentController.DeleteAgentInfo)
 	}

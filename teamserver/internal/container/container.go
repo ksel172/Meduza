@@ -37,11 +37,11 @@ func NewContainer() (*Container, error) {
 	logger.Info("Connecting to Postgres db...")
 	pgsql, err := repos.Setup()
 	if err != nil {
-		logger.Error("Error while setting Up Postgres:", err)
+		logger.Error("Error while setting up Postgres:", err)
 		return nil, err
 	}
 
-	logger.Info("Setting Up Data Access logLevel")
+	logger.Info("Setting up data access layer")
 	schema := conf.GetMeduzaDbSchema()
 	userDal := dal.NewUsersDAL(pgsql, schema)
 	teamDal := dal.NewTeamDAL(pgsql, schema)
@@ -50,10 +50,13 @@ func NewContainer() (*Container, error) {
 	moduleDal := dal.NewModuleDAL(pgsql, schema)
 	certificateDal := dal.NewCertificateDAL(pgsql, schema)
 	payloadDal := dal.NewPayloadDAL(pgsql, schema)
+  
+	// Create checkin controller, as a dependency to the listener service
+	checkinController := checkin.NewCheckInController(agentDal, payloadDal)
 	// Initialize services
 	redisService := repos.NewRedisService()
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
-	listenerService := listener_service.NewListenerService(listenerDal)
+	listenerService := listener_service.NewListenerService(listenerDal, checkinController)
 	//Type assertion error fix
 	// autoStart, ok := listenerDal.(*dal.ListenerDAL)
 	// if !ok {

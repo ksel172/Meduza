@@ -26,9 +26,9 @@ func (m *MockAgentDAL) UpdateAgent(ctx context.Context, agent models.UpdateAgent
 	return args.Get(0).(models.Agent), args.Error(1)
 }
 
-func (m *MockAgentDAL) RegisterAgent(ctx context.Context, agent models.Agent) error {
+func (m *MockAgentDAL) RegisterAgent(ctx context.Context, agent models.Agent) (models.Agent, error) {
 	args := m.Called(agent)
-	return args.Error(0)
+	return args.Get(0).(models.Agent), args.Error(1)
 }
 
 func (m *MockAgentDAL) DeleteAgent(ctx context.Context, agentID string) error {
@@ -184,6 +184,11 @@ type MockPayloadDAL struct {
 func (m *MockPayloadDAL) CreatePayload(ctx context.Context, config models.PayloadConfig) error {
 	args := m.Called(config)
 	return args.Error(0)
+}
+
+func (m *MockPayloadDAL) GetPayloadByToken(ctx context.Context, payloadToken string) (models.PayloadConfig, error) {
+	args := m.Called(payloadToken)
+	return args.Get(0).(models.PayloadConfig), args.Error(1)
 }
 
 func (m *MockPayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error) {

@@ -14,6 +14,8 @@ func (ls *ListenerService) processStatusUpdates() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		updates := map[string]any{"status": update.status}
 
+		logger.Info(fmt.Sprintf("updating listener %s status: %s", update.listenerID, update.status))
+
 		if err := ls.listenerDal.UpdateListener(ctx, update.listenerID, updates); err != nil {
 			logger.Error(fmt.Sprintf("Failed to update listener status: %v", err))
 		}
@@ -42,14 +44,13 @@ func (ls *ListenerService) StartListener(ctx context.Context, listenerID string)
 			return fmt.Errorf("listener with ID %s not found: %w", listenerID, err)
 		}
 
-		listener, err = createListenerFromModel(listenerModel)
+		listener, err = createListenerFromModel(listenerModel, ls.checkinController)
 		if err != nil {
 			return fmt.Errorf("failed to create listener from model: %w", err)
 		}
-
-		go ls.monitorListenerStatus(listener)
 	}
 
+	go ls.monitorListenerStatus(listener)
 	return ls.startListener(listener)
 }
 
@@ -85,6 +86,7 @@ func (ls *ListenerService) StopListener(ctx context.Context, listenerID string) 
 		return fmt.Errorf("trying to stop listener that is not mapped")
 	}
 
+	go ls.monitorListenerStatus(listener)
 	return ls.stopListener(ctx, listener)
 }
 
@@ -119,6 +121,8 @@ func (ls *ListenerService) terminateListener(ctx context.Context, listener *List
 	if err := listener.Terminate(ctx); err != nil {
 		return err
 	}
+
+	go ls.monitorListenerStatus(listener)
 
 	ls.mux.Lock()
 	delete(ls.activeListeners, listener.ID)
@@ -155,7 +159,7 @@ func (ls *ListenerService) AutoStart(ctx context.Context) error {
 	for _, listener := range listeners {
 		// Create listener instance first
 
-		listenerInstance, err := createListenerFromModel(listener)
+		listenerInstance, err := createListenerFromModel(listener, ls.checkinController)
 		if err != nil {
 			return fmt.Errorf("failed to create listener instance: %w", err)
 		}

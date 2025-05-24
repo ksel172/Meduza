@@ -28,7 +28,6 @@ type UpdateAgentConfigRequest struct {
 
 // AgentTask request
 type AgentTaskRequest struct {
-	// AgentID string          `json:"agent_id"`
 	Type    AgentTaskType   `json:"type"`
 	Status  AgentTaskStatus `json:"status"`
 	Module  string          `json:"module"`
@@ -56,12 +55,12 @@ func NewAgentTaskRequest() AgentTaskRequest {
 // Returns an AgentTask model from an AgentTaskRequest
 func (agr AgentTaskRequest) IntoAgentTask() AgentTask {
 	return AgentTask{
-		TaskID:  uuid.New().String(),
-		AgentID: "",
-		Type:    agr.Type,
-		Status:  agr.Status,
-		Module:  agr.Module,
-		Command: agr.Command,
-		Created: time.Now(),
+		ID:        uuid.New().String(),
+		AgentID:   "",
+		Type:      agr.Type,
+		Status:    agr.Status,
+		Module:    agr.Module,
+		Command:   agr.Command,
+		CreatedAt: time.Now(),
 	}
 }

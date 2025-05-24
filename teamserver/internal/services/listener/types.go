@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	_ "github.com/go-playground/validator/v10"
+	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 )
@@ -19,7 +20,8 @@ type ListenerService struct {
 	startTimeout int
 	stopTimeout  int
 
-	listenerDal dal.IListenerDAL
+	checkinController checkin.ICheckInController // not used directly, but injected into listener implementations
+	listenerDal       dal.IListenerDAL
 
 	// Keep track of the runtime listener representations
 	activeListeners map[string]*Listener
@@ -37,14 +39,15 @@ type Listener struct {
 	statusUpdatesCh chan string
 }
 
-func NewListenerService(listenerDAL dal.IListenerDAL) *ListenerService {
+func NewListenerService(listenerDAL dal.IListenerDAL, checkinController checkin.ICheckInController) *ListenerService {
 	ls := &ListenerService{
-		startTimeout:    30,
-		stopTimeout:     30,
-		listenerDal:     listenerDAL,
-		activeListeners: make(map[string]*Listener),
-		statusUpdates:   make(chan statusUpdate, 100),
-		rootCtx:         context.Background(),
+		checkinController: checkinController,
+		startTimeout:      30,
+		stopTimeout:       30,
+		listenerDal:       listenerDAL,
+		activeListeners:   make(map[string]*Listener),
+		statusUpdates:     make(chan statusUpdate, 100),
+		rootCtx:           context.Background(),
 	}
 
 	// Start the status update processor

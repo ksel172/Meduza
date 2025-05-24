@@ -20,6 +20,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ksel172/Meduza/teamserver/internal/storage"
 	"github.com/ksel172/Meduza/teamserver/internal/storage/dal"
 	"github.com/ksel172/Meduza/teamserver/models"
 	"github.com/ksel172/Meduza/teamserver/pkg/logger"
@@ -52,6 +53,10 @@ func NewPayloadController(payloadDAL dal.IPayloadDAL, agentDAL dal.IAgentDAL) *P
 	}
 }
 
+// <<<<<<< dev
+// // TODO: added configID to payload request, verify config exists in handler
+// func (h *PayloadController) CreatePayload(ctx *gin.Context) {
+// 	var payloadRequest models.PayloadRequest
 /* Payload Manifest endpoints */
 
 // UploadPayloadManifest handles uploading a new payload zip file
@@ -132,6 +137,19 @@ func (pc *PayloadController) UploadPayloadManifest(ctx *gin.Context) {
 		return
 	}
 
+// <<<<<<< dev
+// 	// listener, err := h.listenerDAL.GetListenerById(ctx.Request.Context(), payloadRequest.ListenerID)
+// 	// if err != nil {
+// 	// 	models.ResponseError(ctx, http.StatusNotFound, "Listener not found", err.Error())
+// 	// 	logger.Error("Error retrieving the listener:", err)
+// 	// 	return
+// 	// }
+
+// 	payloadConfig := models.IntoPayloadConfig(payloadRequest)
+
+// 	// TODO: might have to first marshal here, maybe update the listener config into json.RawMessage?
+// 	// payloadConfig.ListenerConfig = listener.RawConfig
+  
 	// Strip the .zip extension from the filename for the directory name
 	baseFilename := strings.TrimSuffix(filename, filepath.Ext(filename))
 	extractDir := fmt.Sprintf("%s/payload-%s", buildDir, baseFilename)
@@ -252,6 +270,16 @@ func (pc *PayloadController) DeletePayloadManifest(ctx *gin.Context) {
 		return
 	}
 
+// <<<<<<< dev
+// 	// TODO: remove, to create a payload, an agent_config ID must be passed in
+// 	// No longer creating configs alongside the payload
+// 	// agentConfig := models.IntoAgentConfig(payloadConfig)
+// 	// if err := h.agentDAL.CreateAgentConfig(ctx.Request.Context(), agentConfig); err != nil {
+// 	// 	models.ResponseError(ctx, http.StatusInternalServerError, "Failed to save agent configuration", err.Error())
+// 	// 	logger.Error("Error saving agent configuration:", err)
+// 	// 	return
+// 	// }
+  
 	// Extract source path from body
 	var manifestData struct {
 		SourcePath string `json:"source_path"`
@@ -952,6 +980,21 @@ func (pc *PayloadController) executeBuild(ctx context.Context, job *models.Paylo
 	logger.Info(logLevel, logDetailPayload, fmt.Sprintf("Build job %s completed successfully in %s", job.ID, totalDuration))
 }
 
+func (h *PayloadController) GetPayloadByToken(ctx *gin.Context) {
+	authToken := ctx.Param(models.ParamPayloadToken)
+
+	payload, err := h.payloadDAL.GetPayloadByToken(ctx, authToken)
+	if err != nil {
+		logger.Error("Error getting payload payload by token:", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payload by token", err.Error())
+	}
+
+	models.ResponseSuccess(ctx, http.StatusOK, "Payload retrieved successfully", payload)
+}
+
+// Unexported for users, internal use only
+func (h *PayloadController) GetToken(ctx *gin.Context) {
+	payloadID := ctx.Param(models.ParamPayloadID)
 // Helper functions
 
 // findManifestFile searches for a manifest.json file in the root directory and subdirectories
@@ -1138,5 +1181,21 @@ func getFileExtension(arch string, extensionMap map[string]string) string {
 		return ".bin"
 	}
 
-	return ""
+	models.ResponseSuccess(ctx, http.StatusOK, "Payload token retrieved successfully", token)
+}
+
+// Unexported for users, internal use only
+func (h *PayloadController) GetKeys(ctx *gin.Context) {
+	authToken := ctx.Param(models.ParamPayloadToken)
+
+	privKey, pubKey, err := h.payloadDAL.GetKeys(ctx, authToken)
+	if err != nil {
+		logger.Error("Error getting payload keys:", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payload keys", err.Error())
+	}
+
+	models.ResponseSuccess(ctx, http.StatusOK, "Payload keys retrieved successfully", storage.KeyPair{
+		PublicKey:  pubKey,
+		PrivateKey: privKey,
+	})
 }

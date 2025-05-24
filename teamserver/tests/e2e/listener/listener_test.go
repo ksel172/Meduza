@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ksel172/Meduza/teamserver/models"
+	"github.com/stretchr/testify/require"
 )
 
 func TestListenerService(t *testing.T) {
@@ -21,87 +22,85 @@ func TestListenerService(t *testing.T) {
 		t.Fatalf("failed to prepare test dependencies container")
 	}
 
-	// Create contexts for operations
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	testAgent, err := newTestHTTPAgent(listener.Host, listener.Port, authToken)
+	if err != nil {
+		t.Fatalf("failed to create agent: %v", err)
+	}
+	t.Logf("created test agent")
 
 	// Start the listener that was created
 	t.Log("Starting listener...")
-	if err := container.ListenerService.StartListener(ctx, listener.ID); err != nil {
+	if err := container.ListenerService.StartListener(context.Background(), listener.ID); err != nil {
 		t.Fatalf("failed to start listener: %v", err)
 	}
-
-	// Create test agent to send requests to listener
-	testAgent := newTestHTTPAgent(listener.Host, listener.Port, authToken)
+	t.Logf("Listener started succesfully: %s:%d...", listener.Host, listener.Port)
 
 	// Agent sends authentication request to listener
-	testAgent.Authenticate(t, listener.ID)
+	t.Run("agent authenticate", func(t *testing.T) {
+		err := testAgent.Authenticate(t, listener.ID)
+		require.NoError(t, err)
+	})
+	t.Run("agent register", func(t *testing.T) {
+		testAgent.Register(t)
+		require.NoError(t, err)
+	})
 
-	// Test connectivity by pinging the listener
-	// t.Log("Testing HTTP listener connectivity")
-	// response, err := testClient.Ping()
-	// if err != nil {
-	// 	t.Fatalf("Failed to connect to HTTP listener: %v", err)
-	// }
-	// t.Logf("Ping response: %s", response)
+	// Retrieve the registered agent and store it (the testAgent knows its ID because its returned in the register, however, that's all it knows)
+	agent := getAgent(t, container, testAgent.ID)
+	testAgent.Agent = agent
 
-	// if resp.StatusCode != http.StatusOK {
-	// 	t.Fatalf("Expected status code 200, got %d", resp.StatusCode)
-	// }
-	// t.Logf("Successfully connected to HTTP listener at %s", url)
+	// Seed db with AgentTask
+	createAgentTask(t, container, testAgent.ID, models.AgentTaskRequest{
+		Type:   models.TaskShellCommand,
+		Status: models.TaskStatusQueued,
+		Command: models.AgentCommand{
+			Name:       "test-command-name",
+			Parameters: []string{"test-parameter-one", "test-parameter-two"},
+		},
+	})
+	t.Log("Created AgentTask in database")
 
-	// // Stop the listener
-	// t.Log("Stopping HTTP listener")
-	// err = listener.Stop(ctx)
-	// if err != nil {
-	// 	t.Fatalf("Failed to stop HTTP listener: %v", err)
-	// }
+	// Test tasks & response endpoint
+	// Unfinished implementations at the moment
+	t.Run("agent tasks", func(t *testing.T) {
+		err := testAgent.GetTasks(t)
+		require.NoError(t, err)
+	})
+	// t.Run("agent response: ", testAgent.SendResponse(t))
 
-	// // Verify listener is stopped by trying to connect again
-	// t.Log("Verifying listener is stopped")
-	// _, err = client.Get(url)
-	// if err == nil {
-	// 	t.Fatal("HTTP listener is still accepting connections after stopping")
-	// }
-	// t.Log("Confirmed listener is stopped")
+	// Stop the listener
+	t.Run("stop listener", func(t *testing.T) {
+		err := container.ListenerService.StopListener(context.Background(), listener.ID)
+		require.NoErrorf(t, err, "failed to stop listener")
 
-	// // Test restarting the listener
-	// t.Log("Restarting HTTP listener")
-	// err = listener.Start(ctx)
-	// if err != nil {
-	// 	t.Fatalf("Failed to restart HTTP listener: %v", err)
-	// }
+		// Listener stauts is updated async, must wait for a moment for updates to make it to database
+		time.Sleep(250 * time.Millisecond)
 
-	// // Give the server a moment to fully start
-	// time.Sleep(100 * time.Millisecond)
+		err = testAgent.Authenticate(t, listener.ID)
+		require.Error(t, err)
 
-	// // Test connectivity again
-	// t.Log("Testing connectivity after restart")
-	// resp, err = client.Get(url)
-	// if err != nil {
-	// 	t.Fatalf("Failed to connect to restarted HTTP listener: %v", err)
-	// }
-	// defer resp.Body.Close()
+		stoppedListener := getListener(t, container, listener.Name)
+		if stoppedListener.Status != models.StatusReady {
+			t.Errorf("stopped listener status is not back to ready")
+		}
+	})
 
-	// if resp.StatusCode != http.StatusOK {
-	// 	t.Fatalf("Expected status code 200, got %d", resp.StatusCode)
-	// }
-	// t.Log("Successfully connected to restarted listener")
+	// Terminate the listener
+	t.Run("terminate listener", func(t *testing.T) {
+		err := container.ListenerService.TerminateListener(context.Background(), listener.ID)
+		require.NoErrorf(t, err, "failed to terminate listener: %V", err)
 
-	// // Terminate the listener (force close)
-	// t.Log("Terminating HTTP listener")
-	// err = listener.Terminate(ctx)
-	// if err != nil {
-	// 	t.Fatalf("Failed to terminate HTTP listener: %v", err)
-	// }
+		// Listener stauts is updated async, must wait for a moment for updates to make it to database
+		time.Sleep(250 * time.Millisecond)
 
-	// // Verify listener is terminated by trying to connect again
-	// t.Log("Verifying listener is terminated")
-	// _, err = client.Get(url)
-	// if err == nil {
-	// 	t.Fatal("HTTP listener is still accepting connections after termination")
-	// }
-	// t.Log("Confirmed listener is terminated")
+		err = testAgent.Authenticate(t, listener.ID)
+		require.Errorf(t, err, "agent authentication did not fail as expected: %v", err)
+
+		terminatedListener := getListener(t, container, listener.Name)
+		if terminatedListener.Status != models.StatusPending {
+			t.Errorf("terminated listener status is not back to ready")
+		}
+	})
 }
 
 func TestHTTPListenerWithTLS(t *testing.T) {
