@@ -47,13 +47,12 @@ func NewContainer() (*Container, error) {
 	teamDal := dal.NewTeamDAL(pgsql, schema)
 	agentDal := dal.NewAgentDAL(pgsql, schema)
 	listenerDal := dal.NewListenerDAL(pgsql, schema)
-	payloadDal := dal.NewPayloadDAL(pgsql, schema)
 	moduleDal := dal.NewModuleDAL(pgsql, schema)
 	certificateDal := dal.NewCertificateDAL(pgsql, schema)
-
+	payloadDal := dal.NewPayloadDAL(pgsql, schema)
+  
 	// Create checkin controller, as a dependency to the listener service
 	checkinController := checkin.NewCheckInController(agentDal, payloadDal)
-
 	// Initialize services
 	redisService := repos.NewRedisService()
 	jwtService := models.NewJWTService(conf.GetMeduzaJWTToken(), 30*time.Minute, 30*24*time.Hour)
@@ -75,7 +74,7 @@ func NewContainer() (*Container, error) {
 		// ListenerController:    handlers.NewListenersHandler(listenerDal, listenersService),
 		// ListenerService:       listenersService,
 		// ListenerDal:           autoStart,
-		PayloadController:     handlers.NewPayloadController(agentDal, listenerDal, payloadDal),
+		PayloadController:     handlers.NewPayloadController(payloadDal, agentDal),
 		ModuleController:      handlers.NewModuleController(moduleDal),
 		CertificateController: handlers.NewCertificateHandler(certificateDal),
 		// ListenerContainer: ListenerContainer{

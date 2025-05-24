@@ -20,6 +20,19 @@ RUN apt-get update && apt-get install -y wget apt-transport-https && \
     apt-get update && apt-get install -y dotnet-sdk-8.0 && \
     rm -rf /var/lib/apt/lists/*
 
+# Add these lines to your teamserver Dockerfile
+# Install Docker CLI only (not the full engine)
+RUN apt-get update && apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y docker-ce-cli
+
 # Copy the entire project into the container (assuming the project files are in the build context)
 COPY ../.. .
 
