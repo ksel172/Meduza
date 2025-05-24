@@ -88,13 +88,13 @@ func TestListenerService(t *testing.T) {
 	// Terminate the listener
 	t.Run("terminate listener", func(t *testing.T) {
 		err := container.ListenerService.TerminateListener(context.Background(), listener.ID)
-		require.NoErrorf(t, err, "failed to terminate listener")
+		require.NoErrorf(t, err, "failed to terminate listener: %V", err)
 
 		// Listener stauts is updated async, must wait for a moment for updates to make it to database
 		time.Sleep(250 * time.Millisecond)
 
 		err = testAgent.Authenticate(t, listener.ID)
-		require.Error(t, err)
+		require.Errorf(t, err, "agent authentication did not fail as expected: %v", err)
 
 		terminatedListener := getListener(t, container, listener.Name)
 		if terminatedListener.Status != models.StatusPending {
