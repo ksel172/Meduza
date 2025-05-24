@@ -1,0 +1,41 @@
+services:
+  meduza_db:
+    container_name: meduza_test_db
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-meduza_test}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-testpassword}
+      POSTGRES_SCHEMA: ${POSTGRES_SCHEMA:-public}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./teamserver/docker/pgsql/init-scripts:/docker-entrypoint-initdb.d
+      - ./teamserver/docker/pgsql/queries:/home/queries
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-meduza_test}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  test_runner:
+    container_name: meduza_test_runner
+    build:
+      context: .
+      dockerfile: ./teamserver/tests/Dockerfile
+    environment:
+      DB_HOST: meduza_test_db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-testpassword}
+      DB_NAME: ${POSTGRES_DB:-meduza_test}
+      DB_SCHEMA: ${POSTGRES_SCHEMA:-public}
+      BASECONF_PATH: ${DOCKER_BASECONF_PATH:-/app/config}
+      AGENT_PROJECT_FILEPATH: ${DOCKER_AGENT_PROJECT_FILEPATH:-/app/agent}
+      VERBOSE: ${VERBOSE:-}
+    depends_on:
+      meduza_db:
+        condition: service_healthy
+    working_dir: /app
