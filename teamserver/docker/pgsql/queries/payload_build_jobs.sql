@@ -1,9 +1,9 @@
 CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.{TABLE_NAME} (
-    job_id UUID PRIMARY KEY,
-    payload_id UUID NOT NULL,
+    id UUID PRIMARY KEY,
+    payload_id UUID NOT NULL REFERENCES {POSTGRES_SCHEMA}.payloads(payload_id) ON DELETE CASCADE,
     status VARCHAR(50) NOT NULL,
     architecture VARCHAR(50) NOT NULL,
-    parameters JSONB,
+    parameters JSONB NOT NULL,
     start_time TIMESTAMPTZ,
     end_time TIMESTAMPTZ,
     output_path TEXT,
@@ -11,5 +11,4 @@ CREATE TABLE IF NOT EXISTS {POSTGRES_SCHEMA}.{TABLE_NAME} (
     build_log TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
-    FOREIGN KEY (payload_id) REFERENCES {POSTGRES_SCHEMA}.payloads(payload_id) ON DELETE CASCADE
 );
