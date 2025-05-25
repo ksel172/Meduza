@@ -137,19 +137,19 @@ func (pc *PayloadController) UploadPayloadManifest(ctx *gin.Context) {
 		return
 	}
 
-// <<<<<<< dev
-// 	// listener, err := h.listenerDAL.GetListenerById(ctx.Request.Context(), payloadRequest.ListenerID)
-// 	// if err != nil {
-// 	// 	models.ResponseError(ctx, http.StatusNotFound, "Listener not found", err.Error())
-// 	// 	logger.Error("Error retrieving the listener:", err)
-// 	// 	return
-// 	// }
+	// <<<<<<< dev
+	// 	// listener, err := h.listenerDAL.GetListenerById(ctx.Request.Context(), payloadRequest.ListenerID)
+	// 	// if err != nil {
+	// 	// 	models.ResponseError(ctx, http.StatusNotFound, "Listener not found", err.Error())
+	// 	// 	logger.Error("Error retrieving the listener:", err)
+	// 	// 	return
+	// 	// }
 
-// 	payloadConfig := models.IntoPayloadConfig(payloadRequest)
+	// 	payloadConfig := models.IntoPayloadConfig(payloadRequest)
 
-// 	// TODO: might have to first marshal here, maybe update the listener config into json.RawMessage?
-// 	// payloadConfig.ListenerConfig = listener.RawConfig
-  
+	// 	// TODO: might have to first marshal here, maybe update the listener config into json.RawMessage?
+	// 	// payloadConfig.ListenerConfig = listener.RawConfig
+
 	// Strip the .zip extension from the filename for the directory name
 	baseFilename := strings.TrimSuffix(filename, filepath.Ext(filename))
 	extractDir := fmt.Sprintf("%s/payload-%s", buildDir, baseFilename)
@@ -270,16 +270,16 @@ func (pc *PayloadController) DeletePayloadManifest(ctx *gin.Context) {
 		return
 	}
 
-// <<<<<<< dev
-// 	// TODO: remove, to create a payload, an agent_config ID must be passed in
-// 	// No longer creating configs alongside the payload
-// 	// agentConfig := models.IntoAgentConfig(payloadConfig)
-// 	// if err := h.agentDAL.CreateAgentConfig(ctx.Request.Context(), agentConfig); err != nil {
-// 	// 	models.ResponseError(ctx, http.StatusInternalServerError, "Failed to save agent configuration", err.Error())
-// 	// 	logger.Error("Error saving agent configuration:", err)
-// 	// 	return
-// 	// }
-  
+	// <<<<<<< dev
+	// 	// TODO: remove, to create a payload, an agent_config ID must be passed in
+	// 	// No longer creating configs alongside the payload
+	// 	// agentConfig := models.IntoAgentConfig(payloadConfig)
+	// 	// if err := h.agentDAL.CreateAgentConfig(ctx.Request.Context(), agentConfig); err != nil {
+	// 	// 	models.ResponseError(ctx, http.StatusInternalServerError, "Failed to save agent configuration", err.Error())
+	// 	// 	logger.Error("Error saving agent configuration:", err)
+	// 	// 	return
+	// 	// }
+
 	// Extract source path from body
 	var manifestData struct {
 		SourcePath string `json:"source_path"`
@@ -417,8 +417,7 @@ func (pc *PayloadController) SubmitBuildJob(ctx *gin.Context) {
 		Arch:       request.Architecture,
 		CreatedAt:  time.Now(),
 	}
-
-	agentConfig := payload.IntoAgentConfig()
+	agentConfig := manifest.IntoAgentConfig()
 
 	err = pc.agentDAL.CreateAgentConfig(ctx, agentConfig)
 	if err != nil {
@@ -994,16 +993,17 @@ func (h *PayloadController) GetPayloadByToken(ctx *gin.Context) {
 
 // Unexported for users, internal use only
 func (h *PayloadController) GetToken(ctx *gin.Context) {
-    payloadID := ctx.Param(models.ParamPayloadID)
+	payloadID := ctx.Param(models.ParamPayloadID)
 
-    token, err := h.payloadDAL.GetToken(ctx, payloadID)
-    if err != nil {
-        logger.Error("Error getting payload token:", err)
-        models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payload token", err.Error())
-    }
+	token, err := h.payloadDAL.GetToken(ctx, payloadID)
+	if err != nil {
+		logger.Error("Error getting payload token:", err)
+		models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payload token", err.Error())
+	}
 
-    models.ResponseSuccess(ctx, http.StatusOK, "Payload token retrieved successfully", token)
+	models.ResponseSuccess(ctx, http.StatusOK, "Payload token retrieved successfully", token)
 }
+
 // Helper functions
 
 // findManifestFile searches for a manifest.json file in the root directory and subdirectories
