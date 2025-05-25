@@ -3,6 +3,7 @@ package dal
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,40 +14,6 @@ import (
 	"github.com/ksel172/Meduza/teamserver/utils"
 )
 
-type IPayloadDAL interface {
-	CreatePayload(ctx context.Context, payload models.PayloadConfig) error
-	GetPayloadByToken(ctx context.Context, payloadToken string) (models.PayloadConfig, error)
-	GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error)
-	DeletePayload(ctx context.Context, payloadID string) error
-	DeleteAllPayloads(ctx context.Context) error
-
-	GetKeys(ctx context.Context, authToken string) ([]byte, []byte, error)
-	GetToken(ctx context.Context, configID string) (string, error)
-}
-
-type PayloadDAL struct {
-	db     *sql.DB
-	schema string
-}
-
-func NewPayloadDAL(db *sql.DB, schema string) *PayloadDAL {
-	return &PayloadDAL{
-		db:     db,
-		schema: schema,
-	}
-}
-
-// <<<<<<< dev
-// func (dal *PayloadDAL) CreatePayload(ctx context.Context, payload models.PayloadConfig) error {
-// 	query := fmt.Sprintf(`
-// 		INSERT INTO %s.payloads 
-// 			(id, listener_id, config_id, name, arch, public_key, private_key, token)
-//         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
-
-// 	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
-// 		_, err := stmt.ExecContext(ctx, payload.ID, payload.ListenerID, payload.ConfigID, payload.Name,
-// 			payload.Arch, payload.PublicKey, payload.PrivateKey, payload.Token)
-// =======
 type IPayloadDAL interface {
 	CreatePayloadManifest(ctx context.Context, payload *models.PayloadManifestV1) error
 	GetPayloadManifest(ctx context.Context, payloadID string) (*models.PayloadManifestV1, error)
@@ -66,10 +33,38 @@ type IPayloadDAL interface {
 	GetPayload(ctx context.Context, payloadID string) (*models.Payload, error)
 	GetPayloads(ctx context.Context) ([]*models.Payload, error)
 	DeletePayload(ctx context.Context, payloadID string) error
-
+	GetPayloadByToken(ctx context.Context, payloadToken string) (models.Payload, error)
+	GetKeys(ctx context.Context, authToken string) ([]byte, []byte, error)
+	GetToken(ctx context.Context, configID string) (string, error)
+	
 	// Download payload build
 	DownloadPayloadBuild(ctx context.Context, jobID string) ([]byte, string, error)
 }
+
+type PayloadDAL struct {
+	db     *sql.DB
+	schema string
+}
+
+func NewPayloadDAL(db *sql.DB, schema string) *PayloadDAL {
+	return &PayloadDAL{
+		db:     db,
+		schema: schema,
+	}
+}
+
+// <<<<<<< dev
+// func (dal *PayloadDAL) CreatePayload(ctx context.Context, payload models.PayloadConfig) error {
+// 	query := fmt.Sprintf(`
+// 		INSERT INTO %s.payloads
+// 			(id, listener_id, config_id, name, arch, public_key, private_key, token)
+//         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, dal.schema)
+
+//	return utils.WithTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) error {
+//		_, err := stmt.ExecContext(ctx, payload.ID, payload.ListenerID, payload.ConfigID, payload.Name,
+//			payload.Arch, payload.PublicKey, payload.PrivateKey, payload.Token)
+//
+// =======
 
 func (dal *PayloadDAL) CreatePayloadManifest(ctx context.Context, payload *models.PayloadManifestV1) error {
 	query := fmt.Sprintf(`
@@ -100,33 +95,25 @@ func (dal *PayloadDAL) CreatePayloadManifest(ctx context.Context, payload *model
 	})
 }
 
-// <<<<<<< dev
-// // Agent only know the payload token, not its ID, this retrieves the payload using the token
-// func (dal *PayloadDAL) GetPayloadByToken(ctx context.Context, payloadToken string) (models.PayloadConfig, error) {
-// 	query := fmt.Sprintf(`
-// 		SELECT 
-// 			id, listener_id, config_id, name, arch, created_at
-// 		FROM %s.payloads
-// 		WHERE token = $1`, dal.schema)
+func (dal *PayloadDAL) GetPayloadByToken(ctx context.Context, payloadToken string) (models.Payload, error) {
+	query := fmt.Sprintf(`
+		SELECT
+			id, listener_id, config_id, name, arch, created_at
+		FROM %s.payloads
+		WHERE token = $1`, dal.schema)
 
-// 	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) (models.PayloadConfig, error) {
-// 		var payload models.PayloadConfig
-// 		if err := stmt.QueryRowContext(ctx, payloadToken).Scan(&payload.ID, &payload.ListenerID, &payload.ConfigID,
-// 			&payload.Name, &payload.Arch, &payload.CreatedAt,
-// 		); err != nil {
-// 			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan payload: %v", err))
-// 			return models.PayloadConfig{}, fmt.Errorf("failed to scan payload: %w", err)
-// 		}
-// 		return payload, nil
-// 	})
-// }
+	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) (models.Payload, error) {
+		var payload models.Payload
+		if err := stmt.QueryRowContext(ctx, payloadToken).Scan(&payload.ID, &payload.ListenerID, &payload.ConfigID,
+			&payload.Name, &payload.Arch, &payload.CreatedAt,
+		); err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan payload: %v", err))
+			return models.Payload{}, fmt.Errorf("failed to scan payload: %w", err)
+		}
+		return payload, nil
+	})
+}
 
-// func (dal *PayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error) {
-// 	query := fmt.Sprintf(`
-// 		SELECT 
-// 			id, listener_id, config_id, name, arch, created_at
-// 		FROM %s.payloads`, dal.schema)
-// =======
 func (dal *PayloadDAL) GetPayloadManifest(ctx context.Context, payloadID string) (*models.PayloadManifestV1, error) {
 	query := fmt.Sprintf(`
         SELECT body FROM %s.payload_manifests WHERE manifest_id = $1`, dal.schema)
@@ -168,18 +155,18 @@ func (dal *PayloadDAL) GetAllPayloadManifests(ctx context.Context) ([]*models.Pa
 		}
 		defer rows.Close()
 
-// <<<<<<< dev
-// 		var payloads []models.PayloadConfig
-// 		for rows.Next() {
-// 			var payload models.PayloadConfig
-// 			if err := rows.Scan(&payload.ID, &payload.ListenerID, &payload.ConfigID, &payload.Name,
-// 				&payload.Arch, &payload.CreatedAt,
-// 			); err != nil {
-// 				logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan payload: %v", err))
-// 				return nil, fmt.Errorf("failed to scan payload: %w", err)
-// 			}
-// 			payloads = append(payloads, payload)
-// =======
+		// <<<<<<< dev
+		// 		var payloads []models.PayloadConfig
+		// 		for rows.Next() {
+		// 			var payload models.PayloadConfig
+		// 			if err := rows.Scan(&payload.ID, &payload.ListenerID, &payload.ConfigID, &payload.Name,
+		// 				&payload.Arch, &payload.CreatedAt,
+		// 			); err != nil {
+		// 				logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan payload: %v", err))
+		// 				return nil, fmt.Errorf("failed to scan payload: %w", err)
+		// 			}
+		// 			payloads = append(payloads, payload)
+		// =======
 		for rows.Next() {
 			var manifestJSON []byte
 			if err := rows.Scan(&manifestJSON); err != nil {
@@ -224,9 +211,9 @@ func (dal *PayloadDAL) DeletePayloadManifest(ctx context.Context, payloadID stri
 			return fmt.Errorf("payload manifest not found: %s", payloadID)
 		}
 
-// <<<<<<< dev
-// 		return payloads, nil
-// =======
+		// <<<<<<< dev
+		// 		return payloads, nil
+		// =======
 		return nil
 	})
 
@@ -630,4 +617,44 @@ func (dal *PayloadDAL) DownloadPayloadBuild(ctx context.Context, jobID string) (
 	filename := filepath.Base(job.OutputPath)
 
 	return data, filename, nil
+}
+
+func (dal *PayloadDAL) GetKeys(ctx context.Context, authToken string) ([]byte, []byte, error) {
+	query := fmt.Sprintf(`
+        SELECT private_key, public_key
+        FROM %s.payloads
+        WHERE token = $1`, dal.schema)
+
+	stmt, err := dal.db.PrepareContext(ctx, query)
+	if err != nil {
+		logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to prepare statement: %v", err))
+		return nil, nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+
+	var publicKey []byte
+	var privateKey []byte
+	if err := stmt.QueryRowContext(ctx, authToken).Scan(&privateKey, &publicKey); err != nil {
+		logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to scan keys: %v", err))
+		return nil, nil, fmt.Errorf("failed to scan keys: %w", err)
+	}
+
+	return privateKey, publicKey, nil
+}
+
+func (dal *PayloadDAL) GetToken(ctx context.Context, configID string) (string, error) {
+    query := fmt.Sprintf(`
+        SELECT token
+        FROM %s.payloads
+        WHERE config_id = $1`,
+        dal.schema)
+
+    return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) (string, error) {
+        var payloadToken string
+        if err := stmt.QueryRowContext(ctx, configID).Scan(&payloadToken); err != nil {
+            logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to get payload token for configID '%s': %v", configID, err))
+            return "", fmt.Errorf("failed to get payload token: %w", err)
+        }
+
+        return payloadToken, nil
+    })
 }

@@ -994,7 +994,16 @@ func (h *PayloadController) GetPayloadByToken(ctx *gin.Context) {
 
 // Unexported for users, internal use only
 func (h *PayloadController) GetToken(ctx *gin.Context) {
-	payloadID := ctx.Param(models.ParamPayloadID)
+    payloadID := ctx.Param(models.ParamPayloadID)
+
+    token, err := h.payloadDAL.GetToken(ctx, payloadID)
+    if err != nil {
+        logger.Error("Error getting payload token:", err)
+        models.ResponseError(ctx, http.StatusInternalServerError, "Failed to get payload token", err.Error())
+    }
+
+    models.ResponseSuccess(ctx, http.StatusOK, "Payload token retrieved successfully", token)
+}
 // Helper functions
 
 // findManifestFile searches for a manifest.json file in the root directory and subdirectories
@@ -1180,8 +1189,7 @@ func getFileExtension(arch string, extensionMap map[string]string) string {
 	} else if strings.HasPrefix(arch, "linux-") || strings.HasPrefix(arch, "freebsd-") {
 		return ".bin"
 	}
-
-	models.ResponseSuccess(ctx, http.StatusOK, "Payload token retrieved successfully", token)
+	return ""
 }
 
 // Unexported for users, internal use only
