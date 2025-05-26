@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -226,4 +228,12 @@ func PayloadManifestFromJSON(data []byte) (*PayloadManifestV1, error) {
 // ToJSON converts PayloadManifestV1 to JSON
 func (m *PayloadManifestV1) ToJSON() ([]byte, error) {
 	return json.Marshal(m)
+}
+
+func (p *PayloadManifestV1) IntoAgentConfig() AgentConfig {
+	agentConfig := AgentConfig{
+		ID: uuid.New().String(),
+		// TODO: Need to fill in the rest of the fields, especially the params
+	}
+	return agentConfig
 }
