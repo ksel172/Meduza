@@ -5,6 +5,9 @@ import "context"
 type SMBListener struct {
 }
 
+type SMBListenerConfig struct {
+}
+
 func (l SMBListener) Start(ctx context.Context) error {
 	return nil
 }

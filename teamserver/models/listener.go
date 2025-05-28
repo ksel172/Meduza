@@ -43,10 +43,9 @@ const (
 	LifecycleScheduled = "scheduled" // Listener is scheduled by the manager and polls for changes
 
 	// Supported listener kinds
-	HTTPListenerKind     string = "http"
-	TCPListenerKind      string = "tcp"
-	SMBListenerKind      string = "smb"
-	ExternalListenerKind string = "external"
+	HTTPListenerKind string = "http"
+	TCPListenerKind  string = "tcp"
+	SMBListenerKind  string = "smb"
 
 	// Parameter names
 	ParamListenerID   string = "listener_id"
@@ -67,7 +66,7 @@ type Listener struct {
 	Port      int    `json:"port"`      // if local, port assigned automatically by port manager
 	Heartbeat int    `json:"heartbeat"` // To check if external listener is alive
 
-	// Config holds implementation specific configs for external listeners, otherwise they are accessed from the listener field
+	// RawConfig holds implementation specific configs for any listener kind, i.e. HTTPListenerConfig, SMBListenerConfig
 	RawConfig json.RawMessage `json:"config" validate:"required"`
 
 	// eventually add tags, tags can be created and are stored in another table
@@ -107,31 +106,22 @@ func (l *Listener) Validate() error {
 }
 
 type CreateLocalListenerRequest struct {
-	Kind        string `json:"kind" validate:"required"` // http, tcp, smb, custom, etc
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Heartbeat   int    `json:"heartbeat"`
+	Kind        string          `json:"kind" validate:"required"` // http, tcp, smb, custom, etc
+	Name        string          `json:"name" validate:"required"`
+	Description string          `json:"description"`
+	Port        int             `json:"port"`
+	RawConfig   json.RawMessage `json:"config" validate:"required"`
 }
 
-func (clr CreateLocalListenerRequest) IntoListener() Listener {
-
-	heartbeat := clr.Heartbeat
-	if clr.Heartbeat < 30 {
-		heartbeat = 30
-	}
-
+func (clr CreateLocalListenerRequest) IntoListener() (Listener, error) {
 	return Listener{
 		Kind:        clr.Kind,
 		Status:      StatusReady,
 		Name:        clr.Name,
 		Description: clr.Description,
-
-		// External fields
-		External:  false,
-		Host:      "localhost",
-		Port:      8010, // Must replace with port manager service implementation later
-		RawConfig: json.RawMessage(`{}`),
-
-		Heartbeat: heartbeat,
-	}
+		External:    false,
+		Host:        "localhost",
+		Port:        clr.Port,
+		RawConfig:   clr.RawConfig, // Just save the data as JSON, but sure that is has some correct format
+	}, nil
 }

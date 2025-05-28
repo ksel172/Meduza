@@ -53,10 +53,6 @@ func NewPayloadController(payloadDAL dal.IPayloadDAL, agentDAL dal.IAgentDAL) *P
 	}
 }
 
-// <<<<<<< dev
-// // TODO: added configID to payload request, verify config exists in handler
-// func (h *PayloadController) CreatePayload(ctx *gin.Context) {
-// 	var payloadRequest models.PayloadRequest
 /* Payload Manifest endpoints */
 
 // UploadPayloadManifest handles uploading a new payload zip file

@@ -36,7 +36,7 @@ type IPayloadDAL interface {
 	GetPayloadByToken(ctx context.Context, payloadToken string) (models.Payload, error)
 	GetKeys(ctx context.Context, authToken string) ([]byte, []byte, error)
 	GetToken(ctx context.Context, configID string) (string, error)
-	
+
 	// Download payload build
 	DownloadPayloadBuild(ctx context.Context, jobID string) ([]byte, string, error)
 }
@@ -642,19 +642,19 @@ func (dal *PayloadDAL) GetKeys(ctx context.Context, authToken string) ([]byte, [
 }
 
 func (dal *PayloadDAL) GetToken(ctx context.Context, configID string) (string, error) {
-    query := fmt.Sprintf(`
+	query := fmt.Sprintf(`
         SELECT token
         FROM %s.payloads
         WHERE config_id = $1`,
-        dal.schema)
+		dal.schema)
 
-    return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) (string, error) {
-        var payloadToken string
-        if err := stmt.QueryRowContext(ctx, configID).Scan(&payloadToken); err != nil {
-            logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to get payload token for configID '%s': %v", configID, err))
-            return "", fmt.Errorf("failed to get payload token: %w", err)
-        }
+	return utils.WithResultTimeout(ctx, dal.db, query, 5, func(ctx context.Context, stmt *sql.Stmt) (string, error) {
+		var payloadToken string
+		if err := stmt.QueryRowContext(ctx, configID).Scan(&payloadToken); err != nil {
+			logger.Error(logLevel, logDetailPayload, fmt.Sprintf("failed to get payload token for configID '%s': %v", configID, err))
+			return "", fmt.Errorf("failed to get payload token: %w", err)
+		}
 
-        return payloadToken, nil
-    })
+		return payloadToken, nil
+	})
 }

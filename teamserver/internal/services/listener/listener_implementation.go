@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/ksel172/Meduza/teamserver/internal/services/listener/checkin"
-	"github.com/ksel172/Meduza/teamserver/internal/services/listener/external"
 	http_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/http"
 	smb_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/smb"
 	tcp_listener "github.com/ksel172/Meduza/teamserver/internal/services/listener/tcp"
@@ -29,8 +28,9 @@ type ListenerImplementation interface {
 // we must check how the listener is setup to run and prepare the fields
 // for usage
 func createListenerFromModel(listenerModel models.Listener, checkinController checkin.ICheckInController) (*Listener, error) {
-	listener := Listener{}
-	listener.Listener = listenerModel
+	listener := Listener{
+		Listener: listenerModel,
+	}
 
 	// Create the concrete listener implementation
 	listenerImplementation, err := createListenerImplementation(listener.Kind, listener.Host, listener.Port, listener.RawConfig, checkinController)
@@ -78,10 +78,34 @@ func createListenerImplementation(kind string, host string, port int, config jso
 	case models.SMBListenerKind:
 		return &smb_listener.SMBListener{}, nil
 
-	case models.ExternalListenerKind:
-		return &external.ExternalListener{}, nil
-
 	default:
 		return nil, fmt.Errorf("unsupported listener kind: %s", kind)
 	}
+}
+
+func ValidateListenerConfig(kind string, config json.RawMessage) error {
+	switch kind {
+	case models.HTTPListenerKind:
+		var httpConfig http_listener.HTTPListenerConfig
+		if err := json.Unmarshal(config, &httpConfig); err != nil {
+			return fmt.Errorf("failed to unmarshal HTTP config: %w", err)
+		}
+
+	case models.TCPListenerKind:
+		var tcpConfig tcp_listener.TCPListenerConfig
+		if err := json.Unmarshal(config, &tcpConfig); err != nil {
+			return fmt.Errorf("failed to unmarshal TPC config: %w", err)
+		}
+
+	case models.SMBListenerKind:
+		var smbConfig smb_listener.SMBListenerConfig
+		if err := json.Unmarshal(config, &smbConfig); err != nil {
+			return fmt.Errorf("failed to unmarshal SMB config: %w", err)
+		}
+
+	default:
+		return fmt.Errorf("unsupported listener kind: %s", kind)
+	}
+
+	return nil
 }

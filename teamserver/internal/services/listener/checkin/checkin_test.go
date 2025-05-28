@@ -210,7 +210,7 @@ func TestHandleRegisterRequest(t *testing.T) {
 		SystemInfo: "x64",
 		OSInfo:     "Windows 10",
 	}
-	associatedPayload := models.PayloadConfig{
+	associatedPayload := models.Payload{
 		ID:       "test-mock-payload-id",
 		ConfigID: "test-agent-config-id",
 	}

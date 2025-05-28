@@ -7,6 +7,9 @@ import (
 type TCPListener struct {
 }
 
+type TCPListenerConfig struct {
+}
+
 func (l TCPListener) Start(ctx context.Context) error {
 	return nil
 }

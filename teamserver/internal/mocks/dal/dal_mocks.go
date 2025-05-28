@@ -181,19 +181,69 @@ type MockPayloadDAL struct {
 	mock.Mock
 }
 
-func (m *MockPayloadDAL) CreatePayload(ctx context.Context, config models.PayloadConfig) error {
-	args := m.Called(config)
+func (m *MockPayloadDAL) CreatePayloadManifest(ctx context.Context, payload *models.PayloadManifestV1) error {
+	args := m.Called(payload)
 	return args.Error(0)
 }
 
-func (m *MockPayloadDAL) GetPayloadByToken(ctx context.Context, payloadToken string) (models.PayloadConfig, error) {
-	args := m.Called(payloadToken)
-	return args.Get(0).(models.PayloadConfig), args.Error(1)
+func (m *MockPayloadDAL) GetPayloadManifest(ctx context.Context, payloadID string) (*models.PayloadManifestV1, error) {
+	args := m.Called(payloadID)
+	return args.Get(0).(*models.PayloadManifestV1), args.Error(1)
 }
 
-func (m *MockPayloadDAL) GetAllPayloads(ctx context.Context) ([]models.PayloadConfig, error) {
+func (m *MockPayloadDAL) GetAllPayloadManifests(ctx context.Context) ([]*models.PayloadManifestV1, error) {
 	args := m.Called()
-	return args.Get(0).([]models.PayloadConfig), args.Error(1)
+	return args.Get(0).([]*models.PayloadManifestV1), args.Error(1)
+}
+
+func (m *MockPayloadDAL) DeletePayloadManifest(ctx context.Context, payloadID string) error {
+	args := m.Called(payloadID)
+	return args.Error(0)
+}
+
+func (m *MockPayloadDAL) DeleteAllPayloadManifests(ctx context.Context) error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockPayloadDAL) CreateBuildJob(ctx context.Context, job *models.PayloadJob) error {
+	args := m.Called(job)
+	return args.Error(0)
+}
+
+func (m *MockPayloadDAL) UpdateBuildJob(ctx context.Context, job *models.PayloadJob) error {
+	args := m.Called(job)
+	return args.Error(0)
+}
+
+func (m *MockPayloadDAL) GetBuildJob(ctx context.Context, jobID string) (*models.PayloadJob, error) {
+	args := m.Called(jobID)
+	return args.Get(0).(*models.PayloadJob), args.Error(1)
+}
+
+func (m *MockPayloadDAL) GetPayloadBuildJobs(ctx context.Context, payloadID string) ([]*models.PayloadJob, error) {
+	args := m.Called()
+	return args.Get(0).([]*models.PayloadJob), args.Error(1)
+}
+
+func (m *MockPayloadDAL) DeleteBuildJob(ctx context.Context, jobID string) error {
+	args := m.Called(jobID)
+	return args.Error(0)
+}
+
+func (m *MockPayloadDAL) CreatePayload(ctx context.Context, payload *models.Payload) error {
+	args := m.Called(payload)
+	return args.Error(0)
+}
+
+func (m *MockPayloadDAL) GetPayload(ctx context.Context, payloadID string) (*models.Payload, error) {
+	args := m.Called()
+	return args.Get(0).(*models.Payload), args.Error(1)
+}
+
+func (m *MockPayloadDAL) GetPayloads(ctx context.Context) ([]*models.Payload, error) {
+	args := m.Called()
+	return args.Get(0).([]*models.Payload), args.Error(1)
 }
 
 func (m *MockPayloadDAL) DeletePayload(ctx context.Context, payloadID string) error {
@@ -201,9 +251,9 @@ func (m *MockPayloadDAL) DeletePayload(ctx context.Context, payloadID string) er
 	return args.Error(0)
 }
 
-func (m *MockPayloadDAL) DeleteAllPayloads(ctx context.Context) error {
-	args := m.Called()
-	return args.Error(0)
+func (m *MockPayloadDAL) GetPayloadByToken(ctx context.Context, payloadToken string) (models.Payload, error) {
+	args := m.Called(payloadToken)
+	return args.Get(0).(models.Payload), args.Error(1)
 }
 
 func (m *MockPayloadDAL) GetKeys(ctx context.Context, authToken string) ([]byte, []byte, error) {
@@ -214,6 +264,11 @@ func (m *MockPayloadDAL) GetKeys(ctx context.Context, authToken string) ([]byte,
 func (m *MockPayloadDAL) GetToken(ctx context.Context, configID string) (string, error) {
 	args := m.Called(configID)
 	return args.String(0), args.Error(1)
+}
+
+func (m *MockPayloadDAL) DownloadPayloadBuild(ctx context.Context, jobID string) ([]byte, string, error) {
+	args := m.Called(jobID)
+	return args.Get(0).([]byte), args.String(1), args.Error(2)
 }
 
 type MockModuleDAL struct {

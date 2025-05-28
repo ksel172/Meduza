@@ -85,7 +85,16 @@ func (lc *ListenerController) CreateListener(ctx *gin.Context) {
 		models.ResponseError(ctx, http.StatusBadRequest, "Failed to get listener from request", err.Error())
 		return
 	}
-	listenerModel := createLocalListenerRequest.IntoListener()
+	listenerModel, err := createLocalListenerRequest.IntoListener()
+	if err != nil {
+		models.ResponseError(ctx, http.StatusBadRequest, "failed to parse local listener request", err.Error())
+		return
+	}
+
+	if err := listenerService.ValidateListenerConfig(listenerModel.Kind, listenerModel.RawConfig); err != nil {
+		models.ResponseError(ctx, http.StatusBadRequest, "invalid listener config", err.Error())
+		return
+	}
 
 	// TODO: external listeners registration
 
