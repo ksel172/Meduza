@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Default mode is dev if TEAMSERVER_MODE is not set
-MODE=${TEAMSERVER_MODE:-dev}
+MODE=${LOG_LEVEL:-dev}
 
 if [ "$MODE" = "debug" ]; then
 
