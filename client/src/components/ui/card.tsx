@@ -1,20 +1,36 @@
+"use client"
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
 const Card = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
-      className
-    )}
-    {...props}
-  />
-))
+  React.HTMLAttributes<HTMLDivElement> & {
+    variant?: "default" | "glass" | "glow" | "gradient" | "interactive"
+    animate?: boolean
+  }
+>(({ className, variant = "default", animate = false, ...props }, ref) => {
+  const variants = {
+    default: "rounded-lg border bg-card text-card-foreground shadow-sm",
+    glass: "rounded-lg border glass text-card-foreground shadow-lg backdrop-blur-sm",
+    glow: "rounded-lg border bg-card text-card-foreground shadow-glow",
+    gradient: "rounded-lg border bg-gradient-primary text-white shadow-lg",
+    interactive: "rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-ring transition-all duration-300 cursor-pointer"
+  }
+  
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        variants[variant],
+        animate && "animate-slide-up",
+        className
+      )}
+      {...props}
+    />
+  )
+})
 Card.displayName = "Card"
 
 const CardHeader = React.forwardRef<

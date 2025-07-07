@@ -68,6 +68,14 @@ body {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Enhanced UI colors for impressive design */
+    --gradient-primary: linear-gradient(135deg, hsl(217.2 91.2% 59.8%) 0%, hsl(221.2 83.2% 53.3%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(262.1 83.3% 57.8%) 0%, hsl(221.2 83.2% 53.3%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(142.1 76.2% 36.3%) 0%, hsl(142.1 70.6% 45.3%) 100%);
+    --gradient-destructive: linear-gradient(135deg, hsl(0 84.2% 60.2%) 0%, hsl(0 72.2% 50.6%) 100%);
+    --shadow-glow: 0 0 20px hsl(217.2 91.2% 59.8% / 0.3);
+    --shadow-glow-strong: 0 0 40px hsl(217.2 91.2% 59.8% / 0.4);
    }
   .dark {
     --background: 240 10% 3.9%;
@@ -102,6 +110,14 @@ body {
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Enhanced dark mode colors */
+    --gradient-primary: linear-gradient(135deg, hsl(217.2 91.2% 59.8%) 0%, hsl(221.2 83.2% 53.3%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(262.1 83.3% 57.8%) 0%, hsl(221.2 83.2% 53.3%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(142.1 76.2% 36.3%) 0%, hsl(142.1 70.6% 45.3%) 100%);
+    --gradient-destructive: linear-gradient(135deg, hsl(0 84.2% 60.2%) 0%, hsl(0 72.2% 50.6%) 100%);
+    --shadow-glow: 0 0 20px hsl(217.2 91.2% 59.8% / 0.3);
+    --shadow-glow-strong: 0 0 40px hsl(217.2 91.2% 59.8% / 0.4);
   }
 }
 
@@ -111,5 +127,60 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Gradient utilities */
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .bg-gradient-secondary {
+    background: var(--gradient-secondary);
+  }
+  
+  .bg-gradient-accent {
+    background: var(--gradient-accent);
+  }
+  
+  .bg-gradient-destructive {
+    background: var(--gradient-destructive);
+  }
+  
+  /* Glow effects */
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .shadow-glow-strong {
+    box-shadow: var(--shadow-glow-strong);
+  }
+  
+  /* Glass morphism effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Ripple effect container */
+  .ripple-container {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .ripple-effect {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    animation: ripple 0.6s ease-out;
   }
 }
