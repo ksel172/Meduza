@@ -1,4 +1,4 @@
-package utils
+io.CopyN(outFile,  rc, 1024*1024*256)package utils
 
 import (
 	"archive/zip"
