@@ -37,7 +37,8 @@ func Unzip(src string, dest string) error {
 		if err != nil {
 			return err
 		}
-		_, err = io.Copy(outFile, rc)
+        _, err = io.CopyN(outFile, rc, 1024*1024) // Limit to 1 MB
+
 		outFile.Close()
 		rc.Close()
 		if err != nil {
