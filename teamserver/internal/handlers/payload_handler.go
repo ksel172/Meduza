@@ -137,7 +137,12 @@ func (h *PayloadController) DeletePayload(ctx *gin.Context) {
 		return
 	}
 
-	filePath := "./teamserver/build/payload-" + payloadId
+	if !isValidPayloadID(payloadId) {
+		models.ResponseError(ctx, http.StatusBadRequest, "Invalid payload ID", fmt.Sprintf("%s contains invalid characters", payloadId))
+		return
+	}
+
+	filePath := filepath.Join("./teamserver/build", "payload-"+payloadId)
 	logger.Info(filePath)
 
 	if err := h.payloadDAL.DeletePayload(ctx.Request.Context(), payloadId); err != nil {
