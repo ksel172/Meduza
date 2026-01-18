@@ -25,3 +25,6 @@ COPY ../.. .
 
 # Set the entry point for the container
 ENTRYPOINT ["./docker/init_ts.sh"]
+
+# Add a health check for the container
+HEALTHCHECK CMD curl --fail http://localhost:8080/health || exit 1
