@@ -12,4 +12,8 @@ RUN go mod download
 WORKDIR /app
 COPY . .
 
+# Add a non-root user and switch to that user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
 ENTRYPOINT ["go", "test", "-C", "./teamserver", "./tests/...", "-v"]
