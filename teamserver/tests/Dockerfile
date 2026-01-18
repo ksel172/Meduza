@@ -12,4 +12,8 @@ RUN go mod download
 WORKDIR /app
 COPY . .
 
+# Create a non-root user
+RUN useradd -m nonrootuser
+USER nonrootuser
+
 ENTRYPOINT ["go", "test", "-C", "./teamserver", "./tests/...", "-v"]
