@@ -63,25 +63,7 @@ WIP:
 Before creating a listener, an array of ports that will be opened in the docker container of the teamserver should be specified. 
 That can be done in the `.env` file using the `LISTENER_PORT_RANGE_START` and `LISTENER_PORT_RANGE_END` variables.
 
-- To start a listener, a `POST` request should be sent to `http://<server_ip>:<server_port>/api/v1/listeners` with the following body:
-```shell
-{
-        "type":"",
-        "name": "",
-        "status": ,
-        "description": "",
-        "config": {}
-}
-```
-which should be modified based on the listener type. 
-*Fair notice: the status is an int.*
-- After the listener is created, it's UUID can be extracted using a `GET` request to `http://<server_ip>:<server_port>/api/v1/listeners/all`
-- The listener can be started using a `POST` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>/start`
-- The listener can be stopped using a `POST` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>/stop`
-- The listener can be deleted using a `DELETE` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>`
-- The listener can be updated using a `PUT` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>`
-- The listener can be queried individually using a `GET` request the following endpoint - `http://<server_ip>:<server_port>/api/v1/listeners/<listener_uuid>`
-
+In order to prevent unauthorized users from exploiting the API endpoints, it's crucial to implement authentication and authorization checks. Ensure that all endpoints specified for listener creation, manipulation, and querying are secured and only accessible to authenticated users. Use JWT tokens for this purpose, validating them on each request. Update the documentation to specify that JWT authentication is required and provide an example token acquisition method.
 ### 6. Starting the Client
 Navigate to `Meduza/client` and run the development server:
 
