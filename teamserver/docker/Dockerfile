@@ -4,7 +4,7 @@ FROM golang:1.24
 WORKDIR /app
 
 # Switch to root user
-USER root
+USER non_root_user
 
 # Copy dependency files first for caching
 COPY go.mod go.sum ./
